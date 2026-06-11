@@ -51,13 +51,30 @@ function Dashboard() {
   const { data } = useQuery({
     queryKey: ["dashboard-stats", yearStart.toISOString()],
     queryFn: async () => {
-      const [{ data: deals }, { data: products }, { data: profiles }, { data: comps }, { data: company }] = await Promise.all([
+      const lookbackStart = subYears(yearStart, 2).toISOString().slice(0, 10);
+      const [
+        { data: deals },
+        { data: products },
+        { data: profiles },
+        { data: comps },
+        { data: company },
+        { data: orders },
+      ] = await Promise.all([
         supabase.from("deals").select("*").gte("won_at", yearStart.toISOString()).lte("won_at", yearEnd.toISOString()).eq("stage", "vunnen"),
         supabase.from("products").select("*"),
         supabase.from("profiles").select("id, full_name, email"),
         supabase.from("seller_compensation").select("*"),
         supabase.from("company_settings").select("*").maybeSingle(),
+        supabase
+          .from("orders")
+          .select("id, owner_id, total_excl_vat, invoice_start_date, billing_frequency, billing_duration_months, order_type")
+          .eq("order_type", "bokning")
+          .gte("invoice_start_date", lookbackStart),
       ]);
+      const orderIds = (orders ?? []).map(o => o.id);
+      const { data: items } = orderIds.length
+        ? await supabase.from("order_items").select("order_id, product_id, unit_price, weeks").in("order_id", orderIds)
+        : { data: [] };
       const { data: openDeals } = await supabase.from("deals").select("*").not("stage", "in", "(vunnen,forlorad)");
       return {
         wonDeals: deals ?? [],
@@ -66,6 +83,8 @@ function Dashboard() {
         profiles: profiles ?? [],
         comps: comps ?? [],
         company: company ?? { monthly_budget: 0 },
+        orders: orders ?? [],
+        items: items ?? [],
       };
     },
   });
@@ -74,11 +93,56 @@ function Dashboard() {
   const profileMap = new Map((data?.profiles ?? []).map(p => [p.id, p]));
   const compMap = new Map((data?.comps ?? []).map(c => [c.user_id, c]));
 
-  // Per-seller yearly sales
+  // Build invoice schedule entries from orders. Each entry contributes to sales
+  // on its month: { date, amount, owner_id, productSplit: Map<productId, amount> }
+  type ScheduleEntry = { date: Date; amount: number; owner_id: string | null; productSplit: Map<string, number> };
+  const itemsByOrder = new Map<string, any[]>();
+  for (const it of data?.items ?? []) {
+    const arr = itemsByOrder.get(it.order_id) ?? [];
+    arr.push(it);
+    itemsByOrder.set(it.order_id, arr);
+  }
+  const scheduleEntries: ScheduleEntry[] = [];
+  for (const o of data?.orders ?? []) {
+    const total = Number(o.total_excl_vat ?? 0);
+    if (!total) continue;
+    const sched = buildInvoiceSchedule(
+      o.invoice_start_date,
+      (o.billing_frequency as BillingFrequency) ?? "engang",
+      o.billing_duration_months ?? 1,
+      total,
+    );
+    // product split ratios for this order
+    const ois = itemsByOrder.get(o.id) ?? [];
+    const itemTotals = ois.map(it => ({
+      product_id: it.product_id || "ingen",
+      value: Number(it.unit_price ?? 0) * Number(it.weeks ?? 1),
+    }));
+    const itemsSum = itemTotals.reduce((s, x) => s + x.value, 0) || 1;
+    for (const entry of sched) {
+      const split = new Map<string, number>();
+      for (const it of itemTotals) {
+        split.set(it.product_id, (split.get(it.product_id) ?? 0) + (entry.amount * it.value) / itemsSum);
+      }
+      scheduleEntries.push({ date: entry.date, amount: entry.amount, owner_id: o.owner_id, productSplit: split });
+    }
+  }
+
+  // Per-seller yearly sales (from invoice schedule, current year)
   const sellerSales = new Map<string, number>();
-  for (const d of data?.wonDeals ?? []) {
-    if (!d.owner_id) continue;
-    sellerSales.set(d.owner_id, (sellerSales.get(d.owner_id) ?? 0) + Number(d.value ?? 0));
+  // Company sales totals
+  let monthTotal = 0, quarterTotal = 0, yearTotal = 0;
+  // Per product yearly revenue
+  const productSales = new Map<string, number>();
+  for (const e of scheduleEntries) {
+    if (e.date < yearStart || e.date > yearEnd) continue;
+    yearTotal += e.amount;
+    if (e.date >= quarterStart) quarterTotal += e.amount;
+    if (e.date >= monthStart && e.date <= monthEnd) monthTotal += e.amount;
+    if (e.owner_id) sellerSales.set(e.owner_id, (sellerSales.get(e.owner_id) ?? 0) + e.amount);
+    for (const [pid, amt] of e.productSplit) {
+      productSales.set(pid, (productSales.get(pid) ?? 0) + amt);
+    }
   }
   const sellerChart = Array.from(sellerSales.entries())
     .map(([uid, value]) => {
@@ -87,24 +151,6 @@ function Dashboard() {
       return { name: name.split(" ")[0], value };
     })
     .sort((a, b) => b.value - a.value);
-
-  // Company sales
-  let monthTotal = 0, quarterTotal = 0, yearTotal = 0;
-  for (const d of data?.wonDeals ?? []) {
-    const v = Number(d.value ?? 0);
-    const w = d.won_at ? new Date(d.won_at) : null;
-    if (!w) continue;
-    yearTotal += v;
-    if (w >= quarterStart) quarterTotal += v;
-    if (w >= monthStart && w <= monthEnd) monthTotal += v;
-  }
-
-  // Per product yearly revenue
-  const productSales = new Map<string, number>();
-  for (const d of data?.wonDeals ?? []) {
-    const key = d.product_id || "ingen";
-    productSales.set(key, (productSales.get(key) ?? 0) + Number(d.value ?? 0));
-  }
   const productChart = Array.from(productSales.entries())
     .map(([pid, value]) => ({
       name: pid === "ingen" ? "Övrigt" : (prodMap.get(pid)?.name ?? "Okänd"),
