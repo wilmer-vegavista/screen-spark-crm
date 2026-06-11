@@ -28,6 +28,8 @@ type Product = {
   screen_type: string;
   format: string | null;
   dimensions: string | null;
+  file_format: string | null;
+  ad_duration_seconds: number | null;
   material_spec: string | null;
   image_url: string | null;
   default_commission_pct: number;
@@ -38,6 +40,11 @@ type Product = {
 };
 
 const SCREEN_TYPES = ["led", "lcd", "print", "other"];
+const AD_DURATIONS = [5, 10, 15, 20];
+
+function buildStorlek(format?: string | null, dimensions?: string | null, file_format?: string | null) {
+  return [format, dimensions, file_format].filter(Boolean).join(" · ") || null;
+}
 
 function ProdukterPage() {
   const { isAdmin } = useCurrentUser();
@@ -170,6 +177,7 @@ function ProductDialog({
   const handleSave = async () => {
     if (!form.name?.trim()) { toast.error("Namn krävs"); return; }
     setSaving(true);
+    const storlek = buildStorlek(form.format, form.dimensions, form.file_format);
     const payload: any = {
       name: form.name,
       description: form.description || null,
@@ -177,7 +185,9 @@ function ProductDialog({
       screen_type: form.screen_type || "led",
       format: form.format || null,
       dimensions: form.dimensions || null,
-      material_spec: form.material_spec || null,
+      file_format: form.file_format || null,
+      ad_duration_seconds: form.ad_duration_seconds != null && form.ad_duration_seconds !== ("" as any) ? Number(form.ad_duration_seconds) : null,
+      material_spec: storlek,
       image_url: form.image_url || null,
       default_commission_pct: Number(form.default_commission_pct ?? 0),
       commission_pct_with_base: form.commission_pct_with_base != null && form.commission_pct_with_base !== ("" as any) ? Number(form.commission_pct_with_base) : null,
@@ -224,12 +234,28 @@ function ProductDialog({
             <Input value={form.format ?? ""} onChange={(e) => setForm({ ...form, format: e.target.value })} />
           </div>
           <div>
-            <Label>Dimensioner</Label>
+            <Label>Mått</Label>
             <Input value={form.dimensions ?? ""} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} />
           </div>
+          <div>
+            <Label>Filformat</Label>
+            <Input value={form.file_format ?? ""} placeholder="t.ex. MP4, JPG, PNG" onChange={(e) => setForm({ ...form, file_format: e.target.value })} />
+          </div>
+          <div>
+            <Label>Annonslängd</Label>
+            <Select
+              value={form.ad_duration_seconds ? String(form.ad_duration_seconds) : ""}
+              onValueChange={(v) => setForm({ ...form, ad_duration_seconds: Number(v) as any })}
+            >
+              <SelectTrigger><SelectValue placeholder="Välj längd" /></SelectTrigger>
+              <SelectContent>
+                {AD_DURATIONS.map(s => <SelectItem key={s} value={String(s)}>{s} sekunder</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="col-span-2">
-            <Label>Materialspec</Label>
-            <Input value={form.material_spec ?? ""} onChange={(e) => setForm({ ...form, material_spec: e.target.value })} />
+            <Label>Storlek (genereras automatiskt)</Label>
+            <Input disabled value={buildStorlek(form.format, form.dimensions, form.file_format) ?? ""} placeholder="Format · Mått · Filformat" />
           </div>
           <div className="col-span-2">
             <Label>Beskrivning</Label>
