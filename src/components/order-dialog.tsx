@@ -699,6 +699,85 @@ export function OrderDialog({
 
           <div><Label>Anteckningar</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
 
+          {/* Fakturering */}
+          <Card className="p-4">
+            <div className="text-sm font-semibold mb-3">Fakturering</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Faktureringsdatum (start)</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn("w-full justify-start text-left font-normal mt-1", !form.invoice_start_date && "text-muted-foreground")}
+                    >
+                      <CalendarIcon className="size-4 mr-2" />
+                      {form.invoice_start_date ? format(form.invoice_start_date, "d MMM yyyy", { locale: sv }) : "Välj datum"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={form.invoice_start_date}
+                      onSelect={d => d && setForm(f => ({ ...f, invoice_start_date: d }))}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <p className="text-[10px] text-muted-foreground mt-1">Standard: idag. Sätt fram i tiden om kunden ska faktureras senare.</p>
+              </div>
+              <div>
+                <Label className="text-xs">Faktureringsfrekvens</Label>
+                <Select
+                  value={form.billing_frequency}
+                  onValueChange={(v: BillingFrequency) => setForm(f => ({
+                    ...f,
+                    billing_frequency: v,
+                    billing_duration_months: v === "engang" ? 1 : (f.billing_duration_months > 1 ? f.billing_duration_months : 12),
+                  }))}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="engang">Engångsfaktura</SelectItem>
+                    <SelectItem value="manad">Månadsvis</SelectItem>
+                    <SelectItem value="kvartal">Kvartalsvis</SelectItem>
+                    <SelectItem value="halvar">Halvårsvis</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.billing_frequency !== "engang" && (
+                <div>
+                  <Label className="text-xs">Total längd (månader)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    className="mt-1"
+                    value={form.billing_duration_months}
+                    onChange={e => setForm(f => ({ ...f, billing_duration_months: Math.max(1, Number(e.target.value) || 1) }))}
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">T.ex. 12 = ett år. Beloppet fördelas jämnt.</p>
+                </div>
+              )}
+            </div>
+            {/* Schedule preview */}
+            {(() => {
+              const sched = buildInvoiceSchedule(form.invoice_start_date, form.billing_frequency, form.billing_duration_months, subtotal);
+              if (sched.length === 0) return null;
+              return (
+                <div className="mt-3 p-3 rounded-md bg-accent/30 text-xs">
+                  <div className="font-medium mb-1">
+                    {frequencyLabels[form.billing_frequency]} – {sched.length} faktura{sched.length === 1 ? "" : "or"} à {SEK(sched[0].amount)} SEK
+                  </div>
+                  <div className="text-muted-foreground">
+                    Försäljning bokförs per månad: {format(sched[0].date, "MMM yyyy", { locale: sv })}
+                    {sched.length > 1 && ` – ${format(sched[sched.length - 1].date, "MMM yyyy", { locale: sv })}`}.
+                  </div>
+                </div>
+              );
+            })()}
+          </Card>
 
           <Separator />
 
