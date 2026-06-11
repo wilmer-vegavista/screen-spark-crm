@@ -105,6 +105,22 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
             </div>
             <div><Label>Förväntat avslut</Label><Input type="date" value={form.expected_close_date} onChange={e => setForm({ ...form, expected_close_date: e.target.value })} /></div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Produkt</Label>
+              <Select value={form.product_id || "_none"} onValueChange={(v) => setForm({ ...form, product_id: v === "_none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Ingen" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Ingen</SelectItem>
+                  {(products ?? []).map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.default_commission_pct}%)</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Provision % (override)</Label>
+              <Input type="number" step="0.1" value={form.commission_pct_override} onChange={e => setForm({ ...form, commission_pct_override: e.target.value })} placeholder="Auto från produkt" />
+            </div>
+          </div>
           <div><Label>Källa</Label><Input value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} placeholder="Mejl, rekommendation, kampanj..." /></div>
           <div><Label>Anteckningar</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
           <DialogFooter className="gap-2">
