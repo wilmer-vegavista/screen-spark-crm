@@ -40,7 +40,7 @@ const nav: NavItem[] = [
   { to: "/kampanjer", label: "Kampanjer", icon: Calendar, group: "produktion" },
   { to: "/material", label: "Material", icon: ImageIcon, group: "produktion" },
   { to: "/rapporter", label: "Rapporter", icon: FileBarChart, group: "produktion" },
-  { to: "/saljare", label: "Säljare", icon: UserCog, group: "admin", adminOnly: true },
+  { to: "/anvandare", label: "Användare", icon: UserCog, group: "admin", adminOnly: true },
   { to: "/produkter", label: "Produkter", icon: Package, group: "admin", adminOnly: true },
 ];
 
