@@ -114,6 +114,24 @@ export const resendSellerInvite = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const setSellerPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ user_id: z.string().uuid(), password: z.string().min(6) }))
+  .handler(async ({ context, data }) => {
+    await checkAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
+      password: data.password,
+    });
+    if (updErr) throw new Error(updErr.message);
+    const { error: credErr } = await supabaseAdmin.from("seller_credentials").upsert({
+      user_id: data.user_id,
+      initial_password: data.password,
+    });
+    if (credErr) throw new Error(credErr.message);
+    return { ok: true };
+  });
+
 export const updateSeller = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(updateSchema)
