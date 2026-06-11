@@ -15,6 +15,7 @@ import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   Tooltip,
