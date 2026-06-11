@@ -158,6 +158,27 @@ export type Database = {
           },
         ]
       }
+      company_settings: {
+        Row: {
+          created_at: string
+          id: boolean
+          monthly_budget: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: boolean
+          monthly_budget?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: boolean
+          monthly_budget?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           billing_address: string | null
@@ -682,6 +703,7 @@ export type Database = {
           compensation_type: Database["public"]["Enums"]["compensation_type"]
           created_at: string
           default_commission_pct: number
+          monthly_budget: number
           updated_at: string
           user_id: string
         }
@@ -690,6 +712,7 @@ export type Database = {
           compensation_type?: Database["public"]["Enums"]["compensation_type"]
           created_at?: string
           default_commission_pct?: number
+          monthly_budget?: number
           updated_at?: string
           user_id: string
         }
@@ -698,6 +721,7 @@ export type Database = {
           compensation_type?: Database["public"]["Enums"]["compensation_type"]
           created_at?: string
           default_commission_pct?: number
+          monthly_budget?: number
           updated_at?: string
           user_id?: string
         }
