@@ -167,13 +167,16 @@ function ProductDialog({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<Product>>({});
 
-  // Reset when opening
-  const init = () => setForm(product ?? {
-    name: "",
-    screen_type: "egen",
-    default_commission_pct: 10,
-    active: true,
-  });
+  // Sync form whenever dialog opens or the product changes
+  useEffect(() => {
+    if (!open) return;
+    setForm(product ?? {
+      name: "",
+      screen_type: "egen",
+      default_commission_pct: 10,
+      active: true,
+    });
+  }, [open, product]);
 
   const handleSave = async () => {
     if (!form.name?.trim()) { toast.error("Namn krävs"); return; }
@@ -207,7 +210,7 @@ function ProductDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (v) init(); onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Redigera produkt" : "Ny produkt"}</DialogTitle>
