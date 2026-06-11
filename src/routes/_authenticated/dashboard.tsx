@@ -15,6 +15,7 @@ import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   Tooltip,
@@ -161,6 +162,15 @@ function Dashboard() {
     }))
     .sort((a, b) => b.value - a.value);
 
+  // Per-month sales for current year (company-wide)
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "Maj", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"];
+  const monthlyTotals = Array.from({ length: 12 }, (_, i) => ({ name: monthNames[i], value: 0 }));
+  for (const e of scheduleEntries) {
+    if (e.date < yearStart || e.date > yearEnd) continue;
+    monthlyTotals[e.date.getMonth()].value += e.amount;
+  }
+  const currentMonthIdx = now.getMonth();
+
   // Open offers - own
   const myOpen = (data?.openDeals ?? []).filter(d => d.owner_id === user?.id);
   const myOpenValue = myOpen.reduce((s, d) => s + Number(d.value ?? 0), 0);
@@ -280,6 +290,31 @@ function Dashboard() {
             )}
           </Card>
         </div>
+
+        {/* Monthly company sales for current year */}
+        <Card className="p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarDays className="size-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold">Försäljning per månad ({now.getFullYear()})</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={monthlyTotals}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis dataKey="name" className="text-xs" />
+              <YAxis className="text-xs" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+              <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                {monthlyTotals.map((_, i) => (
+                  <Cell key={i} fill={i === currentMonthIdx ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.45)"} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="mt-3 text-xs text-muted-foreground">
+            Totalt i år: <span className="font-semibold text-foreground">{fmt(yearTotal)}</span> · Snitt/månad hittills:{" "}
+            <span className="font-semibold text-foreground">{fmt(yearTotal / (currentMonthIdx + 1))}</span>
+          </div>
+        </Card>
 
         {/* Seller bar chart */}
         <Card className="p-5">
