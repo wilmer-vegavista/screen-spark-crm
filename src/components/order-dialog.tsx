@@ -425,24 +425,46 @@ export function OrderDialog({
             </div>
           </div>
 
-          {/* Totalpris */}
+          {/* Totalpris + SOV */}
           <Card className="p-4 border-primary/40">
-            <Label className="text-sm font-semibold">Totalt pris för hela ordern (ex moms)</Label>
-            <div className="flex items-center gap-3 mt-2">
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={totalPrice}
-                onChange={e => setTotalPrice(e.target.value)}
-                placeholder="t.ex. 30000"
-                className="text-lg font-semibold"
-              />
-              <span className="text-sm text-muted-foreground whitespace-nowrap">SEK</span>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-semibold">Totalt pris för hela ordern (ex moms)</Label>
+                <div className="flex items-center gap-3 mt-2">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={totalPrice}
+                    onChange={e => setTotalPrice(e.target.value)}
+                    placeholder="t.ex. 30000"
+                    className="text-lg font-semibold"
+                  />
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">SEK</span>
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm font-semibold">SOV (sätter alla skärmar)</Label>
+                <div className="flex items-center gap-3 mt-2">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder="t.ex. 25"
+                    className="text-lg font-semibold"
+                    onChange={e => {
+                      const v = e.target.value;
+                      setItems(arr => arr.map(it => ({ ...it, sov_pct: v })));
+                    }}
+                  />
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">%</span>
+                </div>
+              </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Beloppet fördelas automatiskt jämnt över {activeItems.length || 0} skärm{activeItems.length === 1 ? "" : "ar"}
-              {activeItems.length > 0 && ` (${SEK(perScreen)} SEK per skärm)`}.
+              {activeItems.length > 0 && ` (${SEK(perScreen)} SEK per skärm)`}. SOV kan justeras per skärm ovan.
             </p>
           </Card>
 
@@ -453,21 +475,26 @@ export function OrderDialog({
 
           {/* Sammanfattning */}
           <Card className="p-4 bg-accent/30">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div>
                 <div className="text-xs text-muted-foreground">Summa ex moms</div>
-                <div className="text-xl font-bold">{SEK(subtotal)} SEK</div>
+                <div className="text-lg font-bold">{SEK(subtotal)} SEK</div>
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">Moms 25%</div>
-                <div className="text-xl font-bold">{SEK(subtotal * 0.25)} SEK</div>
+                <div className="text-lg font-bold">{SEK(subtotal * 0.25)} SEK</div>
               </div>
               <div>
-                <div className="text-xs text-muted-foreground">Total provision</div>
-                <div className="text-xl font-bold text-primary">{SEK(totalCommission)} SEK</div>
+                <div className="text-xs text-muted-foreground">Totalt inkl moms</div>
+                <div className="text-lg font-bold">{SEK(subtotal * 1.25)} SEK</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Provision</div>
+                <div className="text-lg font-bold text-primary">{SEK(totalCommission)} SEK</div>
               </div>
             </div>
           </Card>
+
 
           <DialogFooter className="gap-2">
             {order && (
