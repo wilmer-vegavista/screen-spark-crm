@@ -52,6 +52,8 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
       expected_close_date: form.expected_close_date || null,
       source: form.source || null,
       notes: form.notes || null,
+      product_id: form.product_id || null,
+      commission_pct_override: form.commission_pct_override !== "" ? Number(form.commission_pct_override) : null,
       owner_id: deal?.owner_id ?? u.user?.id,
       created_by: deal?.created_by ?? u.user?.id,
     };
