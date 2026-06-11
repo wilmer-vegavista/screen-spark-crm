@@ -43,7 +43,7 @@ async function loadLogo(): Promise<string | null> {
 }
 
 export async function generateOrderConfirmationPdf(input: OrderPdfInput) {
-  const { deal, customer, product, pkg, sellerName, sellerEmail } = input;
+  const { deal, customer, product, pkg, sellerName, sellerEmail, sellerTitle } = input;
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
