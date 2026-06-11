@@ -86,9 +86,14 @@ export function OrderDialog({
     return Number(p.default_commission_pct ?? 0);
   };
 
+  const commissionPctForItem = (it: Item): number => {
+    const product = it.product_id ? products.find((p: any) => p.id === it.product_id) : null;
+    return product ? commissionPctFor(product) : Number(it.commission_pct || 0);
+  };
+
   // Keep commission % in sync with product × seller compensation
   useEffect(() => {
-    if (!sellerComp || products.length === 0) return;
+    if (products.length === 0) return;
     setItems(arr => arr.map(it => {
       if (!it.product_id) return it;
       const p = products.find((x: any) => x.id === it.product_id);
@@ -208,8 +213,9 @@ export function OrderDialog({
   const perScreen = activeItems.length > 0 ? total / activeItems.length : 0;
   const calc = items.map(it => {
     const lineTotal = it.product_name.trim() ? perScreen : 0;
-    const commission = lineTotal * (Number(it.commission_pct) || 0) / 100;
-    return { lineTotal, commission };
+    const commissionPct = commissionPctForItem(it);
+    const commission = lineTotal * commissionPct / 100;
+    return { lineTotal, commission, commissionPct };
   });
   const subtotal = calc.reduce((s, c) => s + c.lineTotal, 0);
   const totalCommission = calc.reduce((s, c) => s + c.commission, 0);
@@ -247,7 +253,7 @@ export function OrderDialog({
       const weeks = Number(it.weeks) || 1;
       const lineAmount = perScreen;
       const unitPrice = weeks > 0 ? lineAmount / weeks : lineAmount;
-      const pct = Number(it.commission_pct) || 0;
+      const pct = commissionPctForItem(it);
       return {
         order_id: orderId,
         product_id: it.product_id,
@@ -272,6 +278,7 @@ export function OrderDialog({
       title: `${form.order_type === "offert" ? "Offert" : "Bokning"} – ${form.company_name}`,
       customer_id: form.customer_id,
       value: subtotal,
+      commission_pct_override: subtotal > 0 ? (totalCommission / subtotal) * 100 : null,
       stage: form.order_type === "offert" ? "offert" : "vunnen",
       owner_id: order?.owner_id ?? uid,
       created_by: order?.created_by ?? uid,
@@ -452,7 +459,7 @@ export function OrderDialog({
 
             <div className="space-y-3">
               {items.map((it, idx) => {
-                const { lineTotal, commission } = calc[idx];
+                const { lineTotal, commission, commissionPct } = calc[idx];
                 return (
                   <Card key={idx} className="p-3 space-y-3">
                     <div className="grid grid-cols-12 gap-2 items-end">
@@ -488,7 +495,7 @@ export function OrderDialog({
                     <div className="grid grid-cols-12 gap-2 items-end">
                       <div className="col-span-3">
                         <Label className="text-xs">Provision %</Label>
-                        <Input type="number" step="0.01" value={it.commission_pct} onChange={e => updItem(idx, { commission_pct: e.target.value })} />
+                        <Input type="number" step="0.01" value={commissionPct} readOnly />
                       </div>
                       <div className="col-span-4 text-sm">
                         <div className="text-xs text-muted-foreground">Andel av total</div>
