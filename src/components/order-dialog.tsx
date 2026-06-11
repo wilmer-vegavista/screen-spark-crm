@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 
 
 
+type PeriodUnit = "veckor" | "manader" | "ar";
+
 type Item = {
   id?: string;
   product_id: string | null;
@@ -31,6 +33,7 @@ type Item = {
   sov_pct: string;
   impressions: string;
   weeks: string;
+  period_unit: PeriodUnit;
   unit_price: string;
   commission_pct: string;
 };
@@ -41,6 +44,7 @@ const emptyItem = (): Item => ({
   sov_pct: "",
   impressions: "",
   weeks: "1",
+  period_unit: "veckor",
   unit_price: "0",
   commission_pct: "0",
 });
