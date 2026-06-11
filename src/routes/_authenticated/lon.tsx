@@ -592,6 +592,7 @@ function CompensationAdmin() {
             compensation_type: c?.compensation_type ?? "med_grundlon",
             base_salary: Number(c?.base_salary ?? 0),
             default_commission_pct: Number(c?.default_commission_pct ?? 0),
+            monthly_budget: Number(c?.monthly_budget ?? 0),
           };
         });
     },
