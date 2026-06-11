@@ -347,6 +347,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [screenType, setScreenType] = useState<"egen" | "extern">("egen");
   const [pctProv, setPctProv] = useState("0");
   const [pctBase, setPctBase] = useState("0");
 
@@ -354,6 +355,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
     if (open) {
       setName(product?.name ?? "");
       setDescription(product?.description ?? "");
+      setScreenType((product?.screen_type as any) ?? "egen");
       setPctProv(String(product?.commission_pct_provision_only ?? product?.default_commission_pct ?? "0"));
       setPctBase(String(product?.commission_pct_with_base ?? product?.default_commission_pct ?? "0"));
     }
@@ -363,6 +365,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
     const payload = {
       name,
       description: description || null,
+      screen_type: screenType,
       commission_pct_provision_only: Number(pctProv),
       commission_pct_with_base: Number(pctBase),
       default_commission_pct: Number(pctBase),
@@ -386,6 +389,27 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
           <div>
             <label className="text-xs font-medium">Beskrivning</label>
             <Input value={description} onChange={e => setDescription(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs font-medium">Skärmtyp</label>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => setScreenType("egen")}
+                className={`text-left p-3 rounded-md border text-xs ${screenType === "egen" ? "border-primary bg-primary/10" : "border-border"}`}
+              >
+                <div className="font-semibold">Egen skärm</div>
+                <div className="text-muted-foreground mt-1">Vi äger skärmen själva</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setScreenType("extern")}
+                className={`text-left p-3 rounded-md border text-xs ${screenType === "extern" ? "border-primary bg-primary/10" : "border-border"}`}
+              >
+                <div className="font-semibold">Extern skärm</div>
+                <div className="text-muted-foreground mt-1">Hyrd / inköpt från partner</div>
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
