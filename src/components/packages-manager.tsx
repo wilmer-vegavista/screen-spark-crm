@@ -121,9 +121,9 @@ export function PackagesManager() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Laddar…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Laddar…</TableCell></TableRow>
             ) : (packages ?? []).length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Inga paket än</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Inga paket än</TableCell></TableRow>
             ) : packages!.map((p) => {
               const prods = productsByPackage.get(p.id) ?? [];
               return (
