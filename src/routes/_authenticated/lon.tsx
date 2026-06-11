@@ -438,6 +438,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
       dimensions: dimensions || null,
       contacts_per_week: contactsPerWeek !== "" ? Number(contactsPerWeek) : null,
       format: format || null,
+      material_spec: materialSpec || null,
       address: address || null,
     };
     const { error } = product
