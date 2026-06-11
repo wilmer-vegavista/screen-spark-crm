@@ -168,9 +168,9 @@ function Dashboard() {
   const defaultPct = Number(myComp?.default_commission_pct ?? 0);
   const baseSalary = compType === "endast_provision" ? 0 : Number(myComp?.base_salary ?? 0);
   const myBudget = Number(myComp?.monthly_budget ?? 0);
-  const mySoldThisMonth = (data?.wonDeals ?? [])
-    .filter(d => d.owner_id === user?.id && d.won_at && new Date(d.won_at) >= monthStart && new Date(d.won_at) <= monthEnd)
-    .reduce((s, d) => s + Number(d.value ?? 0), 0);
+  const mySoldThisMonth = scheduleEntries
+    .filter(e => e.owner_id === user?.id && e.date >= monthStart && e.date <= monthEnd)
+    .reduce((s, e) => s + e.amount, 0);
   const myWonThisMonth = (data?.wonDeals ?? []).filter(d => {
     if (d.owner_id !== user?.id || !d.won_at) return false;
     const w = new Date(d.won_at);
