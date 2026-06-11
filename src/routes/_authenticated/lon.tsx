@@ -373,6 +373,10 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [dimensions, setDimensions] = useState("");
+  const [contactsPerWeek, setContactsPerWeek] = useState("");
+  const [format, setFormat] = useState("");
+  const [address, setAddress] = useState("");
 
   useMemo(() => {
     if (open) {
@@ -383,6 +387,10 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
       setPctBase(String(product?.commission_pct_with_base ?? product?.default_commission_pct ?? "0"));
       setImagePath(product?.image_url ?? null);
       setImagePreview(product?.image_signed_url ?? null);
+      setDimensions(product?.dimensions ?? "");
+      setContactsPerWeek(product?.contacts_per_week != null ? String(product.contacts_per_week) : "");
+      setFormat(product?.format ?? "");
+      setAddress(product?.address ?? "");
     }
   }, [open, product]);
 
