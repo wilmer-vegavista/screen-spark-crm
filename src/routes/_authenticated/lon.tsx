@@ -48,6 +48,7 @@ function LonPage() {
               <TabsTrigger value="min">Min lön</TabsTrigger>
               <TabsTrigger value="alla">Alla säljare</TabsTrigger>
               <TabsTrigger value="produkter">Produkter & provision</TabsTrigger>
+              <TabsTrigger value="paket">Paket</TabsTrigger>
               <TabsTrigger value="saljare">Säljarinställningar</TabsTrigger>
             </TabsList>
             <TabsContent value="min" className="mt-4">
@@ -58,6 +59,9 @@ function LonPage() {
             </TabsContent>
             <TabsContent value="produkter" className="mt-4">
               <ProductsAdmin />
+            </TabsContent>
+            <TabsContent value="paket" className="mt-4">
+              <PackagesAdmin />
             </TabsContent>
             <TabsContent value="saljare" className="mt-4">
               <CompensationAdmin />
