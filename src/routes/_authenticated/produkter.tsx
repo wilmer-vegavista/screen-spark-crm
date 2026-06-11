@@ -39,7 +39,8 @@ type Product = {
   active: boolean;
 };
 
-const SCREEN_TYPES = ["led", "lcd", "print", "other"];
+const SCREEN_TYPES = ["egen", "extern", "digital"];
+const SCREEN_TYPE_LABEL: Record<string, string> = { egen: "Egen", extern: "Extern", digital: "Digital" };
 const AD_DURATIONS = [5, 10, 15, 20];
 
 function buildStorlek(format?: string | null, dimensions?: string | null, file_format?: string | null) {
@@ -169,7 +170,7 @@ function ProductDialog({
   // Reset when opening
   const init = () => setForm(product ?? {
     name: "",
-    screen_type: "led",
+    screen_type: "egen",
     default_commission_pct: 10,
     active: true,
   });
@@ -182,7 +183,7 @@ function ProductDialog({
       name: form.name,
       description: form.description || null,
       address: form.address || null,
-      screen_type: form.screen_type || "led",
+      screen_type: form.screen_type || "egen",
       format: form.format || null,
       dimensions: form.dimensions || null,
       file_format: form.file_format || null,
@@ -218,10 +219,10 @@ function ProductDialog({
           </div>
           <div>
             <Label>Typ</Label>
-            <Select value={form.screen_type ?? "led"} onValueChange={(v) => setForm({ ...form, screen_type: v })}>
+            <Select value={form.screen_type ?? "egen"} onValueChange={(v) => setForm({ ...form, screen_type: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {SCREEN_TYPES.map(t => <SelectItem key={t} value={t}>{t.toUpperCase()}</SelectItem>)}
+                {SCREEN_TYPES.map(t => <SelectItem key={t} value={t}>{SCREEN_TYPE_LABEL[t]}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -265,7 +266,7 @@ function ProductDialog({
             <Label>Bild</Label>
             <ImageUploader
               value={form.image_url ?? null}
-              onChange={(p) => setForm({ ...form, image_url: p })}
+              onChange={(p: string | null) => setForm({ ...form, image_url: p })}
             />
           </div>
           <div>
