@@ -160,6 +160,8 @@ export type Database = {
       }
       customers: {
         Row: {
+          billing_address: string | null
+          city: string | null
           company_name: string
           contact_name: string | null
           created_at: string
@@ -171,9 +173,13 @@ export type Database = {
           org_number: string | null
           owner_id: string | null
           phone: string | null
+          postal_code: string | null
           updated_at: string
+          vat_number: string | null
         }
         Insert: {
+          billing_address?: string | null
+          city?: string | null
           company_name: string
           contact_name?: string | null
           created_at?: string
@@ -185,9 +191,13 @@ export type Database = {
           org_number?: string | null
           owner_id?: string | null
           phone?: string | null
+          postal_code?: string | null
           updated_at?: string
+          vat_number?: string | null
         }
         Update: {
+          billing_address?: string | null
+          city?: string | null
           company_name?: string
           contact_name?: string | null
           created_at?: string
@@ -199,7 +209,9 @@ export type Database = {
           org_number?: string | null
           owner_id?: string | null
           phone?: string | null
+          postal_code?: string | null
           updated_at?: string
+          vat_number?: string | null
         }
         Relationships: []
       }
@@ -425,6 +437,7 @@ export type Database = {
           image_url: string | null
           latitude: number | null
           longitude: number | null
+          material_spec: string | null
           name: string
           screen_type: Database["public"]["Enums"]["screen_type"]
           updated_at: string
@@ -444,6 +457,7 @@ export type Database = {
           image_url?: string | null
           latitude?: number | null
           longitude?: number | null
+          material_spec?: string | null
           name: string
           screen_type?: Database["public"]["Enums"]["screen_type"]
           updated_at?: string
@@ -463,6 +477,7 @@ export type Database = {
           image_url?: string | null
           latitude?: number | null
           longitude?: number | null
+          material_spec?: string | null
           name?: string
           screen_type?: Database["public"]["Enums"]["screen_type"]
           updated_at?: string
