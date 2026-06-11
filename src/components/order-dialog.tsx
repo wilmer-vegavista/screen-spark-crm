@@ -177,7 +177,8 @@ export function OrderDialog({
       ...it,
       product_id: p.id,
       product_name: p.name,
-      commission_pct: (p.default_commission_pct ?? 0).toString(),
+      commission_pct: commissionPctFor(p).toString(),
+
     } : it));
   };
 
@@ -417,7 +418,7 @@ export function OrderDialog({
                                   impressions: "",
                                   weeks: "1",
                                   unit_price: "0",
-                                  commission_pct: (p.default_commission_pct ?? 0).toString(),
+                                  commission_pct: commissionPctFor(p).toString(),
                                 }];
                               });
                             } else {
