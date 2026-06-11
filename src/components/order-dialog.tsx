@@ -406,27 +406,46 @@ export function OrderDialog({
                     </div>
                     <div className="grid grid-cols-12 gap-2 items-end">
                       <div className="col-span-3">
-                        <Label className="text-xs">Pris / vecka (SEK)</Label>
-                        <Input type="number" step="0.01" value={it.unit_price} onChange={e => updItem(idx, { unit_price: e.target.value })} />
-                      </div>
-                      <div className="col-span-2">
                         <Label className="text-xs">Provision %</Label>
                         <Input type="number" step="0.01" value={it.commission_pct} onChange={e => updItem(idx, { commission_pct: e.target.value })} />
                       </div>
-                      <div className="col-span-3 text-sm">
-                        <div className="text-xs text-muted-foreground">Radens totala pris</div>
+                      <div className="col-span-4 text-sm">
+                        <div className="text-xs text-muted-foreground">Andel av total</div>
                         <div className="font-semibold">{SEK(lineTotal)} SEK</div>
                       </div>
-                      <div className="col-span-4 text-sm">
+                      <div className="col-span-5 text-sm">
                         <div className="text-xs text-muted-foreground">Provision (rad)</div>
                         <div className="font-semibold text-primary">{SEK(commission)} SEK</div>
                       </div>
                     </div>
+
                   </Card>
                 );
               })}
             </div>
           </div>
+
+          {/* Totalpris */}
+          <Card className="p-4 border-primary/40">
+            <Label className="text-sm font-semibold">Totalt pris för hela ordern (ex moms)</Label>
+            <div className="flex items-center gap-3 mt-2">
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={totalPrice}
+                onChange={e => setTotalPrice(e.target.value)}
+                placeholder="t.ex. 30000"
+                className="text-lg font-semibold"
+              />
+              <span className="text-sm text-muted-foreground whitespace-nowrap">SEK</span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Beloppet fördelas automatiskt jämnt över {activeItems.length || 0} skärm{activeItems.length === 1 ? "" : "ar"}
+              {activeItems.length > 0 && ` (${SEK(perScreen)} SEK per skärm)`}.
+            </p>
+          </Card>
+
 
           <div><Label>Anteckningar</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
 
