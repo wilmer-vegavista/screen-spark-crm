@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSaljareRouteImport } from './routes/_authenticated/saljare'
 import { Route as AuthenticatedRapporterRouteImport } from './routes/_authenticated/rapporter'
+import { Route as AuthenticatedProdukterRouteImport } from './routes/_authenticated/produkter'
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedMaterialRouteImport } from './routes/_authenticated/material'
 import { Route as AuthenticatedLonRouteImport } from './routes/_authenticated/lon'
@@ -44,6 +45,11 @@ const AuthenticatedSaljareRoute = AuthenticatedSaljareRouteImport.update({
 const AuthenticatedRapporterRoute = AuthenticatedRapporterRouteImport.update({
   id: '/rapporter',
   path: '/rapporter',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedProdukterRoute = AuthenticatedProdukterRouteImport.update({
+  id: '/produkter',
+  path: '/produkter',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPipelineRoute = AuthenticatedPipelineRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/lon': typeof AuthenticatedLonRoute
   '/material': typeof AuthenticatedMaterialRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
+  '/produkter': typeof AuthenticatedProdukterRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
   '/saljare': typeof AuthenticatedSaljareRoute
 }
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/lon': typeof AuthenticatedLonRoute
   '/material': typeof AuthenticatedMaterialRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
+  '/produkter': typeof AuthenticatedProdukterRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
   '/saljare': typeof AuthenticatedSaljareRoute
 }
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/_authenticated/lon': typeof AuthenticatedLonRoute
   '/_authenticated/material': typeof AuthenticatedMaterialRoute
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
+  '/_authenticated/produkter': typeof AuthenticatedProdukterRoute
   '/_authenticated/rapporter': typeof AuthenticatedRapporterRoute
   '/_authenticated/saljare': typeof AuthenticatedSaljareRoute
 }
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/lon'
     | '/material'
     | '/pipeline'
+    | '/produkter'
     | '/rapporter'
     | '/saljare'
   fileRoutesByTo: FileRoutesByTo
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/lon'
     | '/material'
     | '/pipeline'
+    | '/produkter'
     | '/rapporter'
     | '/saljare'
   id:
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/_authenticated/lon'
     | '/_authenticated/material'
     | '/_authenticated/pipeline'
+    | '/_authenticated/produkter'
     | '/_authenticated/rapporter'
     | '/_authenticated/saljare'
   fileRoutesById: FileRoutesById
@@ -208,6 +220,13 @@ declare module '@tanstack/react-router' {
       path: '/rapporter'
       fullPath: '/rapporter'
       preLoaderRoute: typeof AuthenticatedRapporterRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/produkter': {
+      id: '/_authenticated/produkter'
+      path: '/produkter'
+      fullPath: '/produkter'
+      preLoaderRoute: typeof AuthenticatedProdukterRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/pipeline': {
@@ -270,6 +289,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLonRoute: typeof AuthenticatedLonRoute
   AuthenticatedMaterialRoute: typeof AuthenticatedMaterialRoute
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
+  AuthenticatedProdukterRoute: typeof AuthenticatedProdukterRoute
   AuthenticatedRapporterRoute: typeof AuthenticatedRapporterRoute
   AuthenticatedSaljareRoute: typeof AuthenticatedSaljareRoute
 }
@@ -282,6 +302,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLonRoute: AuthenticatedLonRoute,
   AuthenticatedMaterialRoute: AuthenticatedMaterialRoute,
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
+  AuthenticatedProdukterRoute: AuthenticatedProdukterRoute,
   AuthenticatedRapporterRoute: AuthenticatedRapporterRoute,
   AuthenticatedSaljareRoute: AuthenticatedSaljareRoute,
 }
