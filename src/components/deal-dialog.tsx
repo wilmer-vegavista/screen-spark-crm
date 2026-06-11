@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, FileDown } from "lucide-react";
+import { generateOrderConfirmationPdf } from "@/lib/order-confirmation-pdf";
 
 const STAGES = ["ny", "kontaktad", "offert", "forhandling", "vunnen", "forlorad"] as const;
 const STAGE_LABEL: Record<string, string> = {
