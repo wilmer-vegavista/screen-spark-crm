@@ -20,6 +20,7 @@ export type OrderPdfInput = {
   pkg: any | null;
   sellerName?: string | null;
   sellerEmail?: string | null;
+  sellerTitle?: string | null;
 };
 
 // Cache logo as data URL
