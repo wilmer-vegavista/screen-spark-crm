@@ -152,6 +152,7 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
         pkg,
         sellerName,
         sellerEmail: u.user?.email ?? null,
+        sellerTitle,
       });
     } catch (e: any) {
       toast.error(e.message ?? "Kunde inte skapa PDF");
