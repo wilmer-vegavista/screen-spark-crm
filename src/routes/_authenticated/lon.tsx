@@ -613,6 +613,7 @@ function CompensationAdmin() {
             <TableHead>Typ</TableHead>
             <TableHead className="text-right">Grundlön</TableHead>
             <TableHead className="text-right">Standard %</TableHead>
+            <TableHead className="text-right">Månadsbudget</TableHead>
             <TableHead className="w-20"></TableHead>
           </TableRow>
         </TableHeader>
@@ -623,13 +624,14 @@ function CompensationAdmin() {
               <TableCell className="text-xs">{p.compensation_type === "endast_provision" ? "Endast provision" : "Med grundlön"}</TableCell>
               <TableCell className="text-right">{p.compensation_type === "endast_provision" ? "—" : fmt(p.base_salary)}</TableCell>
               <TableCell className="text-right">{p.default_commission_pct}%</TableCell>
+              <TableCell className="text-right">{fmt(p.monthly_budget)}</TableCell>
               <TableCell className="text-right">
                 <Button variant="ghost" size="icon" onClick={() => setEditing(p)}><Pencil className="size-3.5" /></Button>
               </TableCell>
             </TableRow>
           ))}
           {(data ?? []).length === 0 && (
-            <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Inga säljare ännu</TableCell></TableRow>
+            <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Inga säljare ännu</TableCell></TableRow>
           )}
         </TableBody>
       </Table>
