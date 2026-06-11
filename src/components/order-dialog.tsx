@@ -7,11 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Loader2 } from "lucide-react";
+import { Plus, Trash2, FileDown, Loader2, ChevronDown } from "lucide-react";
 import { generateOrderPdf } from "@/lib/order-pdf";
+
 
 type Item = {
   id?: string;
@@ -365,10 +368,53 @@ export function OrderDialog({
           <div>
             <div className="flex items-center justify-between mb-2">
               <div className="text-sm font-semibold">Skärmar</div>
-              <Button type="button" size="sm" variant="outline" onClick={() => setItems(a => [...a, emptyItem()])}>
-                <Plus className="size-4 mr-1" /> Lägg till skärm
-              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button type="button" size="sm" variant="outline">
+                    <Plus className="size-4 mr-1" /> Välj skärmar <ChevronDown className="size-4 ml-1" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-2 max-h-96 overflow-y-auto" align="end">
+                  <div className="text-xs text-muted-foreground px-2 py-1">Bocka i de skärmar du vill lägga till</div>
+                  {products.length === 0 && (
+                    <div className="px-2 py-3 text-sm text-muted-foreground">Inga produkter att välja</div>
+                  )}
+                  {products.map((p: any) => {
+                    const checked = items.some(it => it.product_id === p.id);
+                    return (
+                      <label
+                        key={p.id}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) => {
+                            if (v) {
+                              setItems(arr => {
+                                const cleaned = arr.filter(it => it.product_id || it.product_name.trim());
+                                return [...cleaned, {
+                                  product_id: p.id,
+                                  product_name: p.name,
+                                  sov_pct: "",
+                                  impressions: "",
+                                  weeks: "1",
+                                  unit_price: "0",
+                                  commission_pct: (p.default_commission_pct ?? 0).toString(),
+                                }];
+                              });
+                            } else {
+                              setItems(arr => arr.filter(it => it.product_id !== p.id));
+                            }
+                          }}
+                        />
+                        <span className="text-sm flex-1">{p.name}</span>
+                      </label>
+                    );
+                  })}
+                </PopoverContent>
+              </Popover>
             </div>
+
             <div className="space-y-3">
               {items.map((it, idx) => {
                 const { lineTotal, commission } = calc[idx];
