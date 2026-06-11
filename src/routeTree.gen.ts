@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSaljareRouteImport } from './routes/_authenticated/saljare'
 import { Route as AuthenticatedRapporterRouteImport } from './routes/_authenticated/rapporter'
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedMaterialRouteImport } from './routes/_authenticated/material'
@@ -34,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedSaljareRoute = AuthenticatedSaljareRouteImport.update({
+  id: '/saljare',
+  path: '/saljare',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRapporterRoute = AuthenticatedRapporterRouteImport.update({
   id: '/rapporter',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/material': typeof AuthenticatedMaterialRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
+  '/saljare': typeof AuthenticatedSaljareRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/material': typeof AuthenticatedMaterialRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
+  '/saljare': typeof AuthenticatedSaljareRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/_authenticated/material': typeof AuthenticatedMaterialRoute
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/rapporter': typeof AuthenticatedRapporterRoute
+  '/_authenticated/saljare': typeof AuthenticatedSaljareRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/material'
     | '/pipeline'
     | '/rapporter'
+    | '/saljare'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
     | '/material'
     | '/pipeline'
     | '/rapporter'
+    | '/saljare'
   id:
     | '__root__'
     | '/'
@@ -153,6 +164,7 @@ export interface FileRouteTypes {
     | '/_authenticated/material'
     | '/_authenticated/pipeline'
     | '/_authenticated/rapporter'
+    | '/_authenticated/saljare'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -183,6 +195,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/saljare': {
+      id: '/_authenticated/saljare'
+      path: '/saljare'
+      fullPath: '/saljare'
+      preLoaderRoute: typeof AuthenticatedSaljareRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/rapporter': {
       id: '/_authenticated/rapporter'
@@ -252,6 +271,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMaterialRoute: typeof AuthenticatedMaterialRoute
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedRapporterRoute: typeof AuthenticatedRapporterRoute
+  AuthenticatedSaljareRoute: typeof AuthenticatedSaljareRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -263,6 +283,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMaterialRoute: AuthenticatedMaterialRoute,
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedRapporterRoute: AuthenticatedRapporterRoute,
+  AuthenticatedSaljareRoute: AuthenticatedSaljareRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -276,3 +297,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
