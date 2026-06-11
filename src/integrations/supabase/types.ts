@@ -424,6 +424,7 @@ export type Database = {
       products: {
         Row: {
           active: boolean
+          ad_duration_seconds: number | null
           address: string | null
           commission_pct_provision_only: number | null
           commission_pct_with_base: number | null
@@ -432,6 +433,7 @@ export type Database = {
           default_commission_pct: number
           description: string | null
           dimensions: string | null
+          file_format: string | null
           format: string | null
           id: string
           image_url: string | null
@@ -444,6 +446,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          ad_duration_seconds?: number | null
           address?: string | null
           commission_pct_provision_only?: number | null
           commission_pct_with_base?: number | null
@@ -452,6 +455,7 @@ export type Database = {
           default_commission_pct?: number
           description?: string | null
           dimensions?: string | null
+          file_format?: string | null
           format?: string | null
           id?: string
           image_url?: string | null
@@ -464,6 +468,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          ad_duration_seconds?: number | null
           address?: string | null
           commission_pct_provision_only?: number | null
           commission_pct_with_base?: number | null
@@ -472,6 +477,7 @@ export type Database = {
           default_commission_pct?: number
           description?: string | null
           dimensions?: string | null
+          file_format?: string | null
           format?: string | null
           id?: string
           image_url?: string | null
