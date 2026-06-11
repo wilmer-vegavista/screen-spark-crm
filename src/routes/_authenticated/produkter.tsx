@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
 import { PageHeader } from "@/components/page-header";
@@ -14,7 +14,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, X, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/produkter")({
   component: ProdukterPage,
@@ -262,8 +262,11 @@ function ProductDialog({
             <Textarea value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
           <div className="col-span-2">
-            <Label>Bild-URL</Label>
-            <Input value={form.image_url ?? ""} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
+            <Label>Bild</Label>
+            <ImageUploader
+              value={form.image_url ?? null}
+              onChange={(p) => setForm({ ...form, image_url: p })}
+            />
           </div>
           <div>
             <Label>Standard provision %</Label>
