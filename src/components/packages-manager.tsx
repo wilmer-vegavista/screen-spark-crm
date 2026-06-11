@@ -212,6 +212,8 @@ function PackageDialog({
       description: form.description || null,
       price: Number(form.price ?? 0),
       weeks: form.weeks != null && (form.weeks as any) !== "" ? Number(form.weeks) : null,
+      views: form.views != null && (form.views as any) !== "" ? Number(form.views) : null,
+      sov: form.sov != null && (form.sov as any) !== "" ? Number(form.sov) : null,
       active: form.active ?? true,
       product_id: null,
     };
