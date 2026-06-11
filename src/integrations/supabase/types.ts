@@ -766,6 +766,33 @@ export type Database = {
         }
         Relationships: []
       }
+      seller_monthly_budgets: {
+        Row: {
+          amount: number
+          created_at: string
+          month: number
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          month: number
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          month?: number
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
