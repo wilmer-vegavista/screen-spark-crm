@@ -59,6 +59,7 @@ function Dashboard() {
         { data: comps },
         { data: company },
         { data: orders },
+        { data: monthlyBudgets },
       ] = await Promise.all([
         supabase.from("deals").select("*").gte("won_at", yearStart.toISOString()).lte("won_at", yearEnd.toISOString()).eq("stage", "vunnen"),
         supabase.from("products").select("*"),
@@ -70,6 +71,7 @@ function Dashboard() {
           .select("id, owner_id, total_excl_vat, invoice_start_date, billing_frequency, billing_duration_months, order_type")
           .eq("order_type", "bokning")
           .gte("invoice_start_date", lookbackStart),
+        supabase.from("seller_monthly_budgets").select("*").eq("year", now.getFullYear()),
       ]);
       const orderIds = (orders ?? []).map(o => o.id);
       const { data: items } = orderIds.length
@@ -85,6 +87,7 @@ function Dashboard() {
         company: company ?? { monthly_budget: 0 },
         orders: orders ?? [],
         items: items ?? [],
+        monthlyBudgets: monthlyBudgets ?? [],
       };
     },
   });
