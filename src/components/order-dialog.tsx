@@ -222,7 +222,7 @@ export function OrderDialog({
     }
 
 
-  }, [order, open]);
+  }, [order, open, currentUserId]);
 
   const pickCustomer = (id: string) => {
     const c = customers.find((x: any) => x.id === id);
