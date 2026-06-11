@@ -621,6 +621,7 @@ export function OrderDialog({
                                   sov_pct: "",
                                   impressions: "",
                                   weeks: "1",
+                                  period_unit: "veckor" as PeriodUnit,
                                   unit_price: "0",
                                   commission_pct: commissionPctFor(p).toString(),
                                 }];
