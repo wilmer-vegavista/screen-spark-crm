@@ -67,6 +67,11 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
       notes: form.notes || null,
       product_id: form.product_id || null,
       commission_pct_override: form.commission_pct_override !== "" ? Number(form.commission_pct_override) : null,
+      sov_pct: form.sov_pct !== "" ? Number(form.sov_pct) : null,
+      impressions: form.impressions !== "" ? Number(form.impressions) : null,
+      campaign_start: form.schedule_mode === "dates" ? (form.campaign_start || null) : null,
+      campaign_end: form.schedule_mode === "dates" ? (form.campaign_end || null) : null,
+      campaign_weeks: form.schedule_mode === "weeks" && form.campaign_weeks !== "" ? Number(form.campaign_weeks) : null,
       owner_id: deal?.owner_id ?? u.user?.id,
       created_by: deal?.created_by ?? u.user?.id,
     };
