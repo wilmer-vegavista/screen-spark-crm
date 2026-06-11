@@ -10,7 +10,10 @@ const createSchema = z.object({
   compensation_type: z.enum(["endast_provision", "med_grundlon"]),
   base_salary: z.number().min(0).optional(),
   default_commission_pct: z.number().min(0).optional(),
-  send_invite: z.boolean().optional().default(true),
+  // "invite" = mail med länk där säljaren sätter eget lösenord
+  // "password" = admin sätter ett lösenord direkt (sparas så det syns på admin-sidan)
+  credential_mode: z.enum(["invite", "password"]).default("password"),
+  password: z.string().min(6).optional(),
 });
 
 const updateSchema = z.object({
