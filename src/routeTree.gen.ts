@@ -21,6 +21,7 @@ import { Route as AuthenticatedLonRouteImport } from './routes/_authenticated/lo
 import { Route as AuthenticatedKunderRouteImport } from './routes/_authenticated/kunder'
 import { Route as AuthenticatedKampanjerRouteImport } from './routes/_authenticated/kampanjer'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedBudgetRouteImport } from './routes/_authenticated/budget'
 import { Route as AuthenticatedAnvandareRouteImport } from './routes/_authenticated/anvandare'
 import { Route as AuthenticatedAktiviteterRouteImport } from './routes/_authenticated/aktiviteter'
 
@@ -83,6 +84,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBudgetRoute = AuthenticatedBudgetRouteImport.update({
+  id: '/budget',
+  path: '/budget',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAnvandareRoute = AuthenticatedAnvandareRouteImport.update({
   id: '/anvandare',
   path: '/anvandare',
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/anvandare': typeof AuthenticatedAnvandareRoute
+  '/budget': typeof AuthenticatedBudgetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/anvandare': typeof AuthenticatedAnvandareRoute
+  '/budget': typeof AuthenticatedBudgetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/_authenticated/anvandare': typeof AuthenticatedAnvandareRoute
+  '/_authenticated/budget': typeof AuthenticatedBudgetRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/kampanjer': typeof AuthenticatedKampanjerRoute
   '/_authenticated/kunder': typeof AuthenticatedKunderRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/aktiviteter'
     | '/anvandare'
+    | '/budget'
     | '/dashboard'
     | '/kampanjer'
     | '/kunder'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/aktiviteter'
     | '/anvandare'
+    | '/budget'
     | '/dashboard'
     | '/kampanjer'
     | '/kunder'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/aktiviteter'
     | '/_authenticated/anvandare'
+    | '/_authenticated/budget'
     | '/_authenticated/dashboard'
     | '/_authenticated/kampanjer'
     | '/_authenticated/kunder'
@@ -283,6 +295,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/budget': {
+      id: '/_authenticated/budget'
+      path: '/budget'
+      fullPath: '/budget'
+      preLoaderRoute: typeof AuthenticatedBudgetRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/anvandare': {
       id: '/_authenticated/anvandare'
       path: '/anvandare'
@@ -303,6 +322,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAktiviteterRoute: typeof AuthenticatedAktiviteterRoute
   AuthenticatedAnvandareRoute: typeof AuthenticatedAnvandareRoute
+  AuthenticatedBudgetRoute: typeof AuthenticatedBudgetRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedKampanjerRoute: typeof AuthenticatedKampanjerRoute
   AuthenticatedKunderRoute: typeof AuthenticatedKunderRoute
@@ -317,6 +337,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAktiviteterRoute: AuthenticatedAktiviteterRoute,
   AuthenticatedAnvandareRoute: AuthenticatedAnvandareRoute,
+  AuthenticatedBudgetRoute: AuthenticatedBudgetRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedKampanjerRoute: AuthenticatedKampanjerRoute,
   AuthenticatedKunderRoute: AuthenticatedKunderRoute,
@@ -339,3 +360,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
