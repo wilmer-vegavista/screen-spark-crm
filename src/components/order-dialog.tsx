@@ -34,6 +34,7 @@ const emptyItem = (): Item => ({
   commission_pct: "0",
 });
 
+
 const SEK = (n: number) =>
   new Intl.NumberFormat("sv-SE", { style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
 
@@ -80,6 +81,8 @@ export function OrderDialog({
     notes: "",
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
+  const [totalPrice, setTotalPrice] = useState<string>("0");
+
 
   useEffect(() => {
     if (!open) return;
@@ -109,8 +112,11 @@ export function OrderDialog({
             unit_price: d.unit_price?.toString() ?? "0",
             commission_pct: d.commission_pct?.toString() ?? "0",
           })));
+          const tot = data.reduce((s, d) => s + Number(d.unit_price || 0) * Number(d.weeks || 1), 0);
+          setTotalPrice(tot.toString());
         } else {
           setItems([emptyItem()]);
+          setTotalPrice("0");
         }
       });
     } else {
@@ -120,7 +126,9 @@ export function OrderDialog({
         contact_name: "", contact_email: "", contact_phone: "", notes: "",
       });
       setItems([emptyItem()]);
+      setTotalPrice("0");
     }
+
   }, [order, open]);
 
   const pickCustomer = (id: string) => {
@@ -156,14 +164,18 @@ export function OrderDialog({
     setItems(arr => arr.map((it, i) => i === idx ? { ...it, ...patch } : it));
   };
 
-  // Calculations
+  // Calculations — total price is split equally across screens
+  const total = Number(totalPrice) || 0;
+  const activeItems = items.filter(it => it.product_name.trim());
+  const perScreen = activeItems.length > 0 ? total / activeItems.length : 0;
   const calc = items.map(it => {
-    const lineTotal = (Number(it.unit_price) || 0) * (Number(it.weeks) || 1);
+    const lineTotal = it.product_name.trim() ? perScreen : 0;
     const commission = lineTotal * (Number(it.commission_pct) || 0) / 100;
     return { lineTotal, commission };
   });
   const subtotal = calc.reduce((s, c) => s + c.lineTotal, 0);
   const totalCommission = calc.reduce((s, c) => s + c.commission, 0);
+
 
   const handleSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
