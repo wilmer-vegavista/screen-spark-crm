@@ -9,11 +9,17 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Loader2, ChevronDown } from "lucide-react";
+import { Plus, Trash2, FileDown, Loader2, ChevronDown, CalendarIcon, X } from "lucide-react";
 import { generateOrderPdf } from "@/lib/order-pdf";
+import { format } from "date-fns";
+import { sv } from "date-fns/locale";
+
 
 
 type Item = {
@@ -124,6 +130,9 @@ export function OrderDialog({
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
   const [totalPrice, setTotalPrice] = useState<string>("0");
+  const [selectedWeeks, setSelectedWeeks] = useState<number[]>([]);
+  const [exactDates, setExactDates] = useState<Date[]>([]);
+
 
 
   useEffect(() => {
@@ -143,6 +152,9 @@ export function OrderDialog({
         contact_phone: order.contact_phone ?? "",
         notes: order.notes ?? "",
       });
+      setSelectedWeeks(Array.isArray(order.selected_weeks) ? order.selected_weeks : []);
+      setExactDates(Array.isArray(order.exact_dates) ? order.exact_dates.map((d: string) => new Date(d)) : []);
+
       // load items
       supabase.from("order_items").select("*").eq("order_id", order.id).order("position").then(({ data }) => {
         if (data && data.length) {
@@ -169,7 +181,10 @@ export function OrderDialog({
       });
       setItems([emptyItem()]);
       setTotalPrice("0");
+      setSelectedWeeks([]);
+      setExactDates([]);
     }
+
 
   }, [order, open]);
 
@@ -233,9 +248,12 @@ export function OrderDialog({
       ...form,
       total_excl_vat: subtotal,
       total_commission: totalCommission,
+      selected_weeks: selectedWeeks,
+      exact_dates: exactDates.map(d => format(d, "yyyy-MM-dd")),
       owner_id: order?.owner_id ?? uid,
       created_by: order?.created_by ?? uid,
     };
+
 
     let orderId = order?.id;
     if (order) {
@@ -557,7 +575,97 @@ export function OrderDialog({
           </Card>
 
 
+          {/* Kampanjperiod – veckor eller exakta datum */}
+          <Card className="p-4">
+            <div className="text-sm font-semibold mb-3">Kampanjperiod</div>
+            <Tabs defaultValue="weeks">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="weeks">Välj veckor</TabsTrigger>
+                <TabsTrigger value="dates">Exakta datum</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="weeks" className="space-y-3 pt-3">
+                <div className="text-xs text-muted-foreground">
+                  Klicka för att välja de veckor kunden vill köra. {selectedWeeks.length} vecka{selectedWeeks.length === 1 ? "" : "or"} valda.
+                </div>
+                <div className="grid grid-cols-10 gap-1.5">
+                  {Array.from({ length: 52 }, (_, i) => i + 1).map(w => {
+                    const active = selectedWeeks.includes(w);
+                    return (
+                      <button
+                        key={w}
+                        type="button"
+                        onClick={() => setSelectedWeeks(prev =>
+                          prev.includes(w) ? prev.filter(x => x !== w) : [...prev, w].sort((a, b) => a - b)
+                        )}
+                        className={`text-xs rounded-md py-1.5 border transition ${
+                          active
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background hover:bg-accent border-input"
+                        }`}
+                      >
+                        v{w}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedWeeks.length > 0 && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setSelectedWeeks([])}>
+                    Rensa veckor
+                  </Button>
+                )}
+              </TabsContent>
+
+              <TabsContent value="dates" className="space-y-3 pt-3">
+                <div className="text-xs text-muted-foreground">
+                  Välj specifika datum kunden vill köra på. {exactDates.length} datum valda.
+                </div>
+                <div className="flex flex-wrap gap-3 items-start">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" size="sm">
+                        <CalendarIcon className="size-4 mr-1" /> Lägg till datum
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="multiple"
+                        selected={exactDates}
+                        onSelect={(d) => setExactDates(d ?? [])}
+                        locale={sv}
+                        weekStartsOn={1}
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {exactDates.length > 0 && (
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setExactDates([])}>
+                      Rensa datum
+                    </Button>
+                  )}
+                </div>
+                {exactDates.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {[...exactDates].sort((a, b) => a.getTime() - b.getTime()).map((d, i) => (
+                      <Badge key={i} variant="secondary" className="gap-1">
+                        {format(d, "d MMM yyyy", { locale: sv })}
+                        <button
+                          type="button"
+                          onClick={() => setExactDates(prev => prev.filter(x => x.getTime() !== d.getTime()))}
+                          className="hover:text-destructive"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </Card>
+
           <div><Label>Anteckningar</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
+
 
           <Separator />
 
