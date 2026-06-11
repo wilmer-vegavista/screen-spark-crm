@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedSaljareRouteImport } from './routes/_authenticated/saljare'
 import { Route as AuthenticatedRapporterRouteImport } from './routes/_authenticated/rapporter'
 import { Route as AuthenticatedProdukterRouteImport } from './routes/_authenticated/produkter'
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
@@ -22,6 +21,7 @@ import { Route as AuthenticatedLonRouteImport } from './routes/_authenticated/lo
 import { Route as AuthenticatedKunderRouteImport } from './routes/_authenticated/kunder'
 import { Route as AuthenticatedKampanjerRouteImport } from './routes/_authenticated/kampanjer'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedAnvandareRouteImport } from './routes/_authenticated/anvandare'
 import { Route as AuthenticatedAktiviteterRouteImport } from './routes/_authenticated/aktiviteter'
 
 const AuthRoute = AuthRouteImport.update({
@@ -37,11 +37,6 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedSaljareRoute = AuthenticatedSaljareRouteImport.update({
-  id: '/saljare',
-  path: '/saljare',
-  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRapporterRoute = AuthenticatedRapporterRouteImport.update({
   id: '/rapporter',
@@ -88,6 +83,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAnvandareRoute = AuthenticatedAnvandareRouteImport.update({
+  id: '/anvandare',
+  path: '/anvandare',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAktiviteterRoute =
   AuthenticatedAktiviteterRouteImport.update({
     id: '/aktiviteter',
@@ -99,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/aktiviteter': typeof AuthenticatedAktiviteterRoute
+  '/anvandare': typeof AuthenticatedAnvandareRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
@@ -108,12 +109,12 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/produkter': typeof AuthenticatedProdukterRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
-  '/saljare': typeof AuthenticatedSaljareRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/aktiviteter': typeof AuthenticatedAktiviteterRoute
+  '/anvandare': typeof AuthenticatedAnvandareRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
@@ -123,7 +124,6 @@ export interface FileRoutesByTo {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/produkter': typeof AuthenticatedProdukterRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
-  '/saljare': typeof AuthenticatedSaljareRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -131,6 +131,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/aktiviteter': typeof AuthenticatedAktiviteterRoute
+  '/_authenticated/anvandare': typeof AuthenticatedAnvandareRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/kampanjer': typeof AuthenticatedKampanjerRoute
   '/_authenticated/kunder': typeof AuthenticatedKunderRoute
@@ -140,7 +141,6 @@ export interface FileRoutesById {
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/produkter': typeof AuthenticatedProdukterRoute
   '/_authenticated/rapporter': typeof AuthenticatedRapporterRoute
-  '/_authenticated/saljare': typeof AuthenticatedSaljareRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -148,6 +148,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/aktiviteter'
+    | '/anvandare'
     | '/dashboard'
     | '/kampanjer'
     | '/kunder'
@@ -157,12 +158,12 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/produkter'
     | '/rapporter'
-    | '/saljare'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/aktiviteter'
+    | '/anvandare'
     | '/dashboard'
     | '/kampanjer'
     | '/kunder'
@@ -172,13 +173,13 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/produkter'
     | '/rapporter'
-    | '/saljare'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/aktiviteter'
+    | '/_authenticated/anvandare'
     | '/_authenticated/dashboard'
     | '/_authenticated/kampanjer'
     | '/_authenticated/kunder'
@@ -188,7 +189,6 @@ export interface FileRouteTypes {
     | '/_authenticated/pipeline'
     | '/_authenticated/produkter'
     | '/_authenticated/rapporter'
-    | '/_authenticated/saljare'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -219,13 +219,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/saljare': {
-      id: '/_authenticated/saljare'
-      path: '/saljare'
-      fullPath: '/saljare'
-      preLoaderRoute: typeof AuthenticatedSaljareRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/rapporter': {
       id: '/_authenticated/rapporter'
@@ -290,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/anvandare': {
+      id: '/_authenticated/anvandare'
+      path: '/anvandare'
+      fullPath: '/anvandare'
+      preLoaderRoute: typeof AuthenticatedAnvandareRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/aktiviteter': {
       id: '/_authenticated/aktiviteter'
       path: '/aktiviteter'
@@ -302,6 +302,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAktiviteterRoute: typeof AuthenticatedAktiviteterRoute
+  AuthenticatedAnvandareRoute: typeof AuthenticatedAnvandareRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedKampanjerRoute: typeof AuthenticatedKampanjerRoute
   AuthenticatedKunderRoute: typeof AuthenticatedKunderRoute
@@ -311,11 +312,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedProdukterRoute: typeof AuthenticatedProdukterRoute
   AuthenticatedRapporterRoute: typeof AuthenticatedRapporterRoute
-  AuthenticatedSaljareRoute: typeof AuthenticatedSaljareRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAktiviteterRoute: AuthenticatedAktiviteterRoute,
+  AuthenticatedAnvandareRoute: AuthenticatedAnvandareRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedKampanjerRoute: AuthenticatedKampanjerRoute,
   AuthenticatedKunderRoute: AuthenticatedKunderRoute,
@@ -325,7 +326,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedProdukterRoute: AuthenticatedProdukterRoute,
   AuthenticatedRapporterRoute: AuthenticatedRapporterRoute,
-  AuthenticatedSaljareRoute: AuthenticatedSaljareRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -339,3 +339,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

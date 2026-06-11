@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Loader2, Mail, Eye, EyeOff, Copy, KeyRound } from "lucide-react";
 import { createSeller, updateSeller, resendSellerInvite, setSellerPassword } from "@/lib/sellers.functions";
 
-export const Route = createFileRoute("/_authenticated/saljare")({
+export const Route = createFileRoute("/_authenticated/anvandare")({
   component: SaljarePage,
 });
 
