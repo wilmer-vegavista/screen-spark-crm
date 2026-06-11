@@ -396,7 +396,32 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
           </div>
           <div>
             <label className="text-xs font-medium">Skärmtyp</label>
-            <div className="grid grid-cols-2 gap-2 mt-1">
+            <div className="grid grid-cols-3 gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => setScreenType("egen")}
+                className={`text-left p-3 rounded-md border text-xs ${screenType === "egen" ? "border-primary bg-primary/10" : "border-border"}`}
+              >
+                <div className="font-semibold">Egen skärm</div>
+                <div className="text-muted-foreground mt-1">Vi äger skärmen själva</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setScreenType("extern")}
+                className={`text-left p-3 rounded-md border text-xs ${screenType === "extern" ? "border-primary bg-primary/10" : "border-border"}`}
+              >
+                <div className="font-semibold">Extern skärm</div>
+                <div className="text-muted-foreground mt-1">Hyrd / inköpt från partner</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setScreenType("digital")}
+                className={`text-left p-3 rounded-md border text-xs ${screenType === "digital" ? "border-primary bg-primary/10" : "border-border"}`}
+              >
+                <div className="font-semibold">Digital produkt</div>
+                <div className="text-muted-foreground mt-1">Banners, CTV, programmatic</div>
+              </button>
+            </div>
               <button
                 type="button"
                 onClick={() => setScreenType("egen")}
