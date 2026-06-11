@@ -544,6 +544,27 @@ export type Database = {
         }
         Relationships: []
       }
+      seller_credentials: {
+        Row: {
+          created_at: string
+          initial_password: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          initial_password: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          initial_password?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
