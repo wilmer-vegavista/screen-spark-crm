@@ -20,7 +20,15 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
 
-const nav = [
+interface NavItem {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  group: string;
+  adminOnly?: boolean;
+}
+
+const nav: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "saljare" },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare, group: "saljare" },
   { to: "/kunder", label: "Kunder", icon: Users, group: "saljare" },
@@ -30,7 +38,7 @@ const nav = [
   { to: "/material", label: "Material", icon: ImageIcon, group: "produktion" },
   { to: "/rapporter", label: "Rapporter", icon: FileBarChart, group: "produktion" },
   { to: "/saljare", label: "Säljare", icon: UserCog, group: "admin", adminOnly: true },
-] as const;
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
