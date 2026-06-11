@@ -255,6 +255,7 @@ export function OrderDialog({
 
     const orderPayload: any = {
       ...form,
+      invoice_start_date: format(form.invoice_start_date, "yyyy-MM-dd"),
       total_excl_vat: subtotal,
       total_commission: totalCommission,
       selected_weeks: selectedWeeks,
