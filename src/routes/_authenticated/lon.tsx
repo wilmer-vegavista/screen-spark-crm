@@ -347,7 +347,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [screenType, setScreenType] = useState<"egen" | "extern">("egen");
+  const [screenType, setScreenType] = useState<"egen" | "extern" | "digital">("egen");
   const [pctProv, setPctProv] = useState("0");
   const [pctBase, setPctBase] = useState("0");
 
