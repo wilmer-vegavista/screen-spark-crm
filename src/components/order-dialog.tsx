@@ -205,18 +205,25 @@ export function OrderDialog({
 
     // Replace items
     if (order) await supabase.from("order_items").delete().eq("order_id", orderId);
-    const itemRows = items.filter(it => it.product_name.trim()).map((it, i) => ({
-      order_id: orderId,
-      product_id: it.product_id,
-      product_name: it.product_name,
-      sov_pct: it.sov_pct ? Number(it.sov_pct) : null,
-      impressions: it.impressions ? Number(it.impressions) : null,
-      weeks: Number(it.weeks) || 1,
-      unit_price: Number(it.unit_price) || 0,
-      commission_pct: Number(it.commission_pct) || 0,
-      commission_amount: (Number(it.unit_price) || 0) * (Number(it.weeks) || 1) * (Number(it.commission_pct) || 0) / 100,
-      position: i,
-    }));
+    const itemRows = items.filter(it => it.product_name.trim()).map((it, i) => {
+      const weeks = Number(it.weeks) || 1;
+      const lineAmount = perScreen;
+      const unitPrice = weeks > 0 ? lineAmount / weeks : lineAmount;
+      const pct = Number(it.commission_pct) || 0;
+      return {
+        order_id: orderId,
+        product_id: it.product_id,
+        product_name: it.product_name,
+        sov_pct: it.sov_pct ? Number(it.sov_pct) : null,
+        impressions: it.impressions ? Number(it.impressions) : null,
+        weeks,
+        unit_price: unitPrice,
+        commission_pct: pct,
+        commission_amount: lineAmount * pct / 100,
+        position: i,
+      };
+    });
+
     if (itemRows.length) {
       const { error } = await supabase.from("order_items").insert(itemRows);
       if (error) { setSaving(false); return toast.error(error.message); }
