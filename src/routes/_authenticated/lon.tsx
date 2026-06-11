@@ -370,6 +370,9 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   const [screenType, setScreenType] = useState<"egen" | "extern" | "digital">("egen");
   const [pctProv, setPctProv] = useState("0");
   const [pctBase, setPctBase] = useState("0");
+  const [imagePath, setImagePath] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useMemo(() => {
     if (open) {
@@ -378,8 +381,36 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
       setScreenType((product?.screen_type as any) ?? "egen");
       setPctProv(String(product?.commission_pct_provision_only ?? product?.default_commission_pct ?? "0"));
       setPctBase(String(product?.commission_pct_with_base ?? product?.default_commission_pct ?? "0"));
+      setImagePath(product?.image_url ?? null);
+      setImagePreview(product?.image_signed_url ?? null);
     }
   }, [open, product]);
+
+  const handleFile = async (file: File) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+      const path = `products/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("product-images").upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data: signed } = await supabase.storage.from("product-images").createSignedUrl(path, 3600);
+      // Try to delete previous image if it existed
+      if (imagePath) await supabase.storage.from("product-images").remove([imagePath]).catch(() => {});
+      setImagePath(path);
+      setImagePreview(signed?.signedUrl ?? null);
+    } catch (e: any) {
+      toast.error(e.message ?? "Uppladdning misslyckades");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = async () => {
+    if (imagePath) await supabase.storage.from("product-images").remove([imagePath]).catch(() => {});
+    setImagePath(null);
+    setImagePreview(null);
+  };
 
   const save = async () => {
     const payload = {
@@ -389,6 +420,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
       commission_pct_provision_only: Number(pctProv),
       commission_pct_with_base: Number(pctBase),
       default_commission_pct: Number(pctBase),
+      image_url: imagePath,
     };
     const { error } = product
       ? await supabase.from("products").update(payload).eq("id", product.id)
@@ -402,6 +434,27 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
       <DialogContent>
         <DialogHeader><DialogTitle>{product ? "Redigera produkt" : "Ny produkt"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium">Bild</label>
+            <div className="mt-1 flex items-center gap-3">
+              {imagePreview ? (
+                <img src={imagePreview} alt="" className="size-20 rounded object-cover border" />
+              ) : (
+                <div className="size-20 rounded border bg-muted/30 flex items-center justify-center text-[10px] text-muted-foreground">Ingen bild</div>
+              )}
+              <div className="flex flex-col gap-2">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  disabled={uploading}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+                />
+                {imagePreview && (
+                  <Button type="button" variant="outline" size="sm" onClick={removeImage}>Ta bort bild</Button>
+                )}
+              </div>
+            </div>
+          </div>
           <div>
             <label className="text-xs font-medium">Namn</label>
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="t.ex. Egna skärmar" />
@@ -454,7 +507,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
-          <Button onClick={save} disabled={!name}>Spara</Button>
+          <Button onClick={save} disabled={!name || uploading}>{uploading ? "Laddar upp…" : "Spara"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
