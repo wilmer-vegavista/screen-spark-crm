@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Wallet, Plus, Pencil, Trash2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, addMonths } from "date-fns";
 import { sv } from "date-fns/locale";
+import { TaxCalculator } from "@/components/tax-calculator";
 
 export const Route = createFileRoute("/_authenticated/lon")({
   component: LonPage,
@@ -50,6 +51,7 @@ function LonPage() {
               <TabsTrigger value="produkter">Produkter & provision</TabsTrigger>
               <TabsTrigger value="paket">Paket</TabsTrigger>
               <TabsTrigger value="saljare">Säljarinställningar</TabsTrigger>
+              <TabsTrigger value="skatt">Skatteberäkning</TabsTrigger>
             </TabsList>
             <TabsContent value="min" className="mt-4">
               {user && <SalaryCard userId={user.id} from={monthStart} to={monthEnd} />}
@@ -66,9 +68,23 @@ function LonPage() {
             <TabsContent value="saljare" className="mt-4">
               <CompensationAdmin />
             </TabsContent>
+            <TabsContent value="skatt" className="mt-4">
+              <TaxCalculator />
+            </TabsContent>
           </Tabs>
         ) : (
-          user && <SalaryCard userId={user.id} from={monthStart} to={monthEnd} />
+          <Tabs defaultValue="min">
+            <TabsList>
+              <TabsTrigger value="min">Min lön</TabsTrigger>
+              <TabsTrigger value="skatt">Skatteberäkning</TabsTrigger>
+            </TabsList>
+            <TabsContent value="min" className="mt-4">
+              {user && <SalaryCard userId={user.id} from={monthStart} to={monthEnd} />}
+            </TabsContent>
+            <TabsContent value="skatt" className="mt-4">
+              <TaxCalculator />
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </>
