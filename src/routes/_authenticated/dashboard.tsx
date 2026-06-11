@@ -161,6 +161,15 @@ function Dashboard() {
     }))
     .sort((a, b) => b.value - a.value);
 
+  // Per-month sales for current year (company-wide)
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "Maj", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"];
+  const monthlyTotals = Array.from({ length: 12 }, (_, i) => ({ name: monthNames[i], value: 0 }));
+  for (const e of scheduleEntries) {
+    if (e.date < yearStart || e.date > yearEnd) continue;
+    monthlyTotals[e.date.getMonth()].value += e.amount;
+  }
+  const currentMonthIdx = now.getMonth();
+
   // Open offers - own
   const myOpen = (data?.openDeals ?? []).filter(d => d.owner_id === user?.id);
   const myOpenValue = myOpen.reduce((s, d) => s + Number(d.value ?? 0), 0);
