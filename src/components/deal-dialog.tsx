@@ -261,8 +261,9 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
           </div>
           <div><Label>Källa</Label><Input value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} placeholder="Mejl, rekommendation, kampanj..." /></div>
           <div><Label>Anteckningar</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 flex-wrap">
             {deal && <Button type="button" variant="ghost" size="sm" onClick={remove} className="text-destructive mr-auto"><Trash2 className="size-4 mr-1" /> Ta bort</Button>}
+            {deal && <Button type="button" variant="outline" size="sm" onClick={downloadOrder}><FileDown className="size-4 mr-1" /> Orderbekräftelse (PDF)</Button>}
             <Button type="submit" disabled={loading}>Spara</Button>
           </DialogFooter>
         </form>
