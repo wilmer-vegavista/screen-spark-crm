@@ -11,16 +11,19 @@ import { Trash2 } from "lucide-react";
 
 export function CustomerDialog({ open, onOpenChange, customer }: { open: boolean; onOpenChange: (v: boolean) => void; customer: any | null }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState({ company_name: "", contact_name: "", email: "", phone: "", org_number: "", industry: "", notes: "" });
+  const empty = { company_name: "", contact_name: "", email: "", phone: "", org_number: "", vat_number: "", billing_address: "", postal_code: "", city: "", industry: "", notes: "" };
+  const [form, setForm] = useState(empty);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (customer) setForm({
       company_name: customer.company_name ?? "", contact_name: customer.contact_name ?? "",
       email: customer.email ?? "", phone: customer.phone ?? "", org_number: customer.org_number ?? "",
+      vat_number: customer.vat_number ?? "", billing_address: customer.billing_address ?? "",
+      postal_code: customer.postal_code ?? "", city: customer.city ?? "",
       industry: customer.industry ?? "", notes: customer.notes ?? "",
     });
-    else setForm({ company_name: "", contact_name: "", email: "", phone: "", org_number: "", industry: "", notes: "" });
+    else setForm(empty);
   }, [customer, open]);
 
   const submit = async (e: React.FormEvent) => {
