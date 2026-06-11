@@ -163,6 +163,33 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
               <Input type="number" step="0.1" value={form.commission_pct_override} onChange={e => setForm({ ...form, commission_pct_override: e.target.value })} placeholder="Auto från produkt" />
             </div>
           </div>
+          {filteredPackages.length > 0 && (
+            <div className="space-y-2 rounded-md border p-3 bg-muted/20">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Välj paket (valfritt)</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {filteredPackages.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => applyPackage(p.id)}
+                    className={`text-left p-2 rounded-md border text-xs ${form.package_id === p.id ? "border-primary bg-primary/10" : "border-border bg-background"}`}
+                  >
+                    <div className="font-semibold">{p.name}</div>
+                    <div className="text-muted-foreground mt-0.5">
+                      {p.sov_pct != null && <span>SOV {p.sov_pct}% · </span>}
+                      {p.weeks != null && <span>{p.weeks}v · </span>}
+                      {Number(p.price).toLocaleString("sv-SE")} kr
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {form.package_id && (
+                <button type="button" onClick={() => setForm({ ...form, package_id: "" })} className="text-[10px] text-muted-foreground underline">
+                  Rensa paketval
+                </button>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>SOV (%)</Label>
