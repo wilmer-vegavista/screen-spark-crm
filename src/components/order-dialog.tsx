@@ -578,11 +578,34 @@ export function OrderDialog({
           {/* Kampanjperiod – veckor eller exakta datum */}
           <Card className="p-4">
             <div className="text-sm font-semibold mb-3">Kampanjperiod</div>
-            <Tabs defaultValue="weeks">
-              <TabsList className="grid w-full grid-cols-2">
+            <Tabs defaultValue="count">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="count">Antal veckor</TabsTrigger>
                 <TabsTrigger value="weeks">Välj veckor</TabsTrigger>
                 <TabsTrigger value="dates">Exakta datum</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="count" className="space-y-3 pt-3">
+                <div className="text-xs text-muted-foreground">
+                  Ange bara hur många veckor kampanjen ska köras – inga specifika veckor eller datum behövs.
+                </div>
+                <div className="flex items-center gap-3 max-w-xs">
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="t.ex. 4"
+                    onChange={e => {
+                      const v = e.target.value;
+                      setItems(arr => arr.map(it => ({ ...it, weeks: v || "1" })));
+                    }}
+                  />
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">veckor</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Detta uppdaterar fältet "Veckor" på alla skärmar ovan.
+                </p>
+              </TabsContent>
+
 
               <TabsContent value="weeks" className="space-y-3 pt-3">
                 <div className="text-xs text-muted-foreground">
