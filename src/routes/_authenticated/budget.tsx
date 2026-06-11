@@ -220,3 +220,166 @@ function Stat({ label, value, highlight }: { label: string; value: string; highl
     </div>
   );
 }
+
+function BudgetRemaining({ year }: { year: number }) {
+  const now = new Date();
+  const isCurrentYear = year === now.getFullYear();
+  const yearStart = startOfYear(new Date(year, 0, 1));
+  const yearEnd = endOfYear(new Date(year, 0, 1));
+  const monthStart = startOfMonth(now);
+  const monthEnd = endOfMonth(now);
+
+  const { data } = useQuery({
+    queryKey: ["budget-remaining", year],
+    queryFn: async () => {
+      const [
+        { data: profiles },
+        { data: roles },
+        { data: budgets },
+        { data: orders },
+      ] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, email"),
+        supabase.from("user_roles").select("user_id, role"),
+        supabase.from("seller_monthly_budgets").select("*").eq("year", year),
+        supabase
+          .from("orders")
+          .select("id, owner_id, total_excl_vat, invoice_start_date, billing_frequency, billing_duration_months, order_type")
+          .eq("order_type", "bokning")
+          .gte("invoice_start_date", `${year - 1}-01-01`)
+          .lte("invoice_start_date", `${year + 1}-12-31`),
+      ]);
+      const sellerIds = new Set((roles ?? []).filter(r => r.role === "saljare").map(r => r.user_id));
+      const sellers: Seller[] = (profiles ?? [])
+        .filter(p => sellerIds.has(p.id))
+        .map(p => ({ id: p.id, name: p.full_name || p.email || "Okänd" }));
+
+      // Build invoice schedule entries per order
+      type Entry = { date: Date; amount: number; owner_id: string | null };
+      const entries: Entry[] = [];
+      for (const o of orders ?? []) {
+        const total = Number(o.total_excl_vat ?? 0);
+        if (!total || !o.invoice_start_date) continue;
+        const sched = buildInvoiceSchedule(
+          o.invoice_start_date,
+          (o.billing_frequency as BillingFrequency) ?? "engang",
+          o.billing_duration_months ?? 1,
+          total,
+        );
+        for (const e of sched) {
+          entries.push({ date: e.date, amount: e.amount, owner_id: o.owner_id });
+        }
+      }
+
+      // Budgets per seller per month
+      const budgetMap = new Map<string, number[]>();
+      for (const s of sellers) budgetMap.set(s.id, Array(12).fill(0));
+      for (const b of budgets ?? []) {
+        const arr = budgetMap.get(b.user_id) ?? Array(12).fill(0);
+        arr[b.month - 1] = Number(b.amount);
+        budgetMap.set(b.user_id, arr);
+      }
+
+      // Actuals per seller per month (from invoice schedule)
+      const actualMap = new Map<string, number[]>();
+      for (const s of sellers) actualMap.set(s.id, Array(12).fill(0));
+      for (const e of entries) {
+        if (e.date < yearStart || e.date > yearEnd) continue;
+        if (!e.owner_id) continue;
+        const arr = actualMap.get(e.owner_id) ?? Array(12).fill(0);
+        arr[e.date.getMonth()] += e.amount;
+        actualMap.set(e.owner_id, arr);
+      }
+
+      // Yearly totals
+      const yearBudget = new Map<string, number>();
+      const yearActual = new Map<string, number>();
+      const monthBudget = new Map<string, number>();
+      const monthActual = new Map<string, number>();
+      for (const s of sellers) {
+        const bArr = budgetMap.get(s.id) ?? Array(12).fill(0);
+        const aArr = actualMap.get(s.id) ?? Array(12).fill(0);
+        yearBudget.set(s.id, bArr.reduce((sum, n) => sum + n, 0));
+        yearActual.set(s.id, aArr.reduce((sum, n) => sum + n, 0));
+        if (isCurrentYear) {
+          monthBudget.set(s.id, bArr[now.getMonth()]);
+          monthActual.set(s.id, aArr[now.getMonth()]);
+        }
+      }
+
+      return { sellers, yearBudget, yearActual, monthBudget, monthActual };
+    },
+  });
+
+  if (!data) return <Card className="p-6 text-sm text-muted-foreground">Laddar…</Card>;
+  if (data.sellers.length === 0) return <Card className="p-6 text-sm text-muted-foreground">Inga säljare ännu</Card>;
+
+  return (
+    <div className="space-y-4">
+      {data.sellers.map(s => {
+        const budget = data.yearBudget.get(s.id) ?? 0;
+        const actual = data.yearActual.get(s.id) ?? 0;
+        const remaining = Math.max(budget - actual, 0);
+        const pct = budget > 0 ? Math.min(100, (actual / budget) * 100) : 0;
+        const mBudget = isCurrentYear ? (data.monthBudget.get(s.id) ?? 0) : 0;
+        const mActual = isCurrentYear ? (data.monthActual.get(s.id) ?? 0) : 0;
+        const mRemaining = Math.max(mBudget - mActual, 0);
+        const mPct = mBudget > 0 ? Math.min(100, (mActual / mBudget) * 100) : 0;
+
+        return (
+          <Card key={s.id} className="p-5 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <Target className="size-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">{s.name}</h3>
+                <span className="text-xs text-muted-foreground">· {year}</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {pct.toFixed(0)}% uppnått
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <div className="text-sm text-muted-foreground">Årsbudget</div>
+                <div className="text-sm font-semibold">{fmt(budget)}</div>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <div className="text-sm text-muted-foreground">Sålt hittills</div>
+                <div className="text-sm font-semibold">{fmt(actual)}</div>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <div className="text-sm text-muted-foreground">Kvar till budget</div>
+                <div className="text-sm font-semibold flex items-center gap-1">
+                  {remaining > 0 ? <TrendingDown className="size-3.5 text-orange-500" /> : <TrendingUp className="size-3.5 text-emerald-500" />}
+                  {fmt(remaining)}
+                </div>
+              </div>
+              <Progress value={pct} />
+            </div>
+
+            {isCurrentYear && mBudget > 0 && (
+              <div className="pt-3 border-t space-y-2">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Denna månad</div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground">Budget</div>
+                    <div className="text-sm font-semibold">{fmt(mBudget)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground">Sålt</div>
+                    <div className="text-sm font-semibold">{fmt(mActual)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground">Kvar</div>
+                    <div className="text-sm font-semibold">{fmt(mRemaining)}</div>
+                  </div>
+                </div>
+                <Progress value={mPct} />
+              </div>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
