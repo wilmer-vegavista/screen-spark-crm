@@ -253,7 +253,7 @@ export function OrderDialog({
       const weeks = Number(it.weeks) || 1;
       const lineAmount = perScreen;
       const unitPrice = weeks > 0 ? lineAmount / weeks : lineAmount;
-      const pct = Number(it.commission_pct) || 0;
+      const pct = commissionPctForItem(it);
       return {
         order_id: orderId,
         product_id: it.product_id,
