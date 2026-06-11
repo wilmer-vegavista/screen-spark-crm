@@ -14,6 +14,7 @@ import {
   Monitor,
   Settings,
   Wallet,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ const nav = [
   { to: "/kampanjer", label: "Kampanjer", icon: Calendar, group: "produktion" },
   { to: "/material", label: "Material", icon: ImageIcon, group: "produktion" },
   { to: "/rapporter", label: "Rapporter", icon: FileBarChart, group: "produktion" },
+  { to: "/saljare", label: "Säljare", icon: UserCog, group: "admin", adminOnly: true },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
