@@ -183,7 +183,7 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
     setSaving(true);
     try {
       if (seller) {
-        await updateSeller({
+        await updateSeller({ data: {
           user_id: seller.id,
           full_name: name,
           email,
@@ -192,11 +192,11 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
           compensation_type: type,
           base_salary: type === "endast_provision" ? 0 : Number(base),
           default_commission_pct: Number(pct),
-        });
+        }});
         toast.success("Säljare uppdaterad");
         onSaved();
       } else {
-        const result = await createSeller({
+        const result = await createSeller({ data: {
           full_name: name,
           email,
           phone,
@@ -204,7 +204,7 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
           compensation_type: type,
           base_salary: type === "endast_provision" ? 0 : Number(base),
           default_commission_pct: Number(pct),
-        });
+        }});
         toast.success("Säljare skapad");
         setShowTempPassword(result.tempPassword);
         onSaved();

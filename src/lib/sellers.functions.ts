@@ -94,7 +94,7 @@ export const updateSeller = createServerFn({ method: "POST" })
     }
 
     // 2. Update profile
-    const profileUpdate: Record<string, any> = {};
+    const profileUpdate: any = {};
     if (data.full_name !== undefined) profileUpdate.full_name = data.full_name;
     if (data.phone !== undefined) profileUpdate.phone = data.phone || null;
     if (data.title !== undefined) profileUpdate.title = data.title || null;
