@@ -85,6 +85,23 @@ export function OrderDialog({
       return data;
     },
   });
+  const { data: currentUserId } = useQuery({
+    queryKey: ["current-user-id"],
+    queryFn: async () => {
+      const { data } = await supabase.auth.getUser();
+      return data.user?.id ?? null;
+    },
+  });
+  const { data: sellers = [] } = useQuery({
+    queryKey: ["sellers-list"],
+    queryFn: async () => {
+      const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "saljare");
+      const ids = (roles ?? []).map((r: any) => r.user_id);
+      if (ids.length === 0) return [];
+      const { data } = await supabase.from("profiles").select("id, full_name, email").in("id", ids).order("full_name");
+      return data ?? [];
+    },
+  });
 
   const commissionPctFor = (p: any): number => {
     if (!p) return 0;
