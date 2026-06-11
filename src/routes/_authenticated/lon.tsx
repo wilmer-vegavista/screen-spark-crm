@@ -320,8 +320,17 @@ function ProductsAdmin() {
           {(products ?? []).map(p => (
             <TableRow key={p.id}>
               <TableCell className="font-medium">
-                <div>{p.name}</div>
-                {p.description && <div className="text-[10px] text-muted-foreground">{p.description}</div>}
+                <div className="flex items-center gap-2">
+                  {p.image_signed_url ? (
+                    <img src={p.image_signed_url} alt={p.name} className="size-10 rounded object-cover border" />
+                  ) : (
+                    <div className="size-10 rounded border bg-muted/30" />
+                  )}
+                  <div>
+                    <div>{p.name}</div>
+                    {p.description && <div className="text-[10px] text-muted-foreground">{p.description}</div>}
+                  </div>
+                </div>
               </TableCell>
               <TableCell>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full ${
