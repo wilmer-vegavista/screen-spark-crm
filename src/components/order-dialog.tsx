@@ -348,7 +348,7 @@ export function OrderDialog({
       value: subtotal,
       commission_pct_override: subtotal > 0 ? (totalCommission / subtotal) * 100 : null,
       stage: form.order_type === "offert" ? "offert" : "vunnen",
-      owner_id: order?.owner_id ?? uid,
+      owner_id: effectiveOwner,
       created_by: order?.created_by ?? uid,
     };
     let dealId = order?.deal_id;
@@ -360,6 +360,15 @@ export function OrderDialog({
         dealId = d.id;
         await supabase.from("orders").update({ deal_id: dealId }).eq("id", orderId);
       }
+    }
+
+    // Replace splits
+    await supabase.from("order_splits").delete().eq("order_id", orderId);
+    if (cleanSplits.length > 0) {
+      const { error } = await supabase
+        .from("order_splits")
+        .insert(cleanSplits.map(s => ({ ...s, order_id: orderId })));
+      if (error) { setSaving(false); return toast.error(error.message); }
     }
 
     setSaving(false);
