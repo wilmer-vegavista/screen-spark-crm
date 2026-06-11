@@ -86,6 +86,22 @@ export function OrderDialog({
     return Number(p.default_commission_pct ?? 0);
   };
 
+  // Keep commission % in sync with product × seller compensation
+  useEffect(() => {
+    if (!sellerComp || products.length === 0) return;
+    setItems(arr => arr.map(it => {
+      if (!it.product_id) return it;
+      const p = products.find((x: any) => x.id === it.product_id);
+      if (!p) return it;
+      const pct = commissionPctFor(p).toString();
+      if (it.commission_pct === pct) return it;
+      return { ...it, commission_pct: pct };
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sellerComp?.compensation_type, products]);
+
+
+
 
   const [form, setForm] = useState({
     order_type: "offert" as "offert" | "bokning",
