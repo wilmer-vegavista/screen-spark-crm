@@ -644,11 +644,13 @@ function CompDialog({ seller, onClose }: { seller: any; onClose: () => void }) {
   const [type, setType] = useState<"endast_provision" | "med_grundlon">("med_grundlon");
   const [base, setBase] = useState("0");
   const [pct, setPct] = useState("0");
+  const [budget, setBudget] = useState("0");
   useMemo(() => {
     if (seller) {
       setType((seller.compensation_type as any) ?? "med_grundlon");
       setBase(String(seller.base_salary ?? 0));
       setPct(String(seller.default_commission_pct ?? 0));
+      setBudget(String(seller.monthly_budget ?? 0));
     }
   }, [seller]);
 
@@ -661,6 +663,7 @@ function CompDialog({ seller, onClose }: { seller: any; onClose: () => void }) {
         compensation_type: type,
         base_salary: type === "endast_provision" ? 0 : Number(base),
         default_commission_pct: Number(pct),
+        monthly_budget: Number(budget),
       });
     if (error) toast.error(error.message);
     else { toast.success("Sparat"); onClose(); }
@@ -702,6 +705,11 @@ function CompDialog({ seller, onClose }: { seller: any; onClose: () => void }) {
             <label className="text-xs font-medium">Standard provision %</label>
             <Input type="number" step="0.1" value={pct} onChange={e => setPct(e.target.value)} />
             <p className="text-[10px] text-muted-foreground mt-1">Används endast om affären saknar produkt. Produktens % per kategori används annars.</p>
+          </div>
+          <div>
+            <label className="text-xs font-medium">Månadsbudget (kr försäljning)</label>
+            <Input type="number" value={budget} onChange={e => setBudget(e.target.value)} />
+            <p className="text-[10px] text-muted-foreground mt-1">Säljarens försäljningsbudget per månad. Visas på dashboarden.</p>
           </div>
         </div>
         <DialogFooter>
