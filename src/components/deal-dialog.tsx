@@ -17,12 +17,16 @@ const STAGE_LABEL: Record<string, string> = {
 
 export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpenChange: (v: boolean) => void; deal: any | null }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState({ title: "", customer_id: "", value: "", stage: "ny", probability: "25", expected_close_date: "", source: "", notes: "" });
+  const [form, setForm] = useState({ title: "", customer_id: "", value: "", stage: "ny", probability: "25", expected_close_date: "", source: "", notes: "", product_id: "", commission_pct_override: "" });
   const [loading, setLoading] = useState(false);
 
   const { data: customers } = useQuery({
     queryKey: ["customers-list"],
     queryFn: async () => (await supabase.from("customers").select("id, company_name").order("company_name")).data ?? [],
+  });
+  const { data: products } = useQuery({
+    queryKey: ["products-list"],
+    queryFn: async () => (await supabase.from("products").select("id, name, default_commission_pct").eq("active", true).order("name")).data ?? [],
   });
 
   useEffect(() => {
@@ -30,8 +34,9 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
       title: deal.title ?? "", customer_id: deal.customer_id ?? "", value: String(deal.value ?? ""),
       stage: deal.stage ?? "ny", probability: String(deal.probability ?? 25),
       expected_close_date: deal.expected_close_date ?? "", source: deal.source ?? "", notes: deal.notes ?? "",
+      product_id: deal.product_id ?? "", commission_pct_override: deal.commission_pct_override != null ? String(deal.commission_pct_override) : "",
     });
-    else setForm({ title: "", customer_id: "", value: "", stage: "ny", probability: "25", expected_close_date: "", source: "", notes: "" });
+    else setForm({ title: "", customer_id: "", value: "", stage: "ny", probability: "25", expected_close_date: "", source: "", notes: "", product_id: "", commission_pct_override: "" });
   }, [deal, open]);
 
   const submit = async (e: React.FormEvent) => {
