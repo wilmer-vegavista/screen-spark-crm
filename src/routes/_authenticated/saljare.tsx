@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
 import { PageHeader } from "@/components/page-header";
@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, Plus, Pencil, Loader2, Mail } from "lucide-react";
-import { createSeller, updateSeller, resendSellerInvite } from "@/lib/sellers.functions";
+import { Plus, Pencil, Loader2, Mail, Eye, EyeOff, Copy, KeyRound } from "lucide-react";
+import { createSeller, updateSeller, resendSellerInvite, setSellerPassword } from "@/lib/sellers.functions";
 
 export const Route = createFileRoute("/_authenticated/saljare")({
   component: SaljarePage,
@@ -51,13 +51,15 @@ function SellersTable() {
   const { data, isLoading } = useQuery({
     queryKey: ["sellers-admin"],
     queryFn: async () => {
-      const [{ data: profiles }, { data: roles }, { data: comps }] = await Promise.all([
+      const [{ data: profiles }, { data: roles }, { data: comps }, { data: creds }] = await Promise.all([
         supabase.from("profiles").select("id, full_name, email, phone, title"),
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("seller_compensation").select("*"),
+        supabase.from("seller_credentials").select("user_id, initial_password"),
       ]);
       const sellerIds = new Set((roles ?? []).filter((r: any) => r.role === "saljare").map((r: any) => r.user_id));
       const compMap = new Map((comps ?? []).map((c: any) => [c.user_id, c]));
+      const credMap = new Map((creds ?? []).map((c: any) => [c.user_id, c.initial_password]));
       return (profiles ?? [])
         .filter((p: any) => sellerIds.has(p.id))
         .map((p: any) => {
@@ -67,6 +69,7 @@ function SellersTable() {
             compensation_type: c?.compensation_type ?? "med_grundlon",
             base_salary: Number(c?.base_salary ?? 0),
             default_commission_pct: Number(c?.default_commission_pct ?? 0),
+            password: credMap.get(p.id) ?? null,
           };
         });
     },
@@ -74,6 +77,7 @@ function SellersTable() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
+  const [pwSeller, setPwSeller] = useState<any>(null);
 
   const handleSaved = () => {
     setDialogOpen(false);
@@ -86,7 +90,7 @@ function SellersTable() {
       <div className="p-4 border-b flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold">Säljare</h3>
-          <p className="text-xs text-muted-foreground">Alla säljare i systemet med kontaktuppgifter och lön.</p>
+          <p className="text-xs text-muted-foreground">Kontaktuppgifter, lön och inloggning. Lösenord visas endast för admin.</p>
         </div>
         <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
           <Plus className="size-4 mr-1" /> Ny säljare
@@ -104,10 +108,11 @@ function SellersTable() {
               <TableHead>Titel</TableHead>
               <TableHead>E-post</TableHead>
               <TableHead>Telefon</TableHead>
+              <TableHead>Lösenord</TableHead>
               <TableHead>Typ</TableHead>
               <TableHead className="text-right">Grundlön</TableHead>
-              <TableHead className="text-right">Provision %</TableHead>
-              <TableHead className="w-20"></TableHead>
+              <TableHead className="text-right">Prov %</TableHead>
+              <TableHead className="w-32"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -117,19 +122,28 @@ function SellersTable() {
                 <TableCell className="text-xs text-muted-foreground">{s.title || "—"}</TableCell>
                 <TableCell className="text-xs">{s.email || "—"}</TableCell>
                 <TableCell className="text-xs">{s.phone || "—"}</TableCell>
+                <TableCell><PasswordCell value={s.password} /></TableCell>
                 <TableCell className="text-xs">
-                  {s.compensation_type === "endast_provision" ? "Endast provision" : "Med grundlön"}
+                  {s.compensation_type === "endast_provision" ? "Endast prov." : "Med grundlön"}
                 </TableCell>
                 <TableCell className="text-right">
                   {s.compensation_type === "endast_provision" ? "—" : fmt(s.base_salary)}
                 </TableCell>
                 <TableCell className="text-right">{s.default_commission_pct}%</TableCell>
                 <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-0.5">
                     <Button
                       variant="ghost"
                       size="icon"
-                      title="Skicka ny inbjudan"
+                      title="Sätt nytt lösenord"
+                      onClick={() => setPwSeller(s)}
+                    >
+                      <KeyRound className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Skicka ny inbjudan via e-post"
                       onClick={async () => {
                         if (!s.email) return;
                         try {
@@ -142,7 +156,7 @@ function SellersTable() {
                     >
                       <Mail className="size-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => { setEditing(s); setDialogOpen(true); }}>
+                    <Button variant="ghost" size="icon" title="Redigera" onClick={() => { setEditing(s); setDialogOpen(true); }}>
                       <Pencil className="size-3.5" />
                     </Button>
                   </div>
@@ -151,7 +165,7 @@ function SellersTable() {
             ))}
             {(data ?? []).length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-6">
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-6">
                   Inga säljare ännu
                 </TableCell>
               </TableRow>
@@ -160,7 +174,90 @@ function SellersTable() {
         </Table>
       )}
       <SellerDialog open={dialogOpen} onOpenChange={setDialogOpen} seller={editing} onSaved={handleSaved} />
+      <SetPasswordDialog
+        seller={pwSeller}
+        onOpenChange={(b) => { if (!b) setPwSeller(null); }}
+        onSaved={() => { setPwSeller(null); qc.invalidateQueries({ queryKey: ["sellers-admin"] }); }}
+      />
     </Card>
+  );
+}
+
+function PasswordCell({ value }: { value: string | null }) {
+  const [show, setShow] = useState(false);
+  if (!value) return <span className="text-xs text-muted-foreground italic">inbjuden</span>;
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-xs font-mono">{show ? value : "••••••••"}</span>
+      <Button variant="ghost" size="icon" className="size-6" onClick={() => setShow((v) => !v)} title={show ? "Dölj" : "Visa"}>
+        {show ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-6"
+        onClick={() => { navigator.clipboard.writeText(value); toast.success("Kopierat"); }}
+        title="Kopiera"
+      >
+        <Copy className="size-3" />
+      </Button>
+    </div>
+  );
+}
+
+function SetPasswordDialog({ seller, onOpenChange, onSaved }: {
+  seller: any;
+  onOpenChange: (b: boolean) => void;
+  onSaved: () => void;
+}) {
+  const [pw, setPw] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (seller) setPw("");
+  }, [seller]);
+
+  const save = async () => {
+    if (pw.length < 6) {
+      toast.error("Lösenord måste vara minst 6 tecken");
+      return;
+    }
+    setSaving(true);
+    try {
+      await setSellerPassword({ data: { user_id: seller.id, password: pw } });
+      toast.success("Lösenord uppdaterat");
+      onSaved();
+    } catch (e: any) {
+      toast.error(e.message ?? "Kunde inte uppdatera lösenord");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!seller} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Sätt nytt lösenord</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div className="text-xs text-muted-foreground">
+            Säljare: <span className="font-medium text-foreground">{seller?.full_name || seller?.email}</span>
+          </div>
+          <div>
+            <label className="text-xs font-medium">Nytt lösenord</label>
+            <Input type="text" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="minst 6 tecken" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Avbryt</Button>
+          <Button onClick={save} disabled={saving || pw.length < 6}>
+            {saving ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
+            Spara
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -178,9 +275,12 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
   const [base, setBase] = useState("0");
   const [pct, setPct] = useState("0");
   const [saving, setSaving] = useState(false);
-  const [showTempPassword, setShowTempPassword] = useState<string | null>(null);
 
-  useMemo(() => {
+  // Credential mode (endast vid skapande)
+  const [credMode, setCredMode] = useState<"password" | "invite">("password");
+  const [password, setPassword] = useState("");
+
+  useEffect(() => {
     if (open) {
       setName(seller?.full_name ?? "");
       setEmail(seller?.email ?? "");
@@ -189,21 +289,18 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
       setType((seller?.compensation_type as any) ?? "med_grundlon");
       setBase(String(seller?.base_salary ?? 0));
       setPct(String(seller?.default_commission_pct ?? 0));
-      setShowTempPassword(null);
+      setCredMode("password");
+      setPassword(generateSuggestedPassword());
     }
   }, [open, seller]);
-
-  const [sendInvite, setSendInvite] = useState(true);
-
-  useMemo(() => {
-    if (open) {
-      setSendInvite(true);
-    }
-  }, [open]);
 
   const save = async () => {
     if (!name || !email) {
       toast.error("Namn och e-post krävs");
+      return;
+    }
+    if (!seller && credMode === "password" && password.length < 6) {
+      toast.error("Lösenord måste vara minst 6 tecken");
       return;
     }
     setSaving(true);
@@ -220,7 +317,6 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
           default_commission_pct: Number(pct),
         }});
         toast.success("Säljare uppdaterad");
-        onSaved();
       } else {
         const result = await createSeller({ data: {
           full_name: name,
@@ -230,17 +326,16 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
           compensation_type: type,
           base_salary: type === "endast_provision" ? 0 : Number(base),
           default_commission_pct: Number(pct),
-          send_invite: sendInvite,
+          credential_mode: credMode,
+          password: credMode === "password" ? password : undefined,
         }});
         if (result.invited) {
           toast.success("Säljare skapad — inbjudan skickad till " + email);
-          onSaved();
         } else {
-          toast.success("Säljare skapad");
-          setShowTempPassword(result.tempPassword);
-          onSaved();
+          toast.success("Säljare skapad med lösenord");
         }
       }
+      onSaved();
     } catch (e: any) {
       toast.error(e.message ?? "Något gick fel");
     } finally {
@@ -305,27 +400,53 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
             <Input type="number" step="0.1" min={0} value={pct} onChange={(e) => setPct(e.target.value)} />
             <p className="text-[10px] text-muted-foreground mt-1">Används endast om affären saknar produkt.</p>
           </div>
+
           {!seller && (
-            <label className="flex items-start gap-2 rounded-md border p-3 text-xs cursor-pointer">
-              <input
-                type="checkbox"
-                checked={sendInvite}
-                onChange={(e) => setSendInvite(e.target.checked)}
-                className="mt-0.5"
-              />
-              <div>
-                <div className="font-semibold">Skicka inbjudan via e-post</div>
-                <div className="text-muted-foreground">
-                  Säljaren får ett mail med en länk där hen sätter sitt eget lösenord. Avmarkera för att istället generera ett tillfälligt lösenord.
-                </div>
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="text-xs font-semibold">Inloggning</div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCredMode("password")}
+                  className={`text-left p-2 rounded-md border text-xs ${credMode === "password" ? "border-primary bg-primary/10" : "border-border"}`}
+                >
+                  <div className="font-semibold">Sätt lösenord</div>
+                  <div className="text-muted-foreground mt-1">Du väljer lösenordet. Syns på adminsidan.</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCredMode("invite")}
+                  className={`text-left p-2 rounded-md border text-xs ${credMode === "invite" ? "border-primary bg-primary/10" : "border-border"}`}
+                >
+                  <div className="font-semibold">Skicka inbjudan</div>
+                  <div className="text-muted-foreground mt-1">Säljaren sätter eget lösenord via mail.</div>
+                </button>
               </div>
-            </label>
-          )}
-          {showTempPassword && (
-            <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs">
-              <div className="font-semibold text-warning">Tillfälligt lösenord</div>
-              <div className="mt-1 font-mono">{showTempPassword}</div>
-              <p className="text-muted-foreground mt-1">Säljaren kan logga in med detta och byta lösenord via "Glömt lösenord".</p>
+              {credMode === "password" && (
+                <div>
+                  <label className="text-xs font-medium">Lösenord</label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="minst 6 tecken"
+                      className="font-mono"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPassword(generateSuggestedPassword())}
+                    >
+                      Förslag
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    ⚠️ Lösenordet sparas i klartext så det syns på adminsidan. Be säljaren byta lösenord vid första inloggning.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -339,4 +460,9 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
       </DialogContent>
     </Dialog>
   );
+}
+
+function generateSuggestedPassword() {
+  const uuid = crypto.randomUUID();
+  return `${uuid.slice(0, 8)}A1!`;
 }
