@@ -130,6 +130,9 @@ export function OrderDialog({
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
   const [totalPrice, setTotalPrice] = useState<string>("0");
+  const [selectedWeeks, setSelectedWeeks] = useState<number[]>([]);
+  const [exactDates, setExactDates] = useState<Date[]>([]);
+
 
 
   useEffect(() => {
