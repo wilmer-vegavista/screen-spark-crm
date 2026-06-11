@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Wallet, Plus, Pencil, Trash2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, addMonths } from "date-fns";
 import { sv } from "date-fns/locale";
+import { TaxCalculator } from "@/components/tax-calculator";
 
 export const Route = createFileRoute("/_authenticated/lon")({
   component: LonPage,
