@@ -266,6 +266,14 @@ function PackageDialog({
             <Label>Antal veckor</Label>
             <Input type="number" value={form.weeks ?? ""} onChange={(e) => setForm({ ...form, weeks: e.target.value as any })} />
           </div>
+          <div>
+            <Label>Antal visningar</Label>
+            <Input type="number" value={form.views ?? ""} placeholder="t.ex. 100000" onChange={(e) => setForm({ ...form, views: e.target.value as any })} />
+          </div>
+          <div>
+            <Label>SOV (%)</Label>
+            <Input type="number" step="0.1" value={form.sov ?? ""} placeholder="t.ex. 25" onChange={(e) => setForm({ ...form, sov: e.target.value as any })} />
+          </div>
           <div className="col-span-2 flex items-center gap-2">
             <Switch checked={form.active ?? true} onCheckedChange={(v) => setForm({ ...form, active: v })} />
             <Label>Aktiv</Label>
