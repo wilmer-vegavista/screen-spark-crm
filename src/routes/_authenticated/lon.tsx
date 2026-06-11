@@ -702,3 +702,174 @@ function CompDialog({ seller, onClose }: { seller: any; onClose: () => void }) {
     </Dialog>
   );
 }
+
+// ---------- Admin: packages ----------
+function PackagesAdmin() {
+  const qc = useQueryClient();
+  const { data: products } = useQuery({
+    queryKey: ["products-for-packages"],
+    queryFn: async () => (await supabase.from("products").select("id, name").order("name")).data ?? [],
+  });
+  const { data: packages } = useQuery({
+    queryKey: ["packages-admin"],
+    queryFn: async () => (await supabase.from("product_packages").select("*").order("name")).data ?? [],
+  });
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+
+  const remove = async (id: string) => {
+    if (!confirm("Ta bort paketet?")) return;
+    const { error } = await supabase.from("product_packages").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Borttagen"); qc.invalidateQueries({ queryKey: ["packages-admin"] }); }
+  };
+
+  const prodName = (id: string | null) => products?.find(p => p.id === id)?.name ?? "—";
+
+  return (
+    <Card>
+      <div className="p-4 border-b flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">Paket</h3>
+          <p className="text-xs text-muted-foreground">Färdiga bundlar med SOV och pris som säljare kan välja vid order.</p>
+        </div>
+        <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>
+          <Plus className="size-4 mr-1" /> Nytt paket
+        </Button>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Namn</TableHead>
+            <TableHead>Produkt</TableHead>
+            <TableHead className="text-right">SOV</TableHead>
+            <TableHead className="text-right">Veckor</TableHead>
+            <TableHead className="text-right">Visningar</TableHead>
+            <TableHead className="text-right">Pris</TableHead>
+            <TableHead className="w-24"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {(packages ?? []).map(p => (
+            <TableRow key={p.id}>
+              <TableCell className="font-medium">
+                <div>{p.name}</div>
+                {p.description && <div className="text-[10px] text-muted-foreground">{p.description}</div>}
+              </TableCell>
+              <TableCell className="text-xs">{prodName(p.product_id)}</TableCell>
+              <TableCell className="text-right">{p.sov_pct != null ? `${p.sov_pct}%` : "—"}</TableCell>
+              <TableCell className="text-right">{p.weeks ?? "—"}</TableCell>
+              <TableCell className="text-right">{p.impressions ? Number(p.impressions).toLocaleString("sv-SE") : "—"}</TableCell>
+              <TableCell className="text-right">{fmt(Number(p.price))}</TableCell>
+              <TableCell className="text-right">
+                <Button variant="ghost" size="icon" onClick={() => { setEditing(p); setOpen(true); }}>
+                  <Pencil className="size-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => remove(p.id)}>
+                  <Trash2 className="size-3.5" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+          {(packages ?? []).length === 0 && (
+            <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Inga paket ännu</TableCell></TableRow>
+          )}
+        </TableBody>
+      </Table>
+      <PackageDialog open={open} onOpenChange={setOpen} pkg={editing} products={products ?? []} />
+    </Card>
+  );
+}
+
+function PackageDialog({ open, onOpenChange, pkg, products }: { open: boolean; onOpenChange: (b: boolean) => void; pkg: any; products: { id: string; name: string }[] }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [productId, setProductId] = useState<string>("");
+  const [sov, setSov] = useState("");
+  const [weeks, setWeeks] = useState("");
+  const [impressions, setImpressions] = useState("");
+  const [price, setPrice] = useState("0");
+
+  useMemo(() => {
+    if (open) {
+      setName(pkg?.name ?? "");
+      setDescription(pkg?.description ?? "");
+      setProductId(pkg?.product_id ?? "");
+      setSov(pkg?.sov_pct != null ? String(pkg.sov_pct) : "");
+      setWeeks(pkg?.weeks != null ? String(pkg.weeks) : "");
+      setImpressions(pkg?.impressions != null ? String(pkg.impressions) : "");
+      setPrice(String(pkg?.price ?? "0"));
+    }
+  }, [open, pkg]);
+
+  const save = async () => {
+    const payload = {
+      name,
+      description: description || null,
+      product_id: productId || null,
+      sov_pct: sov !== "" ? Number(sov) : null,
+      weeks: weeks !== "" ? Number(weeks) : null,
+      impressions: impressions !== "" ? Number(impressions) : null,
+      price: Number(price),
+    };
+    const { error } = pkg
+      ? await supabase.from("product_packages").update(payload).eq("id", pkg.id)
+      : await supabase.from("product_packages").insert(payload);
+    if (error) toast.error(error.message);
+    else { toast.success("Sparat"); qc.invalidateQueries({ queryKey: ["packages-admin"] }); onOpenChange(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>{pkg ? "Redigera paket" : "Nytt paket"}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium">Namn</label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="t.ex. Brons 4 veckor" />
+          </div>
+          <div>
+            <label className="text-xs font-medium">Produkt</label>
+            <select
+              value={productId}
+              onChange={e => setProductId(e.target.value)}
+              className="w-full h-9 rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="">Alla / ej specificerad</option>
+              {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium">Beskrivning</label>
+            <Input value={description} onChange={e => setDescription(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium">SOV (%)</label>
+              <Input type="number" step="0.1" value={sov} onChange={e => setSov(e.target.value)} placeholder="t.ex. 20" />
+            </div>
+            <div>
+              <label className="text-xs font-medium">Antal veckor</label>
+              <Input type="number" min="1" value={weeks} onChange={e => setWeeks(e.target.value)} placeholder="t.ex. 4" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium">Antal visningar</label>
+              <Input type="number" min="0" value={impressions} onChange={e => setImpressions(e.target.value)} placeholder="t.ex. 250000" />
+            </div>
+            <div>
+              <label className="text-xs font-medium">Pris (kr)</label>
+              <Input type="number" min="0" value={price} onChange={e => setPrice(e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+          <Button onClick={save} disabled={!name}>Spara</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
