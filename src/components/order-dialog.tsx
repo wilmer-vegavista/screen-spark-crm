@@ -459,7 +459,7 @@ export function OrderDialog({
 
             <div className="space-y-3">
               {items.map((it, idx) => {
-                const { lineTotal, commission } = calc[idx];
+                const { lineTotal, commission, commissionPct } = calc[idx];
                 return (
                   <Card key={idx} className="p-3 space-y-3">
                     <div className="grid grid-cols-12 gap-2 items-end">
@@ -495,7 +495,7 @@ export function OrderDialog({
                     <div className="grid grid-cols-12 gap-2 items-end">
                       <div className="col-span-3">
                         <Label className="text-xs">Provision %</Label>
-                        <Input type="number" step="0.01" value={it.commission_pct} onChange={e => updItem(idx, { commission_pct: e.target.value })} />
+                        <Input type="number" step="0.01" value={commissionPct} readOnly />
                       </div>
                       <div className="col-span-4 text-sm">
                         <div className="text-xs text-muted-foreground">Andel av total</div>
