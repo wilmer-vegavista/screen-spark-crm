@@ -1,0 +1,1 @@
+ALTER TYPE public.screen_type ADD VALUE 'digital';

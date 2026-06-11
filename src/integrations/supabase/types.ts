@@ -485,7 +485,7 @@ export type Database = {
         | "kundgranskning"
         | "godkant"
         | "levererat"
-      screen_type: "egen" | "extern"
+      screen_type: "egen" | "extern" | "digital"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -639,7 +639,7 @@ export const Constants = {
         "godkant",
         "levererat",
       ],
-      screen_type: ["egen", "extern"],
+      screen_type: ["egen", "extern", "digital"],
     },
   },
 } as const
