@@ -304,10 +304,8 @@ function Dashboard() {
               <XAxis dataKey="name" className="text-xs" />
               <YAxis className="text-xs" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
-              <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                {monthlyTotals.map((_, i) => (
-                  <Cell key={i} fill={i === currentMonthIdx ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.45)"} />
-                ))}
+              <Bar dataKey="value" fill="hsl(var(--chart-blue))" radius={[6, 6, 0, 0]}>
+                <LabelList dataKey="value" position="top" formatter={(v: number) => `${(v / 1000).toFixed(0)}k`} className="text-[10px]" />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
