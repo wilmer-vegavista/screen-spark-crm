@@ -23,6 +23,8 @@ type Package = {
   description: string | null;
   price: number;
   weeks: number | null;
+  views: number | null;
+  sov: number | null;
   active: boolean;
 };
 
