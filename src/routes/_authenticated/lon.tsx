@@ -317,8 +317,12 @@ function ProductsAdmin() {
                 {p.description && <div className="text-[10px] text-muted-foreground">{p.description}</div>}
               </TableCell>
               <TableCell>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full ${p.screen_type === "egen" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-                  {p.screen_type === "egen" ? "Egen skärm" : "Extern skärm"}
+                <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                  p.screen_type === "egen" ? "bg-primary/15 text-primary" :
+                  p.screen_type === "digital" ? "bg-secondary/50 text-secondary-foreground" :
+                  "bg-muted text-muted-foreground"
+                }`}>
+                  {p.screen_type === "egen" ? "Egen skärm" : p.screen_type === "digital" ? "Digital produkt" : "Extern skärm"}
                 </span>
               </TableCell>
               <TableCell className="text-right">{p.commission_pct_provision_only ?? p.default_commission_pct}%</TableCell>
@@ -347,7 +351,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [screenType, setScreenType] = useState<"egen" | "extern">("egen");
+  const [screenType, setScreenType] = useState<"egen" | "extern" | "digital">("egen");
   const [pctProv, setPctProv] = useState("0");
   const [pctBase, setPctBase] = useState("0");
 
@@ -392,7 +396,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
           </div>
           <div>
             <label className="text-xs font-medium">Skärmtyp</label>
-            <div className="grid grid-cols-2 gap-2 mt-1">
+            <div className="grid grid-cols-3 gap-2 mt-1">
               <button
                 type="button"
                 onClick={() => setScreenType("egen")}
@@ -408,6 +412,14 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
               >
                 <div className="font-semibold">Extern skärm</div>
                 <div className="text-muted-foreground mt-1">Hyrd / inköpt från partner</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setScreenType("digital")}
+                className={`text-left p-3 rounded-md border text-xs ${screenType === "digital" ? "border-primary bg-primary/10" : "border-border"}`}
+              >
+                <div className="font-semibold">Digital produkt</div>
+                <div className="text-muted-foreground mt-1">Banners, CTV, programmatic</div>
               </button>
             </div>
           </div>
