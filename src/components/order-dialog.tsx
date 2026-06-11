@@ -575,7 +575,97 @@ export function OrderDialog({
           </Card>
 
 
+          {/* Kampanjperiod – veckor eller exakta datum */}
+          <Card className="p-4">
+            <div className="text-sm font-semibold mb-3">Kampanjperiod</div>
+            <Tabs defaultValue="weeks">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="weeks">Välj veckor</TabsTrigger>
+                <TabsTrigger value="dates">Exakta datum</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="weeks" className="space-y-3 pt-3">
+                <div className="text-xs text-muted-foreground">
+                  Klicka för att välja de veckor kunden vill köra. {selectedWeeks.length} vecka{selectedWeeks.length === 1 ? "" : "or"} valda.
+                </div>
+                <div className="grid grid-cols-10 gap-1.5">
+                  {Array.from({ length: 52 }, (_, i) => i + 1).map(w => {
+                    const active = selectedWeeks.includes(w);
+                    return (
+                      <button
+                        key={w}
+                        type="button"
+                        onClick={() => setSelectedWeeks(prev =>
+                          prev.includes(w) ? prev.filter(x => x !== w) : [...prev, w].sort((a, b) => a - b)
+                        )}
+                        className={`text-xs rounded-md py-1.5 border transition ${
+                          active
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background hover:bg-accent border-input"
+                        }`}
+                      >
+                        v{w}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedWeeks.length > 0 && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setSelectedWeeks([])}>
+                    Rensa veckor
+                  </Button>
+                )}
+              </TabsContent>
+
+              <TabsContent value="dates" className="space-y-3 pt-3">
+                <div className="text-xs text-muted-foreground">
+                  Välj specifika datum kunden vill köra på. {exactDates.length} datum valda.
+                </div>
+                <div className="flex flex-wrap gap-3 items-start">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" size="sm">
+                        <CalendarIcon className="size-4 mr-1" /> Lägg till datum
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="multiple"
+                        selected={exactDates}
+                        onSelect={(d) => setExactDates(d ?? [])}
+                        locale={sv}
+                        weekStartsOn={1}
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {exactDates.length > 0 && (
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setExactDates([])}>
+                      Rensa datum
+                    </Button>
+                  )}
+                </div>
+                {exactDates.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {[...exactDates].sort((a, b) => a.getTime() - b.getTime()).map((d, i) => (
+                      <Badge key={i} variant="secondary" className="gap-1">
+                        {format(d, "d MMM yyyy", { locale: sv })}
+                        <button
+                          type="button"
+                          onClick={() => setExactDates(prev => prev.filter(x => x.getTime() !== d.getTime()))}
+                          className="hover:text-destructive"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </Card>
+
           <div><Label>Anteckningar</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
+
 
           <Separator />
 
