@@ -18,6 +18,7 @@ import {
   Package,
   ShoppingCart,
   Target,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ const nav: NavItem[] = [
   { to: "/anvandare", label: "Användare", icon: UserCog, group: "admin", adminOnly: true },
   { to: "/produkter", label: "Produkter", icon: Package, group: "admin", adminOnly: true },
   { to: "/budget", label: "Budget", icon: Target, group: "admin", adminOnly: true },
+  { to: "/import", label: "Importera", icon: Upload, group: "admin", adminOnly: true },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
