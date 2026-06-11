@@ -113,6 +113,8 @@ export function PackagesManager() {
               <TableHead>Skärmar</TableHead>
               <TableHead className="text-right">Pris</TableHead>
               <TableHead className="text-right">Veckor</TableHead>
+              <TableHead className="text-right">Visningar</TableHead>
+              <TableHead className="text-right">SOV %</TableHead>
               <TableHead>Aktiv</TableHead>
               <TableHead className="w-24"></TableHead>
             </TableRow>
