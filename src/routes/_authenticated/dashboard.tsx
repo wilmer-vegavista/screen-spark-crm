@@ -206,7 +206,6 @@ function Dashboard() {
   const myBudgetPct = myBudget > 0 ? Math.min(100, (mySoldThisMonth / myBudget) * 100) : 0;
 
   // Company budget = sum of all sellers' monthly budgets for current month
-  const currentMonth = now.getMonth() + 1;
   const companyBudget = (data?.monthlyBudgets ?? [])
     .filter(b => b.month === currentMonth)
     .reduce((s, b) => s + Number(b.amount ?? 0), 0);
