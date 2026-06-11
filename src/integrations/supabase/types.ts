@@ -703,27 +703,36 @@ export type Database = {
           compensation_type: Database["public"]["Enums"]["compensation_type"]
           created_at: string
           default_commission_pct: number
+          half_year_budget: number
           monthly_budget: number
+          quarterly_budget: number
           updated_at: string
           user_id: string
+          yearly_budget: number
         }
         Insert: {
           base_salary?: number
           compensation_type?: Database["public"]["Enums"]["compensation_type"]
           created_at?: string
           default_commission_pct?: number
+          half_year_budget?: number
           monthly_budget?: number
+          quarterly_budget?: number
           updated_at?: string
           user_id: string
+          yearly_budget?: number
         }
         Update: {
           base_salary?: number
           compensation_type?: Database["public"]["Enums"]["compensation_type"]
           created_at?: string
           default_commission_pct?: number
+          half_year_budget?: number
           monthly_budget?: number
+          quarterly_budget?: number
           updated_at?: string
           user_id?: string
+          yearly_budget?: number
         }
         Relationships: []
       }
