@@ -371,6 +371,153 @@ export type Database = {
           },
         ]
       }
+      order_items: {
+        Row: {
+          commission_amount: number
+          commission_pct: number
+          created_at: string
+          id: string
+          impressions: number | null
+          order_id: string
+          position: number
+          product_id: string | null
+          product_name: string
+          sov_pct: number | null
+          unit_price: number
+          weeks: number
+        }
+        Insert: {
+          commission_amount?: number
+          commission_pct?: number
+          created_at?: string
+          id?: string
+          impressions?: number | null
+          order_id: string
+          position?: number
+          product_id?: string | null
+          product_name: string
+          sov_pct?: number | null
+          unit_price?: number
+          weeks?: number
+        }
+        Update: {
+          commission_amount?: number
+          commission_pct?: number
+          created_at?: string
+          id?: string
+          impressions?: number | null
+          order_id?: string
+          position?: number
+          product_id?: string | null
+          product_name?: string
+          sov_pct?: number | null
+          unit_price?: number
+          weeks?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          billing_address: string | null
+          city: string | null
+          company_name: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          deal_id: string | null
+          id: string
+          notes: string | null
+          order_type: Database["public"]["Enums"]["order_type"]
+          org_number: string | null
+          owner_id: string | null
+          postal_code: string | null
+          status: string
+          total_commission: number
+          total_excl_vat: number
+          updated_at: string
+          vat_number: string | null
+        }
+        Insert: {
+          billing_address?: string | null
+          city?: string | null
+          company_name: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          deal_id?: string | null
+          id?: string
+          notes?: string | null
+          order_type?: Database["public"]["Enums"]["order_type"]
+          org_number?: string | null
+          owner_id?: string | null
+          postal_code?: string | null
+          status?: string
+          total_commission?: number
+          total_excl_vat?: number
+          updated_at?: string
+          vat_number?: string | null
+        }
+        Update: {
+          billing_address?: string | null
+          city?: string | null
+          company_name?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          deal_id?: string | null
+          id?: string
+          notes?: string | null
+          order_type?: Database["public"]["Enums"]["order_type"]
+          org_number?: string | null
+          owner_id?: string | null
+          postal_code?: string | null
+          status?: string
+          total_commission?: number
+          total_excl_vat?: number
+          updated_at?: string
+          vat_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_packages: {
         Row: {
           active: boolean
@@ -629,6 +776,7 @@ export type Database = {
         | "kundgranskning"
         | "godkant"
         | "levererat"
+      order_type: "offert" | "bokning"
       screen_type: "egen" | "extern" | "digital"
     }
     CompositeTypes: {
@@ -783,6 +931,7 @@ export const Constants = {
         "godkant",
         "levererat",
       ],
+      order_type: ["offert", "bokning"],
       screen_type: ["egen", "extern", "digital"],
     },
   },
