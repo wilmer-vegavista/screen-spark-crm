@@ -230,10 +230,16 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
           compensation_type: type,
           base_salary: type === "endast_provision" ? 0 : Number(base),
           default_commission_pct: Number(pct),
+          send_invite: sendInvite,
         }});
-        toast.success("Säljare skapad");
-        setShowTempPassword(result.tempPassword);
-        onSaved();
+        if (result.invited) {
+          toast.success("Säljare skapad — inbjudan skickad till " + email);
+          onSaved();
+        } else {
+          toast.success("Säljare skapad");
+          setShowTempPassword(result.tempPassword);
+          onSaved();
+        }
       }
     } catch (e: any) {
       toast.error(e.message ?? "Något gick fel");
