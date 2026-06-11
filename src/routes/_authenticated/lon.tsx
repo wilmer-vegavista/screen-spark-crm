@@ -380,6 +380,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   const [dimensions, setDimensions] = useState("");
   const [contactsPerWeek, setContactsPerWeek] = useState("");
   const [format, setFormat] = useState("");
+  const [materialSpec, setMaterialSpec] = useState("");
   const [address, setAddress] = useState("");
 
   useMemo(() => {
