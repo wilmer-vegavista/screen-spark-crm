@@ -455,6 +455,8 @@ export type Database = {
       orders: {
         Row: {
           billing_address: string | null
+          billing_duration_months: number
+          billing_frequency: Database["public"]["Enums"]["billing_frequency"]
           city: string | null
           company_name: string
           contact_email: string | null
@@ -466,6 +468,7 @@ export type Database = {
           deal_id: string | null
           exact_dates: string[]
           id: string
+          invoice_start_date: string | null
           notes: string | null
           order_type: Database["public"]["Enums"]["order_type"]
           org_number: string | null
@@ -480,6 +483,8 @@ export type Database = {
         }
         Insert: {
           billing_address?: string | null
+          billing_duration_months?: number
+          billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
           city?: string | null
           company_name: string
           contact_email?: string | null
@@ -491,6 +496,7 @@ export type Database = {
           deal_id?: string | null
           exact_dates?: string[]
           id?: string
+          invoice_start_date?: string | null
           notes?: string | null
           order_type?: Database["public"]["Enums"]["order_type"]
           org_number?: string | null
@@ -505,6 +511,8 @@ export type Database = {
         }
         Update: {
           billing_address?: string | null
+          billing_duration_months?: number
+          billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
           city?: string | null
           company_name?: string
           contact_email?: string | null
@@ -516,6 +524,7 @@ export type Database = {
           deal_id?: string | null
           exact_dates?: string[]
           id?: string
+          invoice_start_date?: string | null
           notes?: string | null
           order_type?: Database["public"]["Enums"]["order_type"]
           org_number?: string | null
@@ -794,6 +803,7 @@ export type Database = {
     Enums: {
       activity_type: "samtal" | "mote" | "mejl" | "uppgift" | "paminnelse"
       app_role: "admin" | "saljare" | "produktion"
+      billing_frequency: "engang" | "manad" | "kvartal" | "halvar"
       campaign_status:
         | "planerad"
         | "material_produktion"
@@ -946,6 +956,7 @@ export const Constants = {
     Enums: {
       activity_type: ["samtal", "mote", "mejl", "uppgift", "paminnelse"],
       app_role: ["admin", "saljare", "produktion"],
+      billing_frequency: ["engang", "manad", "kvartal", "halvar"],
       campaign_status: [
         "planerad",
         "material_produktion",
