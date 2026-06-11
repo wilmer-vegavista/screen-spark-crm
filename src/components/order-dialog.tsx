@@ -154,6 +154,8 @@ export function OrderDialog({
   const [totalPrice, setTotalPrice] = useState<string>("0");
   const [selectedWeeks, setSelectedWeeks] = useState<number[]>([]);
   const [exactDates, setExactDates] = useState<Date[]>([]);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [splits, setSplits] = useState<Array<{ user_id: string; share_pct: string }>>([]);
 
 
 
