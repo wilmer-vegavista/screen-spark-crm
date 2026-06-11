@@ -166,7 +166,7 @@ function SellersTable() {
             {(data ?? []).length === 0 && (
               <TableRow>
                 <TableCell colSpan={9} className="text-center text-muted-foreground py-6">
-                  Inga säljare ännu
+                  Inga användare ännu
                 </TableCell>
               </TableRow>
             )}
@@ -242,7 +242,7 @@ function SetPasswordDialog({ seller, onOpenChange, onSaved }: {
         </DialogHeader>
         <div className="space-y-3 text-sm">
           <div className="text-xs text-muted-foreground">
-            Säljare: <span className="font-medium text-foreground">{seller?.full_name || seller?.email}</span>
+            Användare: <span className="font-medium text-foreground">{seller?.full_name || seller?.email}</span>
           </div>
           <div>
             <label className="text-xs font-medium">Nytt lösenord</label>
@@ -347,7 +347,7 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{seller ? "Redigera säljare" : "Ny säljare"}</DialogTitle>
+          <DialogTitle>{seller ? "Redigera användare" : "Ny användare"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
