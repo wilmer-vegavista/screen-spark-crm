@@ -16,6 +16,7 @@ import {
   Wallet,
   UserCog,
   Package,
+  ShoppingCart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ const nav: NavItem[] = [
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare, group: "saljare" },
   { to: "/kunder", label: "Kunder", icon: Users, group: "saljare" },
   { to: "/aktiviteter", label: "Aktiviteter", icon: CheckSquare, group: "saljare" },
+  { to: "/order", label: "Order", icon: ShoppingCart, group: "saljare" },
   { to: "/lon", label: "Lön", icon: Wallet, group: "saljare" },
   { to: "/kampanjer", label: "Kampanjer", icon: Calendar, group: "produktion" },
   { to: "/material", label: "Material", icon: ImageIcon, group: "produktion" },

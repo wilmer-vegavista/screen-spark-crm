@@ -16,6 +16,7 @@ import { Route as AuthenticatedSaljareRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedRapporterRouteImport } from './routes/_authenticated/rapporter'
 import { Route as AuthenticatedProdukterRouteImport } from './routes/_authenticated/produkter'
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
+import { Route as AuthenticatedOrderRouteImport } from './routes/_authenticated/order'
 import { Route as AuthenticatedMaterialRouteImport } from './routes/_authenticated/material'
 import { Route as AuthenticatedLonRouteImport } from './routes/_authenticated/lon'
 import { Route as AuthenticatedKunderRouteImport } from './routes/_authenticated/kunder'
@@ -55,6 +56,11 @@ const AuthenticatedProdukterRoute = AuthenticatedProdukterRouteImport.update({
 const AuthenticatedPipelineRoute = AuthenticatedPipelineRouteImport.update({
   id: '/pipeline',
   path: '/pipeline',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedOrderRoute = AuthenticatedOrderRouteImport.update({
+  id: '/order',
+  path: '/order',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMaterialRoute = AuthenticatedMaterialRouteImport.update({
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/kunder': typeof AuthenticatedKunderRoute
   '/lon': typeof AuthenticatedLonRoute
   '/material': typeof AuthenticatedMaterialRoute
+  '/order': typeof AuthenticatedOrderRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/produkter': typeof AuthenticatedProdukterRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/kunder': typeof AuthenticatedKunderRoute
   '/lon': typeof AuthenticatedLonRoute
   '/material': typeof AuthenticatedMaterialRoute
+  '/order': typeof AuthenticatedOrderRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/produkter': typeof AuthenticatedProdukterRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/_authenticated/kunder': typeof AuthenticatedKunderRoute
   '/_authenticated/lon': typeof AuthenticatedLonRoute
   '/_authenticated/material': typeof AuthenticatedMaterialRoute
+  '/_authenticated/order': typeof AuthenticatedOrderRoute
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/produkter': typeof AuthenticatedProdukterRoute
   '/_authenticated/rapporter': typeof AuthenticatedRapporterRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/kunder'
     | '/lon'
     | '/material'
+    | '/order'
     | '/pipeline'
     | '/produkter'
     | '/rapporter'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/kunder'
     | '/lon'
     | '/material'
+    | '/order'
     | '/pipeline'
     | '/produkter'
     | '/rapporter'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/_authenticated/kunder'
     | '/_authenticated/lon'
     | '/_authenticated/material'
+    | '/_authenticated/order'
     | '/_authenticated/pipeline'
     | '/_authenticated/produkter'
     | '/_authenticated/rapporter'
@@ -236,6 +248,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPipelineRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/order': {
+      id: '/_authenticated/order'
+      path: '/order'
+      fullPath: '/order'
+      preLoaderRoute: typeof AuthenticatedOrderRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/material': {
       id: '/_authenticated/material'
       path: '/material'
@@ -288,6 +307,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedKunderRoute: typeof AuthenticatedKunderRoute
   AuthenticatedLonRoute: typeof AuthenticatedLonRoute
   AuthenticatedMaterialRoute: typeof AuthenticatedMaterialRoute
+  AuthenticatedOrderRoute: typeof AuthenticatedOrderRoute
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedProdukterRoute: typeof AuthenticatedProdukterRoute
   AuthenticatedRapporterRoute: typeof AuthenticatedRapporterRoute
@@ -301,6 +321,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKunderRoute: AuthenticatedKunderRoute,
   AuthenticatedLonRoute: AuthenticatedLonRoute,
   AuthenticatedMaterialRoute: AuthenticatedMaterialRoute,
+  AuthenticatedOrderRoute: AuthenticatedOrderRoute,
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedProdukterRoute: AuthenticatedProdukterRoute,
   AuthenticatedRapporterRoute: AuthenticatedRapporterRoute,
