@@ -288,7 +288,6 @@ function Dashboard() {
                     <div className="text-lg font-semibold text-primary">{fmt(companyRemaining / daysLeft)}</div>
                   </div>
                 </div>
-                {isAdmin && <div className="mt-4 pt-3 border-t"><CompanyBudgetEditor current={companyBudget} /></div>}
               </>
             )}
           </Card>
