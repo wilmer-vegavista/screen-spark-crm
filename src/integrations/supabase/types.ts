@@ -217,6 +217,7 @@ export type Database = {
           impressions: number | null
           notes: string | null
           owner_id: string | null
+          package_id: string | null
           probability: number | null
           product_id: string | null
           source: string | null
@@ -240,6 +241,7 @@ export type Database = {
           impressions?: number | null
           notes?: string | null
           owner_id?: string | null
+          package_id?: string | null
           probability?: number | null
           product_id?: string | null
           source?: string | null
@@ -263,6 +265,7 @@ export type Database = {
           impressions?: number | null
           notes?: string | null
           owner_id?: string | null
+          package_id?: string | null
           probability?: number | null
           product_id?: string | null
           source?: string | null
@@ -279,6 +282,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "product_packages"
             referencedColumns: ["id"]
           },
           {
@@ -345,6 +355,56 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_packages: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          id: string
+          impressions: number | null
+          name: string
+          price: number
+          product_id: string | null
+          sov_pct: number | null
+          updated_at: string
+          weeks: number | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          impressions?: number | null
+          name: string
+          price?: number
+          product_id?: string | null
+          sov_pct?: number | null
+          updated_at?: string
+          weeks?: number | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          impressions?: number | null
+          name?: string
+          price?: number
+          product_id?: string | null
+          sov_pct?: number | null
+          updated_at?: string
+          weeks?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_packages_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
