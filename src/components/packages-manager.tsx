@@ -139,6 +139,8 @@ export function PackagesManager() {
                   </TableCell>
                   <TableCell className="text-right">{Number(p.price).toLocaleString("sv-SE")} kr</TableCell>
                   <TableCell className="text-right">{p.weeks ?? "—"}</TableCell>
+                  <TableCell className="text-right">{p.views != null ? Number(p.views).toLocaleString("sv-SE") : "—"}</TableCell>
+                  <TableCell className="text-right">{p.sov != null ? `${p.sov}%` : "—"}</TableCell>
                   <TableCell>{p.active ? "Ja" : "Nej"}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
