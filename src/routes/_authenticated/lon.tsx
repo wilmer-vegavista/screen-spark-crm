@@ -429,6 +429,10 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
       commission_pct_with_base: Number(pctBase),
       default_commission_pct: Number(pctBase),
       image_url: imagePath,
+      dimensions: dimensions || null,
+      contacts_per_week: contactsPerWeek !== "" ? Number(contactsPerWeek) : null,
+      format: format || null,
+      address: address || null,
     };
     const { error } = product
       ? await supabase.from("products").update(payload).eq("id", product.id)
