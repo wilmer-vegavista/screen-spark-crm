@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
 import { PageHeader } from "@/components/page-header";
@@ -14,7 +14,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, X, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/produkter")({
   component: ProdukterPage,
@@ -262,8 +262,11 @@ function ProductDialog({
             <Textarea value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
           <div className="col-span-2">
-            <Label>Bild-URL</Label>
-            <Input value={form.image_url ?? ""} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
+            <Label>Bild</Label>
+            <ImageUploader
+              value={form.image_url ?? null}
+              onChange={(p) => setForm({ ...form, image_url: p })}
+            />
           </div>
           <div>
             <Label>Standard provision %</Label>
@@ -292,5 +295,89 @@ function ProductDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ImageUploader({ value, onChange }: { value: string | null; onChange: (path: string | null) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!value) { setSignedUrl(null); return; }
+    // If full URL, just use it
+    if (/^https?:\/\//i.test(value)) { setSignedUrl(value); return; }
+    supabase.storage.from("product-images").createSignedUrl(value, 3600).then(({ data }) => {
+      if (active) setSignedUrl(data?.signedUrl ?? null);
+    });
+    return () => { active = false; };
+  }, [value]);
+
+  const handleFile = async (file: File) => {
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+      toast.error("Endast JPG eller PNG"); return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Max 5 MB"); return;
+    }
+    setUploading(true);
+    const ext = file.type === "image/png" ? "png" : "jpg";
+    const path = `products/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("product-images").upload(path, file, {
+      contentType: file.type,
+      upsert: false,
+    });
+    setUploading(false);
+    if (error) { toast.error(error.message); return; }
+    // Try to remove old file if it was a storage path
+    if (value && !/^https?:\/\//i.test(value)) {
+      supabase.storage.from("product-images").remove([value]);
+    }
+    onChange(path);
+    toast.success("Bild uppladdad");
+  };
+
+  const handleRemove = async () => {
+    if (value && !/^https?:\/\//i.test(value)) {
+      await supabase.storage.from("product-images").remove([value]);
+    }
+    onChange(null);
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/jpeg,image/png"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+          e.target.value = "";
+        }}
+      />
+      {signedUrl ? (
+        <div className="relative">
+          <img src={signedUrl} alt="" className="size-20 rounded-md object-cover border" />
+          <button
+            type="button"
+            onClick={handleRemove}
+            className="absolute -top-2 -right-2 size-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
+          >
+            <X className="size-3" />
+          </button>
+        </div>
+      ) : (
+        <div className="size-20 rounded-md border border-dashed flex items-center justify-center text-muted-foreground text-xs">
+          Ingen bild
+        </div>
+      )}
+      <Button type="button" variant="outline" onClick={() => fileInput.current?.click()} disabled={uploading}>
+        {uploading ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Upload className="size-4 mr-2" />}
+        {value ? "Byt bild" : "Ladda upp JPG/PNG"}
+      </Button>
+    </div>
   );
 }
