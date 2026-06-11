@@ -344,6 +344,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          screen_type: Database["public"]["Enums"]["screen_type"]
           updated_at: string
         }
         Insert: {
@@ -355,6 +356,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          screen_type?: Database["public"]["Enums"]["screen_type"]
           updated_at?: string
         }
         Update: {
@@ -366,6 +368,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          screen_type?: Database["public"]["Enums"]["screen_type"]
           updated_at?: string
         }
         Relationships: []
@@ -482,6 +485,7 @@ export type Database = {
         | "kundgranskning"
         | "godkant"
         | "levererat"
+      screen_type: "egen" | "extern"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -635,6 +639,7 @@ export const Constants = {
         "godkant",
         "levererat",
       ],
+      screen_type: ["egen", "extern"],
     },
   },
 } as const
