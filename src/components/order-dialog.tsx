@@ -248,9 +248,12 @@ export function OrderDialog({
       ...form,
       total_excl_vat: subtotal,
       total_commission: totalCommission,
+      selected_weeks: selectedWeeks,
+      exact_dates: exactDates.map(d => format(d, "yyyy-MM-dd")),
       owner_id: order?.owner_id ?? uid,
       created_by: order?.created_by ?? uid,
     };
+
 
     let orderId = order?.id;
     if (order) {
