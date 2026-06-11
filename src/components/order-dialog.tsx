@@ -34,6 +34,7 @@ const emptyItem = (): Item => ({
   commission_pct: "0",
 });
 
+
 const SEK = (n: number) =>
   new Intl.NumberFormat("sv-SE", { style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
 
@@ -80,6 +81,8 @@ export function OrderDialog({
     notes: "",
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
+  const [totalPrice, setTotalPrice] = useState<string>("0");
+
 
   useEffect(() => {
     if (!open) return;
@@ -109,8 +112,11 @@ export function OrderDialog({
             unit_price: d.unit_price?.toString() ?? "0",
             commission_pct: d.commission_pct?.toString() ?? "0",
           })));
+          const tot = data.reduce((s, d) => s + Number(d.unit_price || 0) * Number(d.weeks || 1), 0);
+          setTotalPrice(tot.toString());
         } else {
           setItems([emptyItem()]);
+          setTotalPrice("0");
         }
       });
     } else {
@@ -120,7 +126,9 @@ export function OrderDialog({
         contact_name: "", contact_email: "", contact_phone: "", notes: "",
       });
       setItems([emptyItem()]);
+      setTotalPrice("0");
     }
+
   }, [order, open]);
 
   const pickCustomer = (id: string) => {
@@ -156,14 +164,18 @@ export function OrderDialog({
     setItems(arr => arr.map((it, i) => i === idx ? { ...it, ...patch } : it));
   };
 
-  // Calculations
+  // Calculations — total price is split equally across screens
+  const total = Number(totalPrice) || 0;
+  const activeItems = items.filter(it => it.product_name.trim());
+  const perScreen = activeItems.length > 0 ? total / activeItems.length : 0;
   const calc = items.map(it => {
-    const lineTotal = (Number(it.unit_price) || 0) * (Number(it.weeks) || 1);
+    const lineTotal = it.product_name.trim() ? perScreen : 0;
     const commission = lineTotal * (Number(it.commission_pct) || 0) / 100;
     return { lineTotal, commission };
   });
   const subtotal = calc.reduce((s, c) => s + c.lineTotal, 0);
   const totalCommission = calc.reduce((s, c) => s + c.commission, 0);
+
 
   const handleSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -193,18 +205,25 @@ export function OrderDialog({
 
     // Replace items
     if (order) await supabase.from("order_items").delete().eq("order_id", orderId);
-    const itemRows = items.filter(it => it.product_name.trim()).map((it, i) => ({
-      order_id: orderId,
-      product_id: it.product_id,
-      product_name: it.product_name,
-      sov_pct: it.sov_pct ? Number(it.sov_pct) : null,
-      impressions: it.impressions ? Number(it.impressions) : null,
-      weeks: Number(it.weeks) || 1,
-      unit_price: Number(it.unit_price) || 0,
-      commission_pct: Number(it.commission_pct) || 0,
-      commission_amount: (Number(it.unit_price) || 0) * (Number(it.weeks) || 1) * (Number(it.commission_pct) || 0) / 100,
-      position: i,
-    }));
+    const itemRows = items.filter(it => it.product_name.trim()).map((it, i) => {
+      const weeks = Number(it.weeks) || 1;
+      const lineAmount = perScreen;
+      const unitPrice = weeks > 0 ? lineAmount / weeks : lineAmount;
+      const pct = Number(it.commission_pct) || 0;
+      return {
+        order_id: orderId,
+        product_id: it.product_id,
+        product_name: it.product_name,
+        sov_pct: it.sov_pct ? Number(it.sov_pct) : null,
+        impressions: it.impressions ? Number(it.impressions) : null,
+        weeks,
+        unit_price: unitPrice,
+        commission_pct: pct,
+        commission_amount: lineAmount * pct / 100,
+        position: i,
+      };
+    });
+
     if (itemRows.length) {
       const { error } = await supabase.from("order_items").insert(itemRows);
       if (error) { setSaving(false); return toast.error(error.message); }
@@ -258,14 +277,18 @@ export function OrderDialog({
           id: order?.id ?? crypto.randomUUID(),
           ...form,
         },
-        items: items.filter(it => it.product_name.trim()).map(it => ({
-          product_id: it.product_id,
-          product_name: it.product_name,
-          sov_pct: it.sov_pct ? Number(it.sov_pct) : null,
-          impressions: it.impressions ? Number(it.impressions) : null,
-          weeks: Number(it.weeks) || 1,
-          unit_price: Number(it.unit_price) || 0,
-        })),
+        items: items.filter(it => it.product_name.trim()).map(it => {
+          const weeks = Number(it.weeks) || 1;
+          return {
+            product_id: it.product_id,
+            product_name: it.product_name,
+            sov_pct: it.sov_pct ? Number(it.sov_pct) : null,
+            impressions: it.impressions ? Number(it.impressions) : null,
+            weeks,
+            unit_price: weeks > 0 ? perScreen / weeks : perScreen,
+          };
+        }),
+
         products: productsMap,
         sellerName: prof?.full_name ?? u.user?.email,
         sellerEmail: prof?.email ?? u.user?.email,
@@ -383,27 +406,46 @@ export function OrderDialog({
                     </div>
                     <div className="grid grid-cols-12 gap-2 items-end">
                       <div className="col-span-3">
-                        <Label className="text-xs">Pris / vecka (SEK)</Label>
-                        <Input type="number" step="0.01" value={it.unit_price} onChange={e => updItem(idx, { unit_price: e.target.value })} />
-                      </div>
-                      <div className="col-span-2">
                         <Label className="text-xs">Provision %</Label>
                         <Input type="number" step="0.01" value={it.commission_pct} onChange={e => updItem(idx, { commission_pct: e.target.value })} />
                       </div>
-                      <div className="col-span-3 text-sm">
-                        <div className="text-xs text-muted-foreground">Radens totala pris</div>
+                      <div className="col-span-4 text-sm">
+                        <div className="text-xs text-muted-foreground">Andel av total</div>
                         <div className="font-semibold">{SEK(lineTotal)} SEK</div>
                       </div>
-                      <div className="col-span-4 text-sm">
+                      <div className="col-span-5 text-sm">
                         <div className="text-xs text-muted-foreground">Provision (rad)</div>
                         <div className="font-semibold text-primary">{SEK(commission)} SEK</div>
                       </div>
                     </div>
+
                   </Card>
                 );
               })}
             </div>
           </div>
+
+          {/* Totalpris */}
+          <Card className="p-4 border-primary/40">
+            <Label className="text-sm font-semibold">Totalt pris för hela ordern (ex moms)</Label>
+            <div className="flex items-center gap-3 mt-2">
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={totalPrice}
+                onChange={e => setTotalPrice(e.target.value)}
+                placeholder="t.ex. 30000"
+                className="text-lg font-semibold"
+              />
+              <span className="text-sm text-muted-foreground whitespace-nowrap">SEK</span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Beloppet fördelas automatiskt jämnt över {activeItems.length || 0} skärm{activeItems.length === 1 ? "" : "ar"}
+              {activeItems.length > 0 && ` (${SEK(perScreen)} SEK per skärm)`}.
+            </p>
+          </Card>
+
 
           <div><Label>Anteckningar</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
 
