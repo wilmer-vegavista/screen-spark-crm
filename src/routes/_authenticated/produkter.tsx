@@ -96,55 +96,66 @@ function ProductsView() {
     <>
       <PageHeader
         title="Produkter"
-        description="Hantera skyltar och produkter som säljarna kan sälja"
-        actions={
-          <Button onClick={() => { setEditing(null); setOpen(true); }}>
-            <Plus className="size-4 mr-2" /> Ny produkt
-          </Button>
-        }
+        description="Hantera skyltar, produkter och paket"
       />
       <div className="p-6">
-        <Card className="overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Namn</TableHead>
-                <TableHead>Typ</TableHead>
-                <TableHead>Adress</TableHead>
-                <TableHead>Format</TableHead>
-                <TableHead className="text-right">Provision %</TableHead>
-                <TableHead>Aktiv</TableHead>
-                <TableHead className="w-24"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Laddar…</TableCell></TableRow>
-              ) : (data ?? []).length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Inga produkter än</TableCell></TableRow>
-              ) : data!.map(p => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.name}</TableCell>
-                  <TableCell className="uppercase text-xs text-muted-foreground">{p.screen_type}</TableCell>
-                  <TableCell className="text-muted-foreground">{p.address || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{p.format || "—"} {p.dimensions ? `· ${p.dimensions}` : ""}</TableCell>
-                  <TableCell className="text-right">{p.default_commission_pct}%</TableCell>
-                  <TableCell>{p.active ? "Ja" : "Nej"}</TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => { setEditing(p); setOpen(true); }}>
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)}>
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+        <Tabs defaultValue="produkter">
+          <TabsList>
+            <TabsTrigger value="produkter">Produkter</TabsTrigger>
+            <TabsTrigger value="paket">Paket</TabsTrigger>
+          </TabsList>
+          <TabsContent value="produkter" className="mt-4">
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => { setEditing(null); setOpen(true); }}>
+                <Plus className="size-4 mr-2" /> Ny produkt
+              </Button>
+            </div>
+            <Card className="overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Namn</TableHead>
+                    <TableHead>Typ</TableHead>
+                    <TableHead>Adress</TableHead>
+                    <TableHead>Format</TableHead>
+                    <TableHead className="text-right">Provision %</TableHead>
+                    <TableHead>Aktiv</TableHead>
+                    <TableHead className="w-24"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Laddar…</TableCell></TableRow>
+                  ) : (data ?? []).length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Inga produkter än</TableCell></TableRow>
+                  ) : data!.map(p => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell className="uppercase text-xs text-muted-foreground">{p.screen_type}</TableCell>
+                      <TableCell className="text-muted-foreground">{p.address || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{p.format || "—"} {p.dimensions ? `· ${p.dimensions}` : ""}</TableCell>
+                      <TableCell className="text-right">{p.default_commission_pct}%</TableCell>
+                      <TableCell>{p.active ? "Ja" : "Nej"}</TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => { setEditing(p); setOpen(true); }}>
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)}>
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+          <TabsContent value="paket" className="mt-4">
+            <PackagesManager />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <ProductDialog
