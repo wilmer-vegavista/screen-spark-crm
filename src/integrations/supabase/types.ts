@@ -452,6 +452,38 @@ export type Database = {
           },
         ]
       }
+      order_splits: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          share_pct: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          share_pct: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          share_pct?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_splits_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           billing_address: string | null
@@ -864,6 +896,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_order: { Args: { _order_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
