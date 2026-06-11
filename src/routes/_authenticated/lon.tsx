@@ -417,11 +417,15 @@ function CompensationAdmin() {
       const compMap = new Map((comps ?? []).map(c => [c.user_id, c]));
       return (profiles ?? [])
         .filter(p => sellerIds.has(p.id))
-        .map(p => ({
-          ...p,
-          base_salary: Number(compMap.get(p.id)?.base_salary ?? 0),
-          default_commission_pct: Number(compMap.get(p.id)?.default_commission_pct ?? 0),
-        }));
+        .map(p => {
+          const c = compMap.get(p.id);
+          return {
+            ...p,
+            compensation_type: c?.compensation_type ?? "med_grundlon",
+            base_salary: Number(c?.base_salary ?? 0),
+            default_commission_pct: Number(c?.default_commission_pct ?? 0),
+          };
+        });
     },
   });
 
@@ -431,14 +435,15 @@ function CompensationAdmin() {
     <Card>
       <div className="p-4 border-b">
         <h3 className="text-sm font-semibold">Säljarinställningar</h3>
-        <p className="text-xs text-muted-foreground mt-1">Sätt grundlön och standardprovision per säljare. Produktspecifik provision från fliken "Produkter" tar över när en produkt är vald på affären.</p>
+        <p className="text-xs text-muted-foreground mt-1">Välj om säljaren är på "endast provision" eller "med grundlön". Provisionsprocenten per affär hämtas från produkten utifrån säljarens typ.</p>
       </div>
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Säljare</TableHead>
+            <TableHead>Typ</TableHead>
             <TableHead className="text-right">Grundlön</TableHead>
-            <TableHead className="text-right">Standard provision %</TableHead>
+            <TableHead className="text-right">Standard %</TableHead>
             <TableHead className="w-20"></TableHead>
           </TableRow>
         </TableHeader>
@@ -446,7 +451,8 @@ function CompensationAdmin() {
           {(data ?? []).map(p => (
             <TableRow key={p.id}>
               <TableCell className="font-medium">{p.full_name || p.email}</TableCell>
-              <TableCell className="text-right">{fmt(p.base_salary)}</TableCell>
+              <TableCell className="text-xs">{p.compensation_type === "endast_provision" ? "Endast provision" : "Med grundlön"}</TableCell>
+              <TableCell className="text-right">{p.compensation_type === "endast_provision" ? "—" : fmt(p.base_salary)}</TableCell>
               <TableCell className="text-right">{p.default_commission_pct}%</TableCell>
               <TableCell className="text-right">
                 <Button variant="ghost" size="icon" onClick={() => setEditing(p)}><Pencil className="size-3.5" /></Button>
@@ -454,7 +460,7 @@ function CompensationAdmin() {
             </TableRow>
           ))}
           {(data ?? []).length === 0 && (
-            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Inga säljare ännu</TableCell></TableRow>
+            <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Inga säljare ännu</TableCell></TableRow>
           )}
         </TableBody>
       </Table>
@@ -464,10 +470,12 @@ function CompensationAdmin() {
 }
 
 function CompDialog({ seller, onClose }: { seller: any; onClose: () => void }) {
+  const [type, setType] = useState<"endast_provision" | "med_grundlon">("med_grundlon");
   const [base, setBase] = useState("0");
   const [pct, setPct] = useState("0");
   useMemo(() => {
     if (seller) {
+      setType((seller.compensation_type as any) ?? "med_grundlon");
       setBase(String(seller.base_salary ?? 0));
       setPct(String(seller.default_commission_pct ?? 0));
     }
@@ -477,7 +485,12 @@ function CompDialog({ seller, onClose }: { seller: any; onClose: () => void }) {
     if (!seller) return;
     const { error } = await supabase
       .from("seller_compensation")
-      .upsert({ user_id: seller.id, base_salary: Number(base), default_commission_pct: Number(pct) });
+      .upsert({
+        user_id: seller.id,
+        compensation_type: type,
+        base_salary: type === "endast_provision" ? 0 : Number(base),
+        default_commission_pct: Number(pct),
+      });
     if (error) toast.error(error.message);
     else { toast.success("Sparat"); onClose(); }
   };
@@ -488,13 +501,36 @@ function CompDialog({ seller, onClose }: { seller: any; onClose: () => void }) {
         <DialogHeader><DialogTitle>Lön för {seller?.full_name || seller?.email}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium">Grundlön (kr/mån)</label>
-            <Input type="number" value={base} onChange={e => setBase(e.target.value)} />
+            <label className="text-xs font-medium">Provisionskategori</label>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => setType("med_grundlon")}
+                className={`text-left p-3 rounded-md border text-xs ${type === "med_grundlon" ? "border-primary bg-primary/10" : "border-border"}`}
+              >
+                <div className="font-semibold">Med grundlön</div>
+                <div className="text-muted-foreground mt-1">Fast lön + lägre provision</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setType("endast_provision")}
+                className={`text-left p-3 rounded-md border text-xs ${type === "endast_provision" ? "border-primary bg-primary/10" : "border-border"}`}
+              >
+                <div className="font-semibold">Endast provision</div>
+                <div className="text-muted-foreground mt-1">Ingen fast lön, högre provision</div>
+              </button>
+            </div>
           </div>
+          {type === "med_grundlon" && (
+            <div>
+              <label className="text-xs font-medium">Grundlön (kr/mån)</label>
+              <Input type="number" value={base} onChange={e => setBase(e.target.value)} />
+            </div>
+          )}
           <div>
             <label className="text-xs font-medium">Standard provision %</label>
             <Input type="number" step="0.1" value={pct} onChange={e => setPct(e.target.value)} />
-            <p className="text-[10px] text-muted-foreground mt-1">Används när affären saknar produkt och inte har egen %.</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Används endast om affären saknar produkt. Produktens % per kategori används annars.</p>
           </div>
         </div>
         <DialogFooter>
