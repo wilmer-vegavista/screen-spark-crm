@@ -202,13 +202,9 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
       for (const d of deals ?? []) {
         if (!d.owner_id) continue;
         const c = compMap.get(d.owner_id);
+        const compType = c?.compensation_type ?? "med_grundlon";
         const product = d.product_id ? prodMap.get(d.product_id) : null;
-        const pct =
-          d.commission_pct_override != null
-            ? Number(d.commission_pct_override)
-            : product
-            ? Number(product.default_commission_pct)
-            : Number(c?.default_commission_pct ?? 0);
+        const pct = pickPct(d, product, compType, Number(c?.default_commission_pct ?? 0));
         const value = Number(d.value ?? 0);
         const cur = grouped.get(d.owner_id) ?? { value: 0, commission: 0, count: 0 };
         cur.value += value;
@@ -216,17 +212,18 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
         cur.count += 1;
         grouped.set(d.owner_id, cur);
       }
-      // include sellers with comp set even if no deals
       for (const c of comps ?? []) {
         if (!grouped.has(c.user_id)) grouped.set(c.user_id, { value: 0, commission: 0, count: 0 });
       }
       return Array.from(grouped.entries()).map(([userId, g]) => {
         const c = compMap.get(userId);
         const p = profileMap.get(userId);
-        const base = Number(c?.base_salary ?? 0);
+        const compType = c?.compensation_type ?? "med_grundlon";
+        const base = compType === "endast_provision" ? 0 : Number(c?.base_salary ?? 0);
         return {
           userId,
           name: p?.full_name || p?.email || "Okänd",
+          compType,
           base,
           commission: g.commission,
           total: base + g.commission,
