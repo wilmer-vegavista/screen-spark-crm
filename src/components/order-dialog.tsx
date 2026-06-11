@@ -181,7 +181,10 @@ export function OrderDialog({
       });
       setItems([emptyItem()]);
       setTotalPrice("0");
+      setSelectedWeeks([]);
+      setExactDates([]);
     }
+
 
   }, [order, open]);
 
