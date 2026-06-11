@@ -205,8 +205,10 @@ function Dashboard() {
   const myPerDay = myBudget > 0 ? myRemaining / daysLeft : 0;
   const myBudgetPct = myBudget > 0 ? Math.min(100, (mySoldThisMonth / myBudget) * 100) : 0;
 
-  // Company budget
-  const companyBudget = Number((data?.company as any)?.monthly_budget ?? 0);
+  // Company budget = sum of all sellers' monthly budgets for current month
+  const companyBudget = (data?.monthlyBudgets ?? [])
+    .filter(b => b.month === currentMonth)
+    .reduce((s, b) => s + Number(b.amount ?? 0), 0);
   const companyRemaining = Math.max(companyBudget - monthTotal, 0);
   const companyBudgetPct = companyBudget > 0 ? Math.min(100, (monthTotal / companyBudget) * 100) : 0;
 
@@ -266,7 +268,7 @@ function Dashboard() {
               <div className="text-xs text-muted-foreground">{companyBudgetPct.toFixed(0)}%</div>
             </div>
             {companyBudget === 0 ? (
-              isAdmin ? <CompanyBudgetEditor current={0} /> : <p className="text-sm text-muted-foreground">Ingen bolagsbudget satt.</p>
+              <p className="text-sm text-muted-foreground">Ingen bolagsbudget satt. Lägg in säljarnas budgetar under Budget-fliken.</p>
             ) : (
               <>
                 <div className="flex items-baseline justify-between mb-2">
@@ -286,7 +288,6 @@ function Dashboard() {
                     <div className="text-lg font-semibold text-primary">{fmt(companyRemaining / daysLeft)}</div>
                   </div>
                 </div>
-                {isAdmin && <div className="mt-4 pt-3 border-t"><CompanyBudgetEditor current={companyBudget} /></div>}
               </>
             )}
           </Card>
@@ -355,28 +356,6 @@ function Dashboard() {
         </Card>
       </div>
     </>
-  );
-}
-
-function CompanyBudgetEditor({ current }: { current: number }) {
-  const qc = useQueryClient();
-  const [val, setVal] = useState(String(current));
-  useEffect(() => { setVal(String(current)); }, [current]);
-  const save = async () => {
-    const { error } = await supabase
-      .from("company_settings")
-      .upsert({ id: true, monthly_budget: Number(val) });
-    if (error) toast.error(error.message);
-    else { toast.success("Bolagsbudget sparad"); qc.invalidateQueries({ queryKey: ["dashboard-stats"] }); }
-  };
-  return (
-    <div className="flex items-end gap-2">
-      <div className="flex-1">
-        <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Sätt bolagets månadsbudget</label>
-        <Input type="number" value={val} onChange={e => setVal(e.target.value)} />
-      </div>
-      <Button size="sm" onClick={save}>Spara</Button>
-    </div>
   );
 }
 
