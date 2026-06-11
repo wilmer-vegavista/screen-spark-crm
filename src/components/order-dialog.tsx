@@ -195,6 +195,7 @@ export function OrderDialog({
             sov_pct: d.sov_pct?.toString() ?? "",
             impressions: d.impressions?.toString() ?? "",
             weeks: d.weeks?.toString() ?? "1",
+            period_unit: ((d as any).period_unit ?? "veckor") as PeriodUnit,
             unit_price: d.unit_price?.toString() ?? "0",
             commission_pct: d.commission_pct?.toString() ?? "0",
           })));
