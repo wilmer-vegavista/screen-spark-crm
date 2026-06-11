@@ -14,16 +14,394 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activities: {
+        Row: {
+          assigned_to: string | null
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          deal_id: string | null
+          description: string | null
+          due_at: string | null
+          id: string
+          title: string
+          type: Database["public"]["Enums"]["activity_type"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          deal_id?: string | null
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          title: string
+          type?: Database["public"]["Enums"]["activity_type"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          deal_id?: string | null
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          title?: string
+          type?: Database["public"]["Enums"]["activity_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          budget: number | null
+          cities: string[] | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          deal_id: string | null
+          end_date: string
+          id: string
+          impressions_target: number | null
+          name: string
+          notes: string | null
+          owner_id: string | null
+          renewal_reminder_sent: boolean
+          report_due_date: string | null
+          report_sent_at: string | null
+          screens: string[] | null
+          start_date: string
+          status: Database["public"]["Enums"]["campaign_status"]
+          updated_at: string
+        }
+        Insert: {
+          budget?: number | null
+          cities?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          deal_id?: string | null
+          end_date: string
+          id?: string
+          impressions_target?: number | null
+          name: string
+          notes?: string | null
+          owner_id?: string | null
+          renewal_reminder_sent?: boolean
+          report_due_date?: string | null
+          report_sent_at?: string | null
+          screens?: string[] | null
+          start_date: string
+          status?: Database["public"]["Enums"]["campaign_status"]
+          updated_at?: string
+        }
+        Update: {
+          budget?: number | null
+          cities?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          deal_id?: string | null
+          end_date?: string
+          id?: string
+          impressions_target?: number | null
+          name?: string
+          notes?: string | null
+          owner_id?: string | null
+          renewal_reminder_sent?: boolean
+          report_due_date?: string | null
+          report_sent_at?: string | null
+          screens?: string[] | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["campaign_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          company_name: string
+          contact_name: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          industry: string | null
+          notes: string | null
+          org_number: string | null
+          owner_id: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_name: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          industry?: string | null
+          notes?: string | null
+          org_number?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          industry?: string | null
+          notes?: string | null
+          org_number?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      deals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          expected_close_date: string | null
+          id: string
+          notes: string | null
+          owner_id: string | null
+          probability: number | null
+          source: string | null
+          stage: Database["public"]["Enums"]["deal_stage"]
+          title: string
+          updated_at: string
+          value: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          expected_close_date?: string | null
+          id?: string
+          notes?: string | null
+          owner_id?: string | null
+          probability?: number | null
+          source?: string | null
+          stage?: Database["public"]["Enums"]["deal_stage"]
+          title: string
+          updated_at?: string
+          value?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          expected_close_date?: string | null
+          id?: string
+          notes?: string | null
+          owner_id?: string | null
+          probability?: number | null
+          source?: string | null
+          stage?: Database["public"]["Enums"]["deal_stage"]
+          title?: string
+          updated_at?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      materials: {
+        Row: {
+          assigned_to: string | null
+          campaign_id: string
+          created_at: string
+          created_by: string | null
+          deadline: string | null
+          dimensions: string | null
+          duration_seconds: number | null
+          file_url: string | null
+          format: string | null
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["material_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          campaign_id: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          dimensions?: string | null
+          duration_seconds?: number | null
+          file_url?: string | null
+          format?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["material_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          campaign_id?: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          dimensions?: string | null
+          duration_seconds?: number | null
+          file_url?: string | null
+          format?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["material_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "materials_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      activity_type: "samtal" | "mote" | "mejl" | "uppgift" | "paminnelse"
+      app_role: "admin" | "saljare" | "produktion"
+      campaign_status:
+        | "planerad"
+        | "material_produktion"
+        | "redo_for_live"
+        | "live"
+        | "avslutad"
+        | "rapport_skickad"
+      deal_stage:
+        | "ny"
+        | "kontaktad"
+        | "offert"
+        | "forhandling"
+        | "vunnen"
+        | "forlorad"
+      material_status:
+        | "ej_inkommet"
+        | "under_produktion"
+        | "kundgranskning"
+        | "godkant"
+        | "levererat"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +528,32 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      activity_type: ["samtal", "mote", "mejl", "uppgift", "paminnelse"],
+      app_role: ["admin", "saljare", "produktion"],
+      campaign_status: [
+        "planerad",
+        "material_produktion",
+        "redo_for_live",
+        "live",
+        "avslutad",
+        "rapport_skickad",
+      ],
+      deal_stage: [
+        "ny",
+        "kontaktad",
+        "offert",
+        "forhandling",
+        "vunnen",
+        "forlorad",
+      ],
+      material_status: [
+        "ej_inkommet",
+        "under_produktion",
+        "kundgranskning",
+        "godkant",
+        "levererat",
+      ],
+    },
   },
 } as const
