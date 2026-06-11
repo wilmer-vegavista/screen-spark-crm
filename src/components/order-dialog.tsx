@@ -181,6 +181,7 @@ export function OrderDialog({
       });
       setSelectedWeeks(Array.isArray(order.selected_weeks) ? order.selected_weeks : []);
       setExactDates(Array.isArray(order.exact_dates) ? order.exact_dates.map((d: string) => new Date(d)) : []);
+      setOwnerId(order.owner_id ?? null);
 
       // load items
       supabase.from("order_items").select("*").eq("order_id", order.id).order("position").then(({ data }) => {
@@ -200,6 +201,11 @@ export function OrderDialog({
           setTotalPrice("0");
         }
       });
+
+      // load splits
+      supabase.from("order_splits").select("user_id, share_pct").eq("order_id", order.id).then(({ data }) => {
+        setSplits((data ?? []).map((s: any) => ({ user_id: s.user_id, share_pct: String(s.share_pct) })));
+      });
     } else {
       setForm({
         order_type: "offert", customer_id: null, company_name: "", org_number: "", vat_number: "",
@@ -211,6 +217,8 @@ export function OrderDialog({
       setTotalPrice("0");
       setSelectedWeeks([]);
       setExactDates([]);
+      setOwnerId(currentUserId ?? null);
+      setSplits([]);
     }
 
 
