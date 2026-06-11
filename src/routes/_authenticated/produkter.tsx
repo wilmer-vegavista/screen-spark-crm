@@ -167,13 +167,16 @@ function ProductDialog({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<Product>>({});
 
-  // Reset when opening
-  const init = () => setForm(product ?? {
-    name: "",
-    screen_type: "egen",
-    default_commission_pct: 10,
-    active: true,
-  });
+  // Sync form whenever dialog opens or the product changes
+  useEffect(() => {
+    if (!open) return;
+    setForm(product ?? {
+      name: "",
+      screen_type: "egen",
+      default_commission_pct: 10,
+      active: true,
+    });
+  }, [open, product]);
 
   const handleSave = async () => {
     if (!form.name?.trim()) { toast.error("Namn krävs"); return; }
