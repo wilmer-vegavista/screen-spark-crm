@@ -86,9 +86,14 @@ export function OrderDialog({
     return Number(p.default_commission_pct ?? 0);
   };
 
+  const commissionPctForItem = (it: Item): number => {
+    const product = it.product_id ? products.find((p: any) => p.id === it.product_id) : null;
+    return product ? commissionPctFor(product) : Number(it.commission_pct || 0);
+  };
+
   // Keep commission % in sync with product × seller compensation
   useEffect(() => {
-    if (!sellerComp || products.length === 0) return;
+    if (products.length === 0) return;
     setItems(arr => arr.map(it => {
       if (!it.product_id) return it;
       const p = products.find((x: any) => x.id === it.product_id);
@@ -208,8 +213,9 @@ export function OrderDialog({
   const perScreen = activeItems.length > 0 ? total / activeItems.length : 0;
   const calc = items.map(it => {
     const lineTotal = it.product_name.trim() ? perScreen : 0;
-    const commission = lineTotal * (Number(it.commission_pct) || 0) / 100;
-    return { lineTotal, commission };
+    const commissionPct = commissionPctForItem(it);
+    const commission = lineTotal * commissionPct / 100;
+    return { lineTotal, commission, commissionPct };
   });
   const subtotal = calc.reduce((s, c) => s + c.lineTotal, 0);
   const totalCommission = calc.reduce((s, c) => s + c.commission, 0);
@@ -272,6 +278,7 @@ export function OrderDialog({
       title: `${form.order_type === "offert" ? "Offert" : "Bokning"} – ${form.company_name}`,
       customer_id: form.customer_id,
       value: subtotal,
+      commission_pct_override: subtotal > 0 ? (totalCommission / subtotal) * 100 : null,
       stage: form.order_type === "offert" ? "offert" : "vunnen",
       owner_id: order?.owner_id ?? uid,
       created_by: order?.created_by ?? uid,
