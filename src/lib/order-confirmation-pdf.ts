@@ -253,11 +253,13 @@ export async function generateOrderConfirmationPdf(input: OrderPdfInput) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text("Med vänliga hälsningar,", margin, footY);
+  doc.setFont("helvetica", "normal");
+  doc.text(sellerTitle || "Account Manager", margin, footY + 18);
   doc.setFont("helvetica", "bold");
-  doc.text(sellerName || "—", margin, footY + 18);
+  doc.text(sellerName || "—", margin, footY + 34);
   if (sellerEmail) {
     doc.setFont("helvetica", "normal");
-    doc.text(sellerEmail, margin, footY + 32);
+    doc.text(sellerEmail, margin, footY + 48);
   }
 
   const filename = `Orderbekraftelse_${(customer?.company_name || "kund").replace(/[^a-z0-9]+/gi, "_")}_${deal.id.slice(0, 8)}.pdf`;
