@@ -337,6 +337,8 @@ export type Database = {
       products: {
         Row: {
           active: boolean
+          commission_pct_provision_only: number | null
+          commission_pct_with_base: number | null
           created_at: string
           default_commission_pct: number
           description: string | null
@@ -346,6 +348,8 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          commission_pct_provision_only?: number | null
+          commission_pct_with_base?: number | null
           created_at?: string
           default_commission_pct?: number
           description?: string | null
@@ -355,6 +359,8 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          commission_pct_provision_only?: number | null
+          commission_pct_with_base?: number | null
           created_at?: string
           default_commission_pct?: number
           description?: string | null
@@ -394,6 +400,7 @@ export type Database = {
       seller_compensation: {
         Row: {
           base_salary: number
+          compensation_type: Database["public"]["Enums"]["compensation_type"]
           created_at: string
           default_commission_pct: number
           updated_at: string
@@ -401,6 +408,7 @@ export type Database = {
         }
         Insert: {
           base_salary?: number
+          compensation_type?: Database["public"]["Enums"]["compensation_type"]
           created_at?: string
           default_commission_pct?: number
           updated_at?: string
@@ -408,6 +416,7 @@ export type Database = {
         }
         Update: {
           base_salary?: number
+          compensation_type?: Database["public"]["Enums"]["compensation_type"]
           created_at?: string
           default_commission_pct?: number
           updated_at?: string
@@ -459,6 +468,7 @@ export type Database = {
         | "live"
         | "avslutad"
         | "rapport_skickad"
+      compensation_type: "endast_provision" | "med_grundlon"
       deal_stage:
         | "ny"
         | "kontaktad"
@@ -609,6 +619,7 @@ export const Constants = {
         "avslutad",
         "rapport_skickad",
       ],
+      compensation_type: ["endast_provision", "med_grundlon"],
       deal_stage: [
         "ny",
         "kontaktad",
