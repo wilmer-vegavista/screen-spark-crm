@@ -100,7 +100,7 @@ export const createSeller = createServerFn({ method: "POST" })
     });
     if (compError) throw new Error(compError.message);
 
-    return { userId, tempPassword, invited };
+    return { userId, password: storedPassword, invited };
   });
 
 export const resendSellerInvite = createServerFn({ method: "POST" })
