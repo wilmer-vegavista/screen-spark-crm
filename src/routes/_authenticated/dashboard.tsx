@@ -268,7 +268,7 @@ function Dashboard() {
               <div className="text-xs text-muted-foreground">{companyBudgetPct.toFixed(0)}%</div>
             </div>
             {companyBudget === 0 ? (
-              isAdmin ? <CompanyBudgetEditor current={0} /> : <p className="text-sm text-muted-foreground">Ingen bolagsbudget satt.</p>
+              <p className="text-sm text-muted-foreground">Ingen bolagsbudget satt. Lägg in säljarnas budgetar under Budget-fliken.</p>
             ) : (
               <>
                 <div className="flex items-baseline justify-between mb-2">
