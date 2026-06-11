@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Loader2, Mail, Eye, EyeOff, Copy, KeyRound } from "lucide-react";
 import { createSeller, updateSeller, resendSellerInvite, setSellerPassword } from "@/lib/sellers.functions";
 
-export const Route = createFileRoute("/_authenticated/saljare")({
+export const Route = createFileRoute("/_authenticated/anvandare")({
   component: SaljarePage,
 });
 
@@ -26,7 +26,7 @@ function SaljarePage() {
   if (!isAdmin) {
     return (
       <>
-        <PageHeader title="Säljare" description="Hantera säljare och deras uppgifter" />
+        <PageHeader title="Användare" description="Hantera användare och deras uppgifter" />
         <div className="p-6">
           <Card className="p-6 text-sm text-muted-foreground">
             Du har inte behörighet att se denna sida.
@@ -38,7 +38,7 @@ function SaljarePage() {
 
   return (
     <>
-      <PageHeader title="Säljare" description="Lägg till och hantera säljare, provision och grundlön" />
+      <PageHeader title="Användare" description="Lägg till och hantera användare, provision och grundlön" />
       <div className="p-6">
         <SellersTable />
       </div>
@@ -89,11 +89,11 @@ function SellersTable() {
     <Card>
       <div className="p-4 border-b flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold">Säljare</h3>
+          <h3 className="text-sm font-semibold">Användare</h3>
           <p className="text-xs text-muted-foreground">Kontaktuppgifter, lön och inloggning. Lösenord visas endast för admin.</p>
         </div>
         <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-          <Plus className="size-4 mr-1" /> Ny säljare
+          <Plus className="size-4 mr-1" /> Ny användare
         </Button>
       </div>
       {isLoading ? (
@@ -166,7 +166,7 @@ function SellersTable() {
             {(data ?? []).length === 0 && (
               <TableRow>
                 <TableCell colSpan={9} className="text-center text-muted-foreground py-6">
-                  Inga säljare ännu
+                  Inga användare ännu
                 </TableCell>
               </TableRow>
             )}
@@ -242,7 +242,7 @@ function SetPasswordDialog({ seller, onOpenChange, onSaved }: {
         </DialogHeader>
         <div className="space-y-3 text-sm">
           <div className="text-xs text-muted-foreground">
-            Säljare: <span className="font-medium text-foreground">{seller?.full_name || seller?.email}</span>
+            Användare: <span className="font-medium text-foreground">{seller?.full_name || seller?.email}</span>
           </div>
           <div>
             <label className="text-xs font-medium">Nytt lösenord</label>
@@ -347,7 +347,7 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{seller ? "Redigera säljare" : "Ny säljare"}</DialogTitle>
+          <DialogTitle>{seller ? "Redigera användare" : "Ny användare"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
