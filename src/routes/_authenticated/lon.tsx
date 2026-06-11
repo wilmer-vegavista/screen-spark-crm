@@ -373,6 +373,10 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [dimensions, setDimensions] = useState("");
+  const [contactsPerWeek, setContactsPerWeek] = useState("");
+  const [format, setFormat] = useState("");
+  const [address, setAddress] = useState("");
 
   useMemo(() => {
     if (open) {
@@ -383,6 +387,10 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
       setPctBase(String(product?.commission_pct_with_base ?? product?.default_commission_pct ?? "0"));
       setImagePath(product?.image_url ?? null);
       setImagePreview(product?.image_signed_url ?? null);
+      setDimensions(product?.dimensions ?? "");
+      setContactsPerWeek(product?.contacts_per_week != null ? String(product.contacts_per_week) : "");
+      setFormat(product?.format ?? "");
+      setAddress(product?.address ?? "");
     }
   }, [open, product]);
 
@@ -421,6 +429,10 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
       commission_pct_with_base: Number(pctBase),
       default_commission_pct: Number(pctBase),
       image_url: imagePath,
+      dimensions: dimensions || null,
+      contacts_per_week: contactsPerWeek !== "" ? Number(contactsPerWeek) : null,
+      format: format || null,
+      address: address || null,
     };
     const { error } = product
       ? await supabase.from("products").update(payload).eq("id", product.id)
@@ -431,7 +443,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{product ? "Redigera produkt" : "Ny produkt"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div>
@@ -503,6 +515,39 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
               <Input type="number" step="0.1" value={pctBase} onChange={e => setPctBase(e.target.value)} />
               <p className="text-[10px] text-muted-foreground mt-1">Har fast lön</p>
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium">Mått på skärmen</label>
+              <Input value={dimensions} onChange={e => setDimensions(e.target.value)} placeholder="t.ex. 1920×1080 / 75 tum" />
+            </div>
+            <div>
+              <label className="text-xs font-medium">Format</label>
+              <Input value={format} onChange={e => setFormat(e.target.value)} placeholder="t.ex. Liggande 16:9, MP4" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium">Antal kontakter / vecka</label>
+            <Input type="number" min="0" value={contactsPerWeek} onChange={e => setContactsPerWeek(e.target.value)} placeholder="t.ex. 25000" />
+          </div>
+          <div>
+            <label className="text-xs font-medium">Adress</label>
+            <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Gatuadress, ort" />
+            {address && (
+              <div className="mt-2 space-y-2">
+                <iframe
+                  title="Karta"
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(address)}&output=embed`}
+                  className="w-full h-48 rounded-md border"
+                  loading="lazy"
+                />
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+                  target="_blank" rel="noreferrer"
+                  className="text-xs text-primary underline"
+                >Öppna i Google Maps</a>
+              </div>
+            )}
           </div>
         </div>
         <DialogFooter>

@@ -205,17 +205,22 @@ export type Database = {
       }
       deals: {
         Row: {
+          campaign_end: string | null
+          campaign_start: string | null
+          campaign_weeks: number | null
           commission_pct_override: number | null
           created_at: string
           created_by: string | null
           customer_id: string | null
           expected_close_date: string | null
           id: string
+          impressions: number | null
           notes: string | null
           owner_id: string | null
           probability: number | null
           product_id: string | null
           source: string | null
+          sov_pct: number | null
           stage: Database["public"]["Enums"]["deal_stage"]
           title: string
           updated_at: string
@@ -223,17 +228,22 @@ export type Database = {
           won_at: string | null
         }
         Insert: {
+          campaign_end?: string | null
+          campaign_start?: string | null
+          campaign_weeks?: number | null
           commission_pct_override?: number | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
           expected_close_date?: string | null
           id?: string
+          impressions?: number | null
           notes?: string | null
           owner_id?: string | null
           probability?: number | null
           product_id?: string | null
           source?: string | null
+          sov_pct?: number | null
           stage?: Database["public"]["Enums"]["deal_stage"]
           title: string
           updated_at?: string
@@ -241,17 +251,22 @@ export type Database = {
           won_at?: string | null
         }
         Update: {
+          campaign_end?: string | null
+          campaign_start?: string | null
+          campaign_weeks?: number | null
           commission_pct_override?: number | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
           expected_close_date?: string | null
           id?: string
+          impressions?: number | null
           notes?: string | null
           owner_id?: string | null
           probability?: number | null
           product_id?: string | null
           source?: string | null
+          sov_pct?: number | null
           stage?: Database["public"]["Enums"]["deal_stage"]
           title?: string
           updated_at?: string
@@ -337,39 +352,57 @@ export type Database = {
       products: {
         Row: {
           active: boolean
+          address: string | null
           commission_pct_provision_only: number | null
           commission_pct_with_base: number | null
+          contacts_per_week: number | null
           created_at: string
           default_commission_pct: number
           description: string | null
+          dimensions: string | null
+          format: string | null
           id: string
           image_url: string | null
+          latitude: number | null
+          longitude: number | null
           name: string
           screen_type: Database["public"]["Enums"]["screen_type"]
           updated_at: string
         }
         Insert: {
           active?: boolean
+          address?: string | null
           commission_pct_provision_only?: number | null
           commission_pct_with_base?: number | null
+          contacts_per_week?: number | null
           created_at?: string
           default_commission_pct?: number
           description?: string | null
+          dimensions?: string | null
+          format?: string | null
           id?: string
           image_url?: string | null
+          latitude?: number | null
+          longitude?: number | null
           name: string
           screen_type?: Database["public"]["Enums"]["screen_type"]
           updated_at?: string
         }
         Update: {
           active?: boolean
+          address?: string | null
           commission_pct_provision_only?: number | null
           commission_pct_with_base?: number | null
+          contacts_per_week?: number | null
           created_at?: string
           default_commission_pct?: number
           description?: string | null
+          dimensions?: string | null
+          format?: string | null
           id?: string
           image_url?: string | null
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           screen_type?: Database["public"]["Enums"]["screen_type"]
           updated_at?: string

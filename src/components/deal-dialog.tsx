@@ -17,7 +17,14 @@ const STAGE_LABEL: Record<string, string> = {
 
 export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpenChange: (v: boolean) => void; deal: any | null }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState({ title: "", customer_id: "", value: "", stage: "ny", probability: "25", expected_close_date: "", source: "", notes: "", product_id: "", commission_pct_override: "" });
+  const emptyForm = {
+    title: "", customer_id: "", value: "", stage: "ny", probability: "25", expected_close_date: "",
+    source: "", notes: "", product_id: "", commission_pct_override: "",
+    sov_pct: "", impressions: "",
+    schedule_mode: "dates" as "dates" | "weeks",
+    campaign_start: "", campaign_end: "", campaign_weeks: "",
+  };
+  const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(false);
 
   const { data: customers } = useQuery({
@@ -35,8 +42,14 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
       stage: deal.stage ?? "ny", probability: String(deal.probability ?? 25),
       expected_close_date: deal.expected_close_date ?? "", source: deal.source ?? "", notes: deal.notes ?? "",
       product_id: deal.product_id ?? "", commission_pct_override: deal.commission_pct_override != null ? String(deal.commission_pct_override) : "",
+      sov_pct: deal.sov_pct != null ? String(deal.sov_pct) : "",
+      impressions: deal.impressions != null ? String(deal.impressions) : "",
+      schedule_mode: deal.campaign_weeks && !deal.campaign_start ? "weeks" : "dates",
+      campaign_start: deal.campaign_start ?? "",
+      campaign_end: deal.campaign_end ?? "",
+      campaign_weeks: deal.campaign_weeks != null ? String(deal.campaign_weeks) : "",
     });
-    else setForm({ title: "", customer_id: "", value: "", stage: "ny", probability: "25", expected_close_date: "", source: "", notes: "", product_id: "", commission_pct_override: "" });
+    else setForm(emptyForm);
   }, [deal, open]);
 
   const submit = async (e: React.FormEvent) => {
@@ -54,6 +67,11 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
       notes: form.notes || null,
       product_id: form.product_id || null,
       commission_pct_override: form.commission_pct_override !== "" ? Number(form.commission_pct_override) : null,
+      sov_pct: form.sov_pct !== "" ? Number(form.sov_pct) : null,
+      impressions: form.impressions !== "" ? Number(form.impressions) : null,
+      campaign_start: form.schedule_mode === "dates" ? (form.campaign_start || null) : null,
+      campaign_end: form.schedule_mode === "dates" ? (form.campaign_end || null) : null,
+      campaign_weeks: form.schedule_mode === "weeks" && form.campaign_weeks !== "" ? Number(form.campaign_weeks) : null,
       owner_id: deal?.owner_id ?? u.user?.id,
       created_by: deal?.created_by ?? u.user?.id,
     };
@@ -78,7 +96,7 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{deal ? "Redigera affär" : "Ny affär"}</DialogTitle></DialogHeader>
         <form onSubmit={submit} className="space-y-3">
           <div><Label>Titel *</Label><Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required /></div>
@@ -120,6 +138,37 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
               <Label>Provision % (override)</Label>
               <Input type="number" step="0.1" value={form.commission_pct_override} onChange={e => setForm({ ...form, commission_pct_override: e.target.value })} placeholder="Auto från produkt" />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>SOV (%)</Label>
+              <Input type="number" step="0.1" min="0" max="100" value={form.sov_pct} onChange={e => setForm({ ...form, sov_pct: e.target.value })} placeholder="Share of voice" />
+            </div>
+            <div>
+              <Label>Antal visningar</Label>
+              <Input type="number" min="0" value={form.impressions} onChange={e => setForm({ ...form, impressions: e.target.value })} placeholder="t.ex. 250000" />
+            </div>
+          </div>
+          <div className="space-y-2 rounded-md border p-3">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Kampanjperiod</Label>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setForm({ ...form, schedule_mode: "dates" })}
+                className={`flex-1 text-xs p-2 rounded border ${form.schedule_mode === "dates" ? "border-primary bg-primary/10" : "border-border"}`}>
+                Bestämda datum
+              </button>
+              <button type="button" onClick={() => setForm({ ...form, schedule_mode: "weeks" })}
+                className={`flex-1 text-xs p-2 rounded border ${form.schedule_mode === "weeks" ? "border-primary bg-primary/10" : "border-border"}`}>
+                Antal veckor (datum ej satta)
+              </button>
+            </div>
+            {form.schedule_mode === "dates" ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Start</Label><Input type="date" value={form.campaign_start} onChange={e => setForm({ ...form, campaign_start: e.target.value })} /></div>
+                <div><Label>Slut</Label><Input type="date" value={form.campaign_end} onChange={e => setForm({ ...form, campaign_end: e.target.value })} /></div>
+              </div>
+            ) : (
+              <div><Label>Antal veckor</Label><Input type="number" min="1" value={form.campaign_weeks} onChange={e => setForm({ ...form, campaign_weeks: e.target.value })} placeholder="t.ex. 4" /></div>
+            )}
           </div>
           <div><Label>Källa</Label><Input value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} placeholder="Mejl, rekommendation, kampanj..." /></div>
           <div><Label>Anteckningar</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
