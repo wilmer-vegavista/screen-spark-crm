@@ -170,7 +170,9 @@ function Dashboard() {
   const compType = myComp?.compensation_type ?? "med_grundlon";
   const defaultPct = Number(myComp?.default_commission_pct ?? 0);
   const baseSalary = compType === "endast_provision" ? 0 : Number(myComp?.base_salary ?? 0);
-  const myBudget = Number(myComp?.monthly_budget ?? 0);
+  const currentMonth = now.getMonth() + 1;
+  const myMonthlyBudgetRow = (data?.monthlyBudgets ?? []).find(b => b.user_id === user?.id && b.month === currentMonth);
+  const myBudget = Number(myMonthlyBudgetRow?.amount ?? myComp?.monthly_budget ?? 0);
   const mySoldThisMonth = scheduleEntries
     .filter(e => e.owner_id === user?.id && e.date >= monthStart && e.date <= monthEnd)
     .reduce((s, e) => s + e.amount, 0);
