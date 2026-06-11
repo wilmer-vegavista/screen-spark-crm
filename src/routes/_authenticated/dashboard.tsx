@@ -290,6 +290,31 @@ function Dashboard() {
           </Card>
         </div>
 
+        {/* Monthly company sales for current year */}
+        <Card className="p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarDays className="size-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold">Försäljning per månad ({now.getFullYear()})</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={monthlyTotals}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis dataKey="name" className="text-xs" />
+              <YAxis className="text-xs" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+              <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                {monthlyTotals.map((_, i) => (
+                  <Cell key={i} fill={i === currentMonthIdx ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.45)"} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="mt-3 text-xs text-muted-foreground">
+            Totalt i år: <span className="font-semibold text-foreground">{fmt(yearTotal)}</span> · Snitt/månad hittills:{" "}
+            <span className="font-semibold text-foreground">{fmt(yearTotal / (currentMonthIdx + 1))}</span>
+          </div>
+        </Card>
+
         {/* Seller bar chart */}
         <Card className="p-5">
           <h3 className="text-sm font-semibold mb-4">Försäljning per säljare i år</h3>
