@@ -400,6 +400,7 @@ export type Database = {
           id: string
           impressions: number | null
           order_id: string
+          period_unit: Database["public"]["Enums"]["period_unit"]
           position: number
           product_id: string | null
           product_name: string
@@ -414,6 +415,7 @@ export type Database = {
           id?: string
           impressions?: number | null
           order_id: string
+          period_unit?: Database["public"]["Enums"]["period_unit"]
           position?: number
           product_id?: string | null
           product_name: string
@@ -428,6 +430,7 @@ export type Database = {
           id?: string
           impressions?: number | null
           order_id?: string
+          period_unit?: Database["public"]["Enums"]["period_unit"]
           position?: number
           product_id?: string | null
           product_name?: string
@@ -931,6 +934,7 @@ export type Database = {
         | "godkant"
         | "levererat"
       order_type: "offert" | "bokning"
+      period_unit: "veckor" | "manader" | "ar"
       screen_type: "egen" | "extern" | "digital"
     }
     CompositeTypes: {
@@ -1087,6 +1091,7 @@ export const Constants = {
         "levererat",
       ],
       order_type: ["offert", "bokning"],
+      period_unit: ["veckor", "manader", "ar"],
       screen_type: ["egen", "extern", "digital"],
     },
   },

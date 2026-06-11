@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 
 
 
+type PeriodUnit = "veckor" | "manader" | "ar";
+
 type Item = {
   id?: string;
   product_id: string | null;
@@ -31,6 +33,7 @@ type Item = {
   sov_pct: string;
   impressions: string;
   weeks: string;
+  period_unit: PeriodUnit;
   unit_price: string;
   commission_pct: string;
 };
@@ -41,6 +44,7 @@ const emptyItem = (): Item => ({
   sov_pct: "",
   impressions: "",
   weeks: "1",
+  period_unit: "veckor",
   unit_price: "0",
   commission_pct: "0",
 });
@@ -191,6 +195,7 @@ export function OrderDialog({
             sov_pct: d.sov_pct?.toString() ?? "",
             impressions: d.impressions?.toString() ?? "",
             weeks: d.weeks?.toString() ?? "1",
+            period_unit: ((d as any).period_unit ?? "veckor") as PeriodUnit,
             unit_price: d.unit_price?.toString() ?? "0",
             commission_pct: d.commission_pct?.toString() ?? "0",
           })));
@@ -329,6 +334,7 @@ export function OrderDialog({
         sov_pct: it.sov_pct ? Number(it.sov_pct) : null,
         impressions: it.impressions ? Number(it.impressions) : null,
         weeks,
+        period_unit: it.period_unit,
         unit_price: unitPrice,
         commission_pct: pct,
         commission_amount: lineAmount * pct / 100,
@@ -616,6 +622,7 @@ export function OrderDialog({
                                   sov_pct: "",
                                   impressions: "",
                                   weeks: "1",
+                                  period_unit: "veckor" as PeriodUnit,
                                   unit_price: "0",
                                   commission_pct: commissionPctFor(p).toString(),
                                 }];
@@ -654,13 +661,32 @@ export function OrderDialog({
                         <Label className="text-xs">SOV %</Label>
                         <Input type="number" step="0.01" value={it.sov_pct} onChange={e => updItem(idx, { sov_pct: e.target.value })} />
                       </div>
-                      <div className="col-span-3">
+                      <div className="col-span-2">
                         <Label className="text-xs">Antal visningar</Label>
                         <Input type="number" value={it.impressions} onChange={e => updItem(idx, { impressions: e.target.value })} />
                       </div>
-                      <div className="col-span-1">
-                        <Label className="text-xs">Veckor</Label>
-                        <Input type="number" min="1" value={it.weeks} onChange={e => updItem(idx, { weeks: e.target.value })} />
+                      <div className="col-span-2">
+                        <Label className="text-xs">Period</Label>
+                        <div className="flex gap-1">
+                          <Input
+                            type="number"
+                            min="1"
+                            value={it.weeks}
+                            onChange={e => updItem(idx, { weeks: e.target.value })}
+                            className="w-14"
+                          />
+                          <Select
+                            value={it.period_unit}
+                            onValueChange={(v: PeriodUnit) => updItem(idx, { period_unit: v })}
+                          >
+                            <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="veckor">veckor</SelectItem>
+                              <SelectItem value="manader">månader</SelectItem>
+                              <SelectItem value="ar">år</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                       <div className="col-span-1 flex justify-end">
                         <Button type="button" size="icon" variant="ghost" onClick={() => setItems(a => a.filter((_, i) => i !== idx))}>
