@@ -119,6 +119,43 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
     onOpenChange(false);
   };
 
+  const downloadOrder = async () => {
+    if (!deal) return;
+    try {
+      const [{ data: customer }, { data: product }, { data: pkg }, { data: u }] = await Promise.all([
+        form.customer_id ? supabase.from("customers").select("*").eq("id", form.customer_id).maybeSingle() : Promise.resolve({ data: null }),
+        form.product_id ? supabase.from("products").select("*").eq("id", form.product_id).maybeSingle() : Promise.resolve({ data: null }),
+        form.package_id ? supabase.from("product_packages").select("*").eq("id", form.package_id).maybeSingle() : Promise.resolve({ data: null }),
+        supabase.auth.getUser(),
+      ]);
+      let sellerName: string | null = null;
+      const ownerId = deal.owner_id ?? u.user?.id;
+      if (ownerId) {
+        const { data: prof } = await supabase.from("profiles").select("full_name, email").eq("id", ownerId).maybeSingle();
+        sellerName = prof?.full_name ?? prof?.email ?? null;
+      }
+      generateOrderConfirmationPdf({
+        deal: {
+          ...deal,
+          value: form.value ? Number(form.value) : deal.value,
+          sov_pct: form.sov_pct !== "" ? Number(form.sov_pct) : deal.sov_pct,
+          impressions: form.impressions !== "" ? Number(form.impressions) : deal.impressions,
+          campaign_start: form.schedule_mode === "dates" ? (form.campaign_start || null) : null,
+          campaign_end: form.schedule_mode === "dates" ? (form.campaign_end || null) : null,
+          campaign_weeks: form.schedule_mode === "weeks" && form.campaign_weeks !== "" ? Number(form.campaign_weeks) : deal.campaign_weeks,
+          notes: form.notes,
+        },
+        customer,
+        product,
+        pkg,
+        sellerName,
+        sellerEmail: u.user?.email ?? null,
+      });
+    } catch (e: any) {
+      toast.error(e.message ?? "Kunde inte skapa PDF");
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
