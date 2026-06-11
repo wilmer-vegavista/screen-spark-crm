@@ -317,8 +317,12 @@ function ProductsAdmin() {
                 {p.description && <div className="text-[10px] text-muted-foreground">{p.description}</div>}
               </TableCell>
               <TableCell>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full ${p.screen_type === "egen" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-                  {p.screen_type === "egen" ? "Egen skärm" : "Extern skärm"}
+                <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                  p.screen_type === "egen" ? "bg-primary/15 text-primary" :
+                  p.screen_type === "digital" ? "bg-secondary/50 text-secondary-foreground" :
+                  "bg-muted text-muted-foreground"
+                }`}>
+                  {p.screen_type === "egen" ? "Egen skärm" : p.screen_type === "digital" ? "Digital produkt" : "Extern skärm"}
                 </span>
               </TableCell>
               <TableCell className="text-right">{p.commission_pct_provision_only ?? p.default_commission_pct}%</TableCell>
