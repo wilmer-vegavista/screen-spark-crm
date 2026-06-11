@@ -72,6 +72,17 @@ function LonPage() {
 }
 
 // ---------- Salary calc ----------
+// Pick the right commission % for a deal given the seller's compensation type
+function pickPct(deal: any, product: any, compType: string, defaultPct: number) {
+  if (deal.commission_pct_override != null) return Number(deal.commission_pct_override);
+  if (product) {
+    const col = compType === "endast_provision" ? product.commission_pct_provision_only : product.commission_pct_with_base;
+    if (col != null) return Number(col);
+    if (product.default_commission_pct != null) return Number(product.default_commission_pct);
+  }
+  return defaultPct;
+}
+
 function useSalary(userId: string, from: Date, to: Date) {
   return useQuery({
     queryKey: ["salary", userId, from.toISOString(), to.toISOString()],
@@ -88,23 +99,19 @@ function useSalary(userId: string, from: Date, to: Date) {
         supabase.from("products").select("*"),
       ]);
       const prodMap = new Map((products ?? []).map(p => [p.id, p]));
-      const baseSalary = Number(comp?.base_salary ?? 0);
+      const compType = comp?.compensation_type ?? "med_grundlon";
+      const baseSalary = compType === "endast_provision" ? 0 : Number(comp?.base_salary ?? 0);
       const defaultPct = Number(comp?.default_commission_pct ?? 0);
       const rows = (deals ?? []).map(d => {
         const product = d.product_id ? prodMap.get(d.product_id) : null;
-        const pct =
-          d.commission_pct_override != null
-            ? Number(d.commission_pct_override)
-            : product
-            ? Number(product.default_commission_pct)
-            : defaultPct;
+        const pct = pickPct(d, product, compType, defaultPct);
         const value = Number(d.value ?? 0);
         const commission = (value * pct) / 100;
         return { id: d.id, title: d.title, product: product?.name ?? "—", value, pct, commission, won_at: d.won_at };
       });
       const totalCommission = rows.reduce((s, r) => s + r.commission, 0);
       const totalValue = rows.reduce((s, r) => s + r.value, 0);
-      return { comp, rows, baseSalary, defaultPct, totalCommission, totalValue, total: baseSalary + totalCommission };
+      return { comp, compType, rows, baseSalary, defaultPct, totalCommission, totalValue, total: baseSalary + totalCommission };
     },
   });
 }
