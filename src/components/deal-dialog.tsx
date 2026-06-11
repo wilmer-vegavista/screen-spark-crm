@@ -23,6 +23,7 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
     sov_pct: "", impressions: "",
     schedule_mode: "dates" as "dates" | "weeks",
     campaign_start: "", campaign_end: "", campaign_weeks: "",
+    package_id: "",
   };
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(false);
@@ -35,6 +36,27 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
     queryKey: ["products-list"],
     queryFn: async () => (await supabase.from("products").select("id, name, default_commission_pct").eq("active", true).order("name")).data ?? [],
   });
+  const { data: packages } = useQuery({
+    queryKey: ["packages-list"],
+    queryFn: async () => (await supabase.from("product_packages").select("*").eq("active", true).order("name")).data ?? [],
+  });
+
+  const filteredPackages = (packages ?? []).filter(p => !form.product_id || !p.product_id || p.product_id === form.product_id);
+
+  const applyPackage = (id: string) => {
+    const pkg = (packages ?? []).find(p => p.id === id);
+    if (!pkg) { setForm({ ...form, package_id: "" }); return; }
+    setForm({
+      ...form,
+      package_id: pkg.id,
+      product_id: pkg.product_id ?? form.product_id,
+      value: pkg.price != null ? String(pkg.price) : form.value,
+      sov_pct: pkg.sov_pct != null ? String(pkg.sov_pct) : form.sov_pct,
+      impressions: pkg.impressions != null ? String(pkg.impressions) : form.impressions,
+      campaign_weeks: pkg.weeks != null ? String(pkg.weeks) : form.campaign_weeks,
+      schedule_mode: pkg.weeks != null && !form.campaign_start ? "weeks" : form.schedule_mode,
+    });
+  };
 
   useEffect(() => {
     if (deal) setForm({
@@ -48,6 +70,7 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
       campaign_start: deal.campaign_start ?? "",
       campaign_end: deal.campaign_end ?? "",
       campaign_weeks: deal.campaign_weeks != null ? String(deal.campaign_weeks) : "",
+      package_id: deal.package_id ?? "",
     });
     else setForm(emptyForm);
   }, [deal, open]);
