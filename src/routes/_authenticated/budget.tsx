@@ -8,8 +8,12 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Target, Calculator } from "lucide-react";
+import { Target, Calculator, TrendingDown, TrendingUp } from "lucide-react";
+import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
+import { startOfYear, endOfYear, startOfMonth, endOfMonth } from "date-fns";
 
 export const Route = createFileRoute("/_authenticated/budget")({
   component: BudgetPage,
@@ -52,7 +56,18 @@ function BudgetPage() {
             </SelectContent>
           </Select>
         </div>
-        <SellersList year={year} />
+        <Tabs defaultValue="satt">
+          <TabsList>
+            <TabsTrigger value="satt">Sätt budget</TabsTrigger>
+            <TabsTrigger value="kvar">Kvar till budget</TabsTrigger>
+          </TabsList>
+          <TabsContent value="satt">
+            <SellersList year={year} />
+          </TabsContent>
+          <TabsContent value="kvar">
+            <BudgetRemaining year={year} />
+          </TabsContent>
+        </Tabs>
       </div>
     </>
   );
