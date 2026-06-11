@@ -23,6 +23,8 @@ type Package = {
   description: string | null;
   price: number;
   weeks: number | null;
+  views: number | null;
+  sov: number | null;
   active: boolean;
 };
 
@@ -111,15 +113,17 @@ export function PackagesManager() {
               <TableHead>Skärmar</TableHead>
               <TableHead className="text-right">Pris</TableHead>
               <TableHead className="text-right">Veckor</TableHead>
+              <TableHead className="text-right">Visningar</TableHead>
+              <TableHead className="text-right">SOV %</TableHead>
               <TableHead>Aktiv</TableHead>
               <TableHead className="w-24"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Laddar…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Laddar…</TableCell></TableRow>
             ) : (packages ?? []).length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Inga paket än</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Inga paket än</TableCell></TableRow>
             ) : packages!.map((p) => {
               const prods = productsByPackage.get(p.id) ?? [];
               return (
@@ -135,6 +139,8 @@ export function PackagesManager() {
                   </TableCell>
                   <TableCell className="text-right">{Number(p.price).toLocaleString("sv-SE")} kr</TableCell>
                   <TableCell className="text-right">{p.weeks ?? "—"}</TableCell>
+                  <TableCell className="text-right">{p.views != null ? Number(p.views).toLocaleString("sv-SE") : "—"}</TableCell>
+                  <TableCell className="text-right">{p.sov != null ? `${p.sov}%` : "—"}</TableCell>
                   <TableCell>{p.active ? "Ja" : "Nej"}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
@@ -206,6 +212,8 @@ function PackageDialog({
       description: form.description || null,
       price: Number(form.price ?? 0),
       weeks: form.weeks != null && (form.weeks as any) !== "" ? Number(form.weeks) : null,
+      views: form.views != null && (form.views as any) !== "" ? Number(form.views) : null,
+      sov: form.sov != null && (form.sov as any) !== "" ? Number(form.sov) : null,
       active: form.active ?? true,
       product_id: null,
     };
@@ -257,6 +265,14 @@ function PackageDialog({
           <div>
             <Label>Antal veckor</Label>
             <Input type="number" value={form.weeks ?? ""} onChange={(e) => setForm({ ...form, weeks: e.target.value as any })} />
+          </div>
+          <div>
+            <Label>Antal visningar</Label>
+            <Input type="number" value={form.views ?? ""} placeholder="t.ex. 100000" onChange={(e) => setForm({ ...form, views: e.target.value as any })} />
+          </div>
+          <div>
+            <Label>SOV (%)</Label>
+            <Input type="number" step="0.1" value={form.sov ?? ""} placeholder="t.ex. 25" onChange={(e) => setForm({ ...form, sov: e.target.value as any })} />
           </div>
           <div className="col-span-2 flex items-center gap-2">
             <Switch checked={form.active ?? true} onCheckedChange={(v) => setForm({ ...form, active: v })} />

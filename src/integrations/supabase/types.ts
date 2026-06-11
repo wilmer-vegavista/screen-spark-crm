@@ -603,8 +603,10 @@ export type Database = {
           name: string
           price: number
           product_id: string | null
+          sov: number | null
           sov_pct: number | null
           updated_at: string
+          views: number | null
           weeks: number | null
         }
         Insert: {
@@ -616,8 +618,10 @@ export type Database = {
           name: string
           price?: number
           product_id?: string | null
+          sov?: number | null
           sov_pct?: number | null
           updated_at?: string
+          views?: number | null
           weeks?: number | null
         }
         Update: {
@@ -629,8 +633,10 @@ export type Database = {
           name?: string
           price?: number
           product_id?: string | null
+          sov?: number | null
           sov_pct?: number | null
           updated_at?: string
+          views?: number | null
           weeks?: number | null
         }
         Relationships: [
