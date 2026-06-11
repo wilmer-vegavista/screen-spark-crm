@@ -21,6 +21,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  LabelList,
 } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
