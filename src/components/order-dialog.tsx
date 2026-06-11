@@ -68,6 +68,24 @@ export function OrderDialog({
       return data ?? [];
     },
   });
+  const { data: sellerComp } = useQuery({
+    queryKey: ["my-compensation"],
+    queryFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return null;
+      const { data } = await supabase.from("seller_compensation").select("*").eq("user_id", u.user.id).maybeSingle();
+      return data;
+    },
+  });
+
+  const commissionPctFor = (p: any): number => {
+    if (!p) return 0;
+    const type = sellerComp?.compensation_type;
+    if (type === "endast_provision" && p.commission_pct_provision_only != null) return Number(p.commission_pct_provision_only);
+    if (type === "med_grundlon" && p.commission_pct_with_base != null) return Number(p.commission_pct_with_base);
+    return Number(p.default_commission_pct ?? 0);
+  };
+
 
   const [form, setForm] = useState({
     order_type: "offert" as "offert" | "bokning",
