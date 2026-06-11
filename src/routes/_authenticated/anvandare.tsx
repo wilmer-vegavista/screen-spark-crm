@@ -26,7 +26,7 @@ function SaljarePage() {
   if (!isAdmin) {
     return (
       <>
-        <PageHeader title="Säljare" description="Hantera säljare och deras uppgifter" />
+        <PageHeader title="Användare" description="Hantera användare och deras uppgifter" />
         <div className="p-6">
           <Card className="p-6 text-sm text-muted-foreground">
             Du har inte behörighet att se denna sida.
@@ -38,7 +38,7 @@ function SaljarePage() {
 
   return (
     <>
-      <PageHeader title="Säljare" description="Lägg till och hantera säljare, provision och grundlön" />
+      <PageHeader title="Användare" description="Lägg till och hantera användare, provision och grundlön" />
       <div className="p-6">
         <SellersTable />
       </div>
@@ -89,11 +89,11 @@ function SellersTable() {
     <Card>
       <div className="p-4 border-b flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold">Säljare</h3>
+          <h3 className="text-sm font-semibold">Användare</h3>
           <p className="text-xs text-muted-foreground">Kontaktuppgifter, lön och inloggning. Lösenord visas endast för admin.</p>
         </div>
         <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-          <Plus className="size-4 mr-1" /> Ny säljare
+          <Plus className="size-4 mr-1" /> Ny användare
         </Button>
       </div>
       {isLoading ? (
