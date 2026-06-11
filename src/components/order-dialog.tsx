@@ -156,6 +156,9 @@ export function OrderDialog({
         contact_email: order.contact_email ?? "",
         contact_phone: order.contact_phone ?? "",
         notes: order.notes ?? "",
+        invoice_start_date: order.invoice_start_date ? new Date(order.invoice_start_date) : new Date(),
+        billing_frequency: (order.billing_frequency as BillingFrequency) ?? "engang",
+        billing_duration_months: order.billing_duration_months ?? 1,
       });
       setSelectedWeeks(Array.isArray(order.selected_weeks) ? order.selected_weeks : []);
       setExactDates(Array.isArray(order.exact_dates) ? order.exact_dates.map((d: string) => new Date(d)) : []);
