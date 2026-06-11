@@ -305,6 +305,22 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
             <Input type="number" step="0.1" min={0} value={pct} onChange={(e) => setPct(e.target.value)} />
             <p className="text-[10px] text-muted-foreground mt-1">Används endast om affären saknar produkt.</p>
           </div>
+          {!seller && (
+            <label className="flex items-start gap-2 rounded-md border p-3 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sendInvite}
+                onChange={(e) => setSendInvite(e.target.checked)}
+                className="mt-0.5"
+              />
+              <div>
+                <div className="font-semibold">Skicka inbjudan via e-post</div>
+                <div className="text-muted-foreground">
+                  Säljaren får ett mail med en länk där hen sätter sitt eget lösenord. Avmarkera för att istället generera ett tillfälligt lösenord.
+                </div>
+              </div>
+            </label>
+          )}
           {showTempPassword && (
             <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs">
               <div className="font-semibold text-warning">Tillfälligt lösenord</div>
