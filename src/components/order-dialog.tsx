@@ -280,6 +280,19 @@ export function OrderDialog({
     const { data: u } = await supabase.auth.getUser();
     const uid = u.user?.id;
 
+    const effectiveOwner = ownerId ?? uid;
+
+    // Validate splits
+    const cleanSplits = splits
+      .filter(s => s.user_id && s.user_id !== effectiveOwner && Number(s.share_pct) > 0)
+      .map(s => ({ user_id: s.user_id, share_pct: Number(s.share_pct) }));
+    const totalSplit = cleanSplits.reduce((sum, s) => sum + s.share_pct, 0);
+    if (totalSplit > 100) {
+      setSaving(false);
+      toast.error("Total delningsprocent kan inte överstiga 100%");
+      return;
+    }
+
     const orderPayload: any = {
       ...form,
       invoice_start_date: format(form.invoice_start_date, "yyyy-MM-dd"),
@@ -287,7 +300,7 @@ export function OrderDialog({
       total_commission: totalCommission,
       selected_weeks: selectedWeeks,
       exact_dates: exactDates.map(d => format(d, "yyyy-MM-dd")),
-      owner_id: order?.owner_id ?? uid,
+      owner_id: effectiveOwner,
       created_by: order?.created_by ?? uid,
     };
 
