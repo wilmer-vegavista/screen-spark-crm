@@ -422,23 +422,6 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
                 <div className="text-muted-foreground mt-1">Banners, CTV, programmatic</div>
               </button>
             </div>
-              <button
-                type="button"
-                onClick={() => setScreenType("egen")}
-                className={`text-left p-3 rounded-md border text-xs ${screenType === "egen" ? "border-primary bg-primary/10" : "border-border"}`}
-              >
-                <div className="font-semibold">Egen skärm</div>
-                <div className="text-muted-foreground mt-1">Vi äger skärmen själva</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setScreenType("extern")}
-                className={`text-left p-3 rounded-md border text-xs ${screenType === "extern" ? "border-primary bg-primary/10" : "border-border"}`}
-              >
-                <div className="font-semibold">Extern skärm</div>
-                <div className="text-muted-foreground mt-1">Hyrd / inköpt från partner</div>
-              </button>
-            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
