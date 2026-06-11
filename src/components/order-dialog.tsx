@@ -129,6 +129,9 @@ export function OrderDialog({
     contact_email: "",
     contact_phone: "",
     notes: "",
+    invoice_start_date: new Date() as Date,
+    billing_frequency: "engang" as BillingFrequency,
+    billing_duration_months: 1,
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
   const [totalPrice, setTotalPrice] = useState<string>("0");
