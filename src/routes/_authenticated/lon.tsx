@@ -304,7 +304,8 @@ function ProductsAdmin() {
           <TableRow>
             <TableHead>Namn</TableHead>
             <TableHead>Beskrivning</TableHead>
-            <TableHead className="text-right">Provision %</TableHead>
+            <TableHead className="text-right">% endast prov.</TableHead>
+            <TableHead className="text-right">% med grundlön</TableHead>
             <TableHead className="w-24"></TableHead>
           </TableRow>
         </TableHeader>
@@ -313,7 +314,8 @@ function ProductsAdmin() {
             <TableRow key={p.id}>
               <TableCell className="font-medium">{p.name}</TableCell>
               <TableCell className="text-muted-foreground text-xs">{p.description || "—"}</TableCell>
-              <TableCell className="text-right">{p.default_commission_pct}%</TableCell>
+              <TableCell className="text-right">{p.commission_pct_provision_only ?? p.default_commission_pct}%</TableCell>
+              <TableCell className="text-right">{p.commission_pct_with_base ?? p.default_commission_pct}%</TableCell>
               <TableCell className="text-right">
                 <Button variant="ghost" size="icon" onClick={() => { setEditing(p); setOpen(true); }}>
                   <Pencil className="size-3.5" />
@@ -325,7 +327,7 @@ function ProductsAdmin() {
             </TableRow>
           ))}
           {(products ?? []).length === 0 && (
-            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Inga produkter ännu</TableCell></TableRow>
+            <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Inga produkter ännu</TableCell></TableRow>
           )}
         </TableBody>
       </Table>
