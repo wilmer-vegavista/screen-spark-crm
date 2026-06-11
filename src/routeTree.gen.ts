@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRapporterRouteImport } from './routes/_authenticated/rapporter'
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedMaterialRouteImport } from './routes/_authenticated/material'
+import { Route as AuthenticatedLonRouteImport } from './routes/_authenticated/lon'
 import { Route as AuthenticatedKunderRouteImport } from './routes/_authenticated/kunder'
 import { Route as AuthenticatedKampanjerRouteImport } from './routes/_authenticated/kampanjer'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -49,6 +50,11 @@ const AuthenticatedMaterialRoute = AuthenticatedMaterialRouteImport.update({
   path: '/material',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLonRoute = AuthenticatedLonRouteImport.update({
+  id: '/lon',
+  path: '/lon',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedKunderRoute = AuthenticatedKunderRouteImport.update({
   id: '/kunder',
   path: '/kunder',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
+  '/lon': typeof AuthenticatedLonRoute
   '/material': typeof AuthenticatedMaterialRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
+  '/lon': typeof AuthenticatedLonRoute
   '/material': typeof AuthenticatedMaterialRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/kampanjer': typeof AuthenticatedKampanjerRoute
   '/_authenticated/kunder': typeof AuthenticatedKunderRoute
+  '/_authenticated/lon': typeof AuthenticatedLonRoute
   '/_authenticated/material': typeof AuthenticatedMaterialRoute
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/rapporter': typeof AuthenticatedRapporterRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/kampanjer'
     | '/kunder'
+    | '/lon'
     | '/material'
     | '/pipeline'
     | '/rapporter'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/kampanjer'
     | '/kunder'
+    | '/lon'
     | '/material'
     | '/pipeline'
     | '/rapporter'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/kampanjer'
     | '/_authenticated/kunder'
+    | '/_authenticated/lon'
     | '/_authenticated/material'
     | '/_authenticated/pipeline'
     | '/_authenticated/rapporter'
@@ -193,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMaterialRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/lon': {
+      id: '/_authenticated/lon'
+      path: '/lon'
+      fullPath: '/lon'
+      preLoaderRoute: typeof AuthenticatedLonRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/kunder': {
       id: '/_authenticated/kunder'
       path: '/kunder'
@@ -229,6 +248,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedKampanjerRoute: typeof AuthenticatedKampanjerRoute
   AuthenticatedKunderRoute: typeof AuthenticatedKunderRoute
+  AuthenticatedLonRoute: typeof AuthenticatedLonRoute
   AuthenticatedMaterialRoute: typeof AuthenticatedMaterialRoute
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedRapporterRoute: typeof AuthenticatedRapporterRoute
@@ -239,6 +259,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedKampanjerRoute: AuthenticatedKampanjerRoute,
   AuthenticatedKunderRoute: AuthenticatedKunderRoute,
+  AuthenticatedLonRoute: AuthenticatedLonRoute,
   AuthenticatedMaterialRoute: AuthenticatedMaterialRoute,
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedRapporterRoute: AuthenticatedRapporterRoute,
