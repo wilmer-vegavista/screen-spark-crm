@@ -1,11 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
-import { Wallet, TrendingUp, FileText, Package } from "lucide-react";
-import { startOfMonth, endOfMonth, startOfQuarter, startOfYear, endOfYear } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
+import { Wallet, TrendingUp, FileText, Package, Target, CalendarDays } from "lucide-react";
+import { startOfMonth, endOfMonth, startOfQuarter, startOfYear, endOfYear, differenceInBusinessDays } from "date-fns";
 import {
   BarChart,
   Bar,
@@ -34,7 +39,7 @@ function pickPct(deal: any, product: any, compType: string, defaultPct: number) 
 }
 
 function Dashboard() {
-  const { user } = useCurrentUser();
+  const { user, isAdmin } = useCurrentUser();
   const now = new Date();
   const yearStart = startOfYear(now);
   const yearEnd = endOfYear(now);
@@ -45,11 +50,12 @@ function Dashboard() {
   const { data } = useQuery({
     queryKey: ["dashboard-stats", yearStart.toISOString()],
     queryFn: async () => {
-      const [{ data: deals }, { data: products }, { data: profiles }, { data: comps }] = await Promise.all([
+      const [{ data: deals }, { data: products }, { data: profiles }, { data: comps }, { data: company }] = await Promise.all([
         supabase.from("deals").select("*").gte("won_at", yearStart.toISOString()).lte("won_at", yearEnd.toISOString()).eq("stage", "vunnen"),
         supabase.from("products").select("*"),
         supabase.from("profiles").select("id, full_name, email"),
         supabase.from("seller_compensation").select("*"),
+        supabase.from("company_settings").select("*").maybeSingle(),
       ]);
       const { data: openDeals } = await supabase.from("deals").select("*").not("stage", "in", "(vunnen,forlorad)");
       return {
@@ -58,6 +64,7 @@ function Dashboard() {
         products: products ?? [],
         profiles: profiles ?? [],
         comps: comps ?? [],
+        company: company ?? { monthly_budget: 0 },
       };
     },
   });
@@ -108,11 +115,15 @@ function Dashboard() {
   const myOpen = (data?.openDeals ?? []).filter(d => d.owner_id === user?.id);
   const myOpenValue = myOpen.reduce((s, d) => s + Number(d.value ?? 0), 0);
 
-  // My salary (this month)
-  const myComp = user ? compMap.get(user.id) : null;
+  // My salary + budget (this month)
+  const myComp: any = user ? compMap.get(user.id) : null;
   const compType = myComp?.compensation_type ?? "med_grundlon";
   const defaultPct = Number(myComp?.default_commission_pct ?? 0);
   const baseSalary = compType === "endast_provision" ? 0 : Number(myComp?.base_salary ?? 0);
+  const myBudget = Number(myComp?.monthly_budget ?? 0);
+  const mySoldThisMonth = (data?.wonDeals ?? [])
+    .filter(d => d.owner_id === user?.id && d.won_at && new Date(d.won_at) >= monthStart && new Date(d.won_at) <= monthEnd)
+    .reduce((s, d) => s + Number(d.value ?? 0), 0);
   const myWonThisMonth = (data?.wonDeals ?? []).filter(d => {
     if (d.owner_id !== user?.id || !d.won_at) return false;
     const w = new Date(d.won_at);
@@ -125,16 +136,97 @@ function Dashboard() {
   }, 0);
   const mySalaryTotal = baseSalary + myCommission;
 
+  // Daily pace toward my monthly budget (business days remaining)
+  const daysLeft = Math.max(differenceInBusinessDays(monthEnd, now) + 1, 1);
+  const myRemaining = Math.max(myBudget - mySoldThisMonth, 0);
+  const myPerDay = myBudget > 0 ? myRemaining / daysLeft : 0;
+  const myBudgetPct = myBudget > 0 ? Math.min(100, (mySoldThisMonth / myBudget) * 100) : 0;
+
+  // Company budget
+  const companyBudget = Number((data?.company as any)?.monthly_budget ?? 0);
+  const companyRemaining = Math.max(companyBudget - monthTotal, 0);
+  const companyBudgetPct = companyBudget > 0 ? Math.min(100, (monthTotal / companyBudget) * 100) : 0;
+
   return (
     <>
-      <PageHeader title="Dashboard" description="Översikt över sälj, produkter och lön" />
+      <PageHeader title="Dashboard" description="Översikt över sälj, budget och lön" />
       <div className="p-6 space-y-6">
-        {/* My salary + my offers */}
+        {/* Top KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Stat label="Min lön (denna månad)" value={fmt(mySalaryTotal)} sub={`Grundlön ${fmt(baseSalary)} + Provision ${fmt(myCommission)}`} icon={Wallet} accent />
           <Stat label="Mina offerter ute" value={String(myOpen.length)} sub={`Värde ${fmt(myOpenValue)}`} icon={FileText} />
           <Stat label="Bolaget – månad" value={fmt(monthTotal)} icon={TrendingUp} />
           <Stat label="Bolaget – år" value={fmt(yearTotal)} sub={`Kvartal ${fmt(quarterTotal)}`} icon={TrendingUp} />
+        </div>
+
+        {/* Budget progress */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Target className="size-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Min månadsbudget</h3>
+              </div>
+              <div className="text-xs text-muted-foreground">{myBudgetPct.toFixed(0)}%</div>
+            </div>
+            {myBudget === 0 ? (
+              <p className="text-sm text-muted-foreground">Ingen budget satt. Be admin sätta din månadsbudget under Lön → Säljarinställningar.</p>
+            ) : (
+              <>
+                <div className="flex items-baseline justify-between mb-2">
+                  <div className="text-2xl font-semibold">{fmt(mySoldThisMonth)}</div>
+                  <div className="text-xs text-muted-foreground">av {fmt(myBudget)}</div>
+                </div>
+                <Progress value={myBudgetPct} />
+                <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Kvar till budget</div>
+                    <div className="text-lg font-semibold">{fmt(myRemaining)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                      <CalendarDays className="size-3" /> Behöver/dag ({daysLeft} arbetsdagar kvar)
+                    </div>
+                    <div className="text-lg font-semibold text-primary">{fmt(myPerDay)}</div>
+                  </div>
+                </div>
+              </>
+            )}
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Target className="size-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Bolagets månadsbudget</h3>
+              </div>
+              <div className="text-xs text-muted-foreground">{companyBudgetPct.toFixed(0)}%</div>
+            </div>
+            {companyBudget === 0 ? (
+              isAdmin ? <CompanyBudgetEditor current={0} /> : <p className="text-sm text-muted-foreground">Ingen bolagsbudget satt.</p>
+            ) : (
+              <>
+                <div className="flex items-baseline justify-between mb-2">
+                  <div className="text-2xl font-semibold">{fmt(monthTotal)}</div>
+                  <div className="text-xs text-muted-foreground">av {fmt(companyBudget)}</div>
+                </div>
+                <Progress value={companyBudgetPct} />
+                <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Kvar till budget</div>
+                    <div className="text-lg font-semibold">{fmt(companyRemaining)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                      <CalendarDays className="size-3" /> Behöver/dag
+                    </div>
+                    <div className="text-lg font-semibold text-primary">{fmt(companyRemaining / daysLeft)}</div>
+                  </div>
+                </div>
+                {isAdmin && <div className="mt-4 pt-3 border-t"><CompanyBudgetEditor current={companyBudget} /></div>}
+              </>
+            )}
+          </Card>
         </div>
 
         {/* Seller bar chart */}
@@ -177,6 +269,28 @@ function Dashboard() {
         </Card>
       </div>
     </>
+  );
+}
+
+function CompanyBudgetEditor({ current }: { current: number }) {
+  const qc = useQueryClient();
+  const [val, setVal] = useState(String(current));
+  useEffect(() => { setVal(String(current)); }, [current]);
+  const save = async () => {
+    const { error } = await supabase
+      .from("company_settings")
+      .upsert({ id: true, monthly_budget: Number(val) });
+    if (error) toast.error(error.message);
+    else { toast.success("Bolagsbudget sparad"); qc.invalidateQueries({ queryKey: ["dashboard-stats"] }); }
+  };
+  return (
+    <div className="flex items-end gap-2">
+      <div className="flex-1">
+        <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Sätt bolagets månadsbudget</label>
+        <Input type="number" value={val} onChange={e => setVal(e.target.value)} />
+      </div>
+      <Button size="sm" onClick={save}>Spara</Button>
+    </div>
   );
 }
 
