@@ -443,12 +443,14 @@ export type Database = {
           created_by: string | null
           customer_id: string | null
           deal_id: string | null
+          exact_dates: string[]
           id: string
           notes: string | null
           order_type: Database["public"]["Enums"]["order_type"]
           org_number: string | null
           owner_id: string | null
           postal_code: string | null
+          selected_weeks: number[]
           status: string
           total_commission: number
           total_excl_vat: number
@@ -466,12 +468,14 @@ export type Database = {
           created_by?: string | null
           customer_id?: string | null
           deal_id?: string | null
+          exact_dates?: string[]
           id?: string
           notes?: string | null
           order_type?: Database["public"]["Enums"]["order_type"]
           org_number?: string | null
           owner_id?: string | null
           postal_code?: string | null
+          selected_weeks?: number[]
           status?: string
           total_commission?: number
           total_excl_vat?: number
@@ -489,12 +493,14 @@ export type Database = {
           created_by?: string | null
           customer_id?: string | null
           deal_id?: string | null
+          exact_dates?: string[]
           id?: string
           notes?: string | null
           order_type?: Database["public"]["Enums"]["order_type"]
           org_number?: string | null
           owner_id?: string | null
           postal_code?: string | null
+          selected_weeks?: number[]
           status?: string
           total_commission?: number
           total_excl_vat?: number
