@@ -380,6 +380,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   const [dimensions, setDimensions] = useState("");
   const [contactsPerWeek, setContactsPerWeek] = useState("");
   const [format, setFormat] = useState("");
+  const [materialSpec, setMaterialSpec] = useState("");
   const [address, setAddress] = useState("");
 
   useMemo(() => {
@@ -394,6 +395,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
       setDimensions(product?.dimensions ?? "");
       setContactsPerWeek(product?.contacts_per_week != null ? String(product.contacts_per_week) : "");
       setFormat(product?.format ?? "");
+      setMaterialSpec(product?.material_spec ?? "");
       setAddress(product?.address ?? "");
     }
   }, [open, product]);
@@ -436,6 +438,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
       dimensions: dimensions || null,
       contacts_per_week: contactsPerWeek !== "" ? Number(contactsPerWeek) : null,
       format: format || null,
+      material_spec: materialSpec || null,
       address: address || null,
     };
     const { error } = product
@@ -529,6 +532,10 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
               <label className="text-xs font-medium">Format</label>
               <Input value={format} onChange={e => setFormat(e.target.value)} placeholder="t.ex. Liggande 16:9, MP4" />
             </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium">Material spec</label>
+            <Input value={materialSpec} onChange={e => setMaterialSpec(e.target.value)} placeholder="t.ex. MP4 H.264, max 20MB, 10 sek" />
           </div>
           <div>
             <label className="text-xs font-medium">Antal kontakter / vecka</label>
