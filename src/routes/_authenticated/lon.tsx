@@ -340,18 +340,26 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [pct, setPct] = useState("0");
+  const [pctProv, setPctProv] = useState("0");
+  const [pctBase, setPctBase] = useState("0");
 
   useMemo(() => {
     if (open) {
       setName(product?.name ?? "");
       setDescription(product?.description ?? "");
-      setPct(String(product?.default_commission_pct ?? "0"));
+      setPctProv(String(product?.commission_pct_provision_only ?? product?.default_commission_pct ?? "0"));
+      setPctBase(String(product?.commission_pct_with_base ?? product?.default_commission_pct ?? "0"));
     }
   }, [open, product]);
 
   const save = async () => {
-    const payload = { name, description: description || null, default_commission_pct: Number(pct) };
+    const payload = {
+      name,
+      description: description || null,
+      commission_pct_provision_only: Number(pctProv),
+      commission_pct_with_base: Number(pctBase),
+      default_commission_pct: Number(pctBase),
+    };
     const { error } = product
       ? await supabase.from("products").update(payload).eq("id", product.id)
       : await supabase.from("products").insert(payload);
@@ -366,15 +374,23 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium">Namn</label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="t.ex. Premium DOOH-skärm" />
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="t.ex. Egna skärmar" />
           </div>
           <div>
             <label className="text-xs font-medium">Beskrivning</label>
             <Input value={description} onChange={e => setDescription(e.target.value)} />
           </div>
-          <div>
-            <label className="text-xs font-medium">Provision %</label>
-            <Input type="number" step="0.1" value={pct} onChange={e => setPct(e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium">% för säljare utan grundlön</label>
+              <Input type="number" step="0.1" value={pctProv} onChange={e => setPctProv(e.target.value)} />
+              <p className="text-[10px] text-muted-foreground mt-1">Endast provision</p>
+            </div>
+            <div>
+              <label className="text-xs font-medium">% för säljare med grundlön</label>
+              <Input type="number" step="0.1" value={pctBase} onChange={e => setPctBase(e.target.value)} />
+              <p className="text-[10px] text-muted-foreground mt-1">Har fast lön</p>
+            </div>
           </div>
         </div>
         <DialogFooter>
