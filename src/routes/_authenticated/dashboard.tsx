@@ -359,28 +359,6 @@ function Dashboard() {
   );
 }
 
-function CompanyBudgetEditor({ current }: { current: number }) {
-  const qc = useQueryClient();
-  const [val, setVal] = useState(String(current));
-  useEffect(() => { setVal(String(current)); }, [current]);
-  const save = async () => {
-    const { error } = await supabase
-      .from("company_settings")
-      .upsert({ id: true, monthly_budget: Number(val) });
-    if (error) toast.error(error.message);
-    else { toast.success("Bolagsbudget sparad"); qc.invalidateQueries({ queryKey: ["dashboard-stats"] }); }
-  };
-  return (
-    <div className="flex items-end gap-2">
-      <div className="flex-1">
-        <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Sätt bolagets månadsbudget</label>
-        <Input type="number" value={val} onChange={e => setVal(e.target.value)} />
-      </div>
-      <Button size="sm" onClick={save}>Spara</Button>
-    </div>
-  );
-}
-
 function Stat({
   label,
   value,
