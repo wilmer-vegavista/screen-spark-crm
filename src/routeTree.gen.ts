@@ -20,6 +20,7 @@ import { Route as AuthenticatedMaterialRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedLonRouteImport } from './routes/_authenticated/lon'
 import { Route as AuthenticatedKunderRouteImport } from './routes/_authenticated/kunder'
 import { Route as AuthenticatedKampanjerRouteImport } from './routes/_authenticated/kampanjer'
+import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBudgetRouteImport } from './routes/_authenticated/budget'
 import { Route as AuthenticatedAnvandareRouteImport } from './routes/_authenticated/anvandare'
@@ -79,6 +80,11 @@ const AuthenticatedKampanjerRoute = AuthenticatedKampanjerRouteImport.update({
   path: '/kampanjer',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/anvandare': typeof AuthenticatedAnvandareRoute
   '/budget': typeof AuthenticatedBudgetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/import': typeof AuthenticatedImportRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
   '/lon': typeof AuthenticatedLonRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/anvandare': typeof AuthenticatedAnvandareRoute
   '/budget': typeof AuthenticatedBudgetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/import': typeof AuthenticatedImportRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
   '/lon': typeof AuthenticatedLonRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/_authenticated/anvandare': typeof AuthenticatedAnvandareRoute
   '/_authenticated/budget': typeof AuthenticatedBudgetRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/kampanjer': typeof AuthenticatedKampanjerRoute
   '/_authenticated/kunder': typeof AuthenticatedKunderRoute
   '/_authenticated/lon': typeof AuthenticatedLonRoute
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/anvandare'
     | '/budget'
     | '/dashboard'
+    | '/import'
     | '/kampanjer'
     | '/kunder'
     | '/lon'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/anvandare'
     | '/budget'
     | '/dashboard'
+    | '/import'
     | '/kampanjer'
     | '/kunder'
     | '/lon'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/_authenticated/anvandare'
     | '/_authenticated/budget'
     | '/_authenticated/dashboard'
+    | '/_authenticated/import'
     | '/_authenticated/kampanjer'
     | '/_authenticated/kunder'
     | '/_authenticated/lon'
@@ -288,6 +300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKampanjerRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/import': {
+      id: '/_authenticated/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AuthenticatedImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -324,6 +343,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnvandareRoute: typeof AuthenticatedAnvandareRoute
   AuthenticatedBudgetRoute: typeof AuthenticatedBudgetRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedKampanjerRoute: typeof AuthenticatedKampanjerRoute
   AuthenticatedKunderRoute: typeof AuthenticatedKunderRoute
   AuthenticatedLonRoute: typeof AuthenticatedLonRoute
@@ -339,6 +359,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnvandareRoute: AuthenticatedAnvandareRoute,
   AuthenticatedBudgetRoute: AuthenticatedBudgetRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedKampanjerRoute: AuthenticatedKampanjerRoute,
   AuthenticatedKunderRoute: AuthenticatedKunderRoute,
   AuthenticatedLonRoute: AuthenticatedLonRoute,
