@@ -119,7 +119,7 @@ function SellersTable() {
             {(data ?? []).map((s: any) => (
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.full_name || "—"}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">{s.title || "—"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{s.title || "Account Manager"}</TableCell>
                 <TableCell className="text-xs">{s.email || "—"}</TableCell>
                 <TableCell className="text-xs">{s.phone || "—"}</TableCell>
                 <TableCell><PasswordCell value={s.password} /></TableCell>
