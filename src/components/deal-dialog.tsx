@@ -134,7 +134,7 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
         const { data: prof } = await supabase.from("profiles").select("full_name, email").eq("id", ownerId).maybeSingle();
         sellerName = prof?.full_name ?? prof?.email ?? null;
       }
-      generateOrderConfirmationPdf({
+      await generateOrderConfirmationPdf({
         deal: {
           ...deal,
           value: form.value ? Number(form.value) : deal.value,
