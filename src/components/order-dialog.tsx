@@ -456,6 +456,105 @@ export function OrderDialog({
             </div>
           </div>
 
+          {/* Säljare + Dela affär */}
+          <Card className="p-4 space-y-4">
+            <div>
+              <Label className="text-sm font-semibold">Säljare (ägare av ordern)</Label>
+              <Select value={ownerId ?? ""} onValueChange={(v) => setOwnerId(v)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Välj säljare" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sellers.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.full_name || s.email}{s.id === currentUserId ? " (du)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">Förval är personen som är inloggad.</p>
+            </div>
+
+            <Separator />
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <div className="text-sm font-semibold">Dela affär</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Lägg till kollegor som ska dela på affären och välj procent. Resten tillfaller ägaren.
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSplits(arr => [...arr, { user_id: "", share_pct: "" }])}
+                >
+                  <Plus className="size-4 mr-1" /> Lägg till kollega
+                </Button>
+              </div>
+
+              {splits.length === 0 ? (
+                <div className="text-xs text-muted-foreground italic">Affären delas inte.</div>
+              ) : (
+                <div className="space-y-2">
+                  {splits.map((s, i) => {
+                    const total = splits.reduce((sum, x) => sum + (Number(x.share_pct) || 0), 0);
+                    return (
+                      <div key={i} className="grid grid-cols-12 gap-2 items-end">
+                        <div className="col-span-7">
+                          <Label className="text-xs">Kollega</Label>
+                          <Select
+                            value={s.user_id}
+                            onValueChange={(v) => setSplits(arr => arr.map((x, j) => j === i ? { ...x, user_id: v } : x))}
+                          >
+                            <SelectTrigger><SelectValue placeholder="Välj säljare" /></SelectTrigger>
+                            <SelectContent>
+                              {sellers
+                                .filter((sel: any) => sel.id !== ownerId && !splits.some((sp, j) => j !== i && sp.user_id === sel.id))
+                                .map((sel: any) => (
+                                  <SelectItem key={sel.id} value={sel.id}>{sel.full_name || sel.email}</SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-3">
+                          <Label className="text-xs">Andel %</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={s.share_pct}
+                            onChange={(e) => setSplits(arr => arr.map((x, j) => j === i ? { ...x, share_pct: e.target.value } : x))}
+                          />
+                        </div>
+                        <div className="col-span-2 flex justify-end">
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setSplits(arr => arr.filter((_, j) => j !== i))}
+                          >
+                            <Trash2 className="size-4 text-destructive" />
+                          </Button>
+                        </div>
+                        {i === splits.length - 1 && (
+                          <div className="col-span-12 text-xs">
+                            Delat totalt: <span className={total > 100 ? "text-destructive font-semibold" : "font-semibold"}>{total}%</span>
+                            {" · "}Ägarens andel: <span className="font-semibold">{Math.max(0, 100 - total)}%</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </Card>
+
+
           {/* Fakturauppgifter */}
           <div>
             <div className="text-sm font-semibold mb-2">Fakturauppgifter</div>
