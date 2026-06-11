@@ -205,6 +205,7 @@ export type Database = {
       }
       deals: {
         Row: {
+          commission_pct_override: number | null
           created_at: string
           created_by: string | null
           customer_id: string | null
@@ -213,13 +214,16 @@ export type Database = {
           notes: string | null
           owner_id: string | null
           probability: number | null
+          product_id: string | null
           source: string | null
           stage: Database["public"]["Enums"]["deal_stage"]
           title: string
           updated_at: string
           value: number | null
+          won_at: string | null
         }
         Insert: {
+          commission_pct_override?: number | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -228,13 +232,16 @@ export type Database = {
           notes?: string | null
           owner_id?: string | null
           probability?: number | null
+          product_id?: string | null
           source?: string | null
           stage?: Database["public"]["Enums"]["deal_stage"]
           title: string
           updated_at?: string
           value?: number | null
+          won_at?: string | null
         }
         Update: {
+          commission_pct_override?: number | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -243,11 +250,13 @@ export type Database = {
           notes?: string | null
           owner_id?: string | null
           probability?: number | null
+          product_id?: string | null
           source?: string | null
           stage?: Database["public"]["Enums"]["deal_stage"]
           title?: string
           updated_at?: string
           value?: number | null
+          won_at?: string | null
         }
         Relationships: [
           {
@@ -255,6 +264,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -318,6 +334,36 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          active: boolean
+          created_at: string
+          default_commission_pct: number
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          default_commission_pct?: number
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          default_commission_pct?: number
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -342,6 +388,30 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      seller_compensation: {
+        Row: {
+          base_salary: number
+          created_at: string
+          default_commission_pct: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          base_salary?: number
+          created_at?: string
+          default_commission_pct?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          base_salary?: number
+          created_at?: string
+          default_commission_pct?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
