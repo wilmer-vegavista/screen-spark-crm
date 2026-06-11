@@ -10,7 +10,10 @@ const createSchema = z.object({
   compensation_type: z.enum(["endast_provision", "med_grundlon"]),
   base_salary: z.number().min(0).optional(),
   default_commission_pct: z.number().min(0).optional(),
-  send_invite: z.boolean().optional().default(true),
+  // "invite" = mail med länk där säljaren sätter eget lösenord
+  // "password" = admin sätter ett lösenord direkt (sparas så det syns på admin-sidan)
+  credential_mode: z.enum(["invite", "password"]).default("password"),
+  password: z.string().min(6).optional(),
 });
 
 const updateSchema = z.object({
@@ -46,10 +49,10 @@ export const createSeller = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     let userId: string;
-    let tempPassword: string | null = null;
+    let storedPassword: string | null = null;
     let invited = false;
 
-    if (data.send_invite) {
+    if (data.credential_mode === "invite") {
       // Send invitation email via Supabase auth (user sets own password)
       const { data: inviteData, error: inviteErr } =
         await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
@@ -59,15 +62,23 @@ export const createSeller = createServerFn({ method: "POST" })
       userId = inviteData.user.id;
       invited = true;
     } else {
-      tempPassword = generateTempPassword();
+      const password = data.password && data.password.length >= 6 ? data.password : generateTempPassword();
       const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
         email: data.email,
-        password: tempPassword,
+        password,
         email_confirm: true,
         user_metadata: { full_name: data.full_name },
       });
       if (userError) throw new Error(userError.message);
       userId = userData.user.id;
+      storedPassword = password;
+
+      // Spara lösenordet så admin kan se det igen
+      const { error: credErr } = await supabaseAdmin.from("seller_credentials").upsert({
+        user_id: userId,
+        initial_password: password,
+      });
+      if (credErr) throw new Error(credErr.message);
     }
 
     // 2. Update profile with phone/title
@@ -89,7 +100,7 @@ export const createSeller = createServerFn({ method: "POST" })
     });
     if (compError) throw new Error(compError.message);
 
-    return { userId, tempPassword, invited };
+    return { userId, password: storedPassword, invited };
   });
 
 export const resendSellerInvite = createServerFn({ method: "POST" })
@@ -100,6 +111,24 @@ export const resendSellerInvite = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
     if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setSellerPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ user_id: z.string().uuid(), password: z.string().min(6) }))
+  .handler(async ({ context, data }) => {
+    await checkAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
+      password: data.password,
+    });
+    if (updErr) throw new Error(updErr.message);
+    const { error: credErr } = await supabaseAdmin.from("seller_credentials").upsert({
+      user_id: data.user_id,
+      initial_password: data.password,
+    });
+    if (credErr) throw new Error(credErr.message);
     return { ok: true };
   });
 
