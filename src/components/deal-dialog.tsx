@@ -129,10 +129,12 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
         supabase.auth.getUser(),
       ]);
       let sellerName: string | null = null;
+      let sellerTitle: string | null = null;
       const ownerId = deal.owner_id ?? u.user?.id;
       if (ownerId) {
-        const { data: prof } = await supabase.from("profiles").select("full_name, email").eq("id", ownerId).maybeSingle();
+        const { data: prof } = await supabase.from("profiles").select("full_name, email, title").eq("id", ownerId).maybeSingle();
         sellerName = prof?.full_name ?? prof?.email ?? null;
+        sellerTitle = prof?.title ?? null;
       }
       await generateOrderConfirmationPdf({
         deal: {
