@@ -193,6 +193,14 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
     }
   }, [open, seller]);
 
+  const [sendInvite, setSendInvite] = useState(true);
+
+  useMemo(() => {
+    if (open) {
+      setSendInvite(true);
+    }
+  }, [open]);
+
   const save = async () => {
     if (!name || !email) {
       toast.error("Namn och e-post krävs");
