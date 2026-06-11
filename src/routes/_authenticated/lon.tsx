@@ -239,6 +239,7 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
         <TableHeader>
           <TableRow>
             <TableHead>Säljare</TableHead>
+            <TableHead>Typ</TableHead>
             <TableHead className="text-right">Vunna</TableHead>
             <TableHead className="text-right">Försäljning</TableHead>
             <TableHead className="text-right">Grundlön</TableHead>
@@ -250,6 +251,7 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
           {(data ?? []).map(r => (
             <TableRow key={r.userId}>
               <TableCell className="font-medium">{r.name}</TableCell>
+              <TableCell className="text-xs text-muted-foreground">{r.compType === "endast_provision" ? "Endast provision" : "Med grundlön"}</TableCell>
               <TableCell className="text-right">{r.count}</TableCell>
               <TableCell className="text-right">{fmt(r.value)}</TableCell>
               <TableCell className="text-right">{fmt(r.base)}</TableCell>
@@ -259,7 +261,7 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
           ))}
           {(data ?? []).length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground py-6">Ingen data</TableCell>
+              <TableCell colSpan={7} className="text-center text-muted-foreground py-6">Ingen data</TableCell>
             </TableRow>
           )}
         </TableBody>
