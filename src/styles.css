@@ -79,6 +79,7 @@
   --sidebar-foreground: oklch(0.88 0.01 270);
   --sidebar-border: oklch(0.23 0.015 270);
   --sidebar-accent: oklch(0.24 0.025 275);
+  --chart-blue: oklch(0.65 0.14 240);
 
   --gradient-primary: linear-gradient(135deg, oklch(0.68 0.18 275), oklch(0.78 0.14 290));
   --gradient-subtle: linear-gradient(180deg, oklch(0.19 0.02 270), oklch(0.145 0.015 270));
