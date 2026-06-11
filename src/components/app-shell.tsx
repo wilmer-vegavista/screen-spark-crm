@@ -37,6 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { profile, roles } = useCurrentUser();
+  const isAdmin = roles.includes("admin");
 
   const handleSignOut = async () => {
     await queryClient.cancelQueries();
@@ -44,6 +45,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   };
+
+  const visibleNav = nav.filter(n => !n.adminOnly || isAdmin);
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -62,15 +65,22 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">
           <NavGroup label="Sälj">
-            {nav.filter(n => n.group === "saljare").map(n => (
+            {visibleNav.filter(n => n.group === "saljare").map(n => (
               <NavLink key={n.to} to={n.to} label={n.label} icon={n.icon} active={pathname.startsWith(n.to)} />
             ))}
           </NavGroup>
           <NavGroup label="Produktion">
-            {nav.filter(n => n.group === "produktion").map(n => (
+            {visibleNav.filter(n => n.group === "produktion").map(n => (
               <NavLink key={n.to} to={n.to} label={n.label} icon={n.icon} active={pathname.startsWith(n.to)} />
             ))}
           </NavGroup>
+          {isAdmin && (
+            <NavGroup label="Admin">
+              {visibleNav.filter(n => n.group === "admin").map(n => (
+                <NavLink key={n.to} to={n.to} label={n.label} icon={n.icon} active={pathname.startsWith(n.to)} />
+              ))}
+            </NavGroup>
+          )}
         </nav>
 
         <div className="border-t p-3 space-y-2">
