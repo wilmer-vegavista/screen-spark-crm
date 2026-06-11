@@ -343,6 +343,7 @@ export type Database = {
           default_commission_pct: number
           description: string | null
           id: string
+          image_url: string | null
           name: string
           screen_type: Database["public"]["Enums"]["screen_type"]
           updated_at: string
@@ -355,6 +356,7 @@ export type Database = {
           default_commission_pct?: number
           description?: string | null
           id?: string
+          image_url?: string | null
           name: string
           screen_type?: Database["public"]["Enums"]["screen_type"]
           updated_at?: string
@@ -367,6 +369,7 @@ export type Database = {
           default_commission_pct?: number
           description?: string | null
           id?: string
+          image_url?: string | null
           name?: string
           screen_type?: Database["public"]["Enums"]["screen_type"]
           updated_at?: string
