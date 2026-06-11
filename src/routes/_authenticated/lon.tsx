@@ -278,7 +278,14 @@ function ProductsAdmin() {
     queryFn: async () => {
       const { data, error } = await supabase.from("products").select("*").order("name");
       if (error) throw error;
-      return data ?? [];
+      const rows = data ?? [];
+      const paths = rows.map((r: any) => r.image_url).filter(Boolean) as string[];
+      const signedMap = new Map<string, string>();
+      if (paths.length) {
+        const { data: signed } = await supabase.storage.from("product-images").createSignedUrls(paths, 3600);
+        (signed ?? []).forEach((s: any) => { if (s.signedUrl && s.path) signedMap.set(s.path, s.signedUrl); });
+      }
+      return rows.map((r: any) => ({ ...r, image_signed_url: r.image_url ? signedMap.get(r.image_url) : null }));
     },
   });
   const [open, setOpen] = useState(false);
