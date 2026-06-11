@@ -303,7 +303,7 @@ function ProductsAdmin() {
         <TableHeader>
           <TableRow>
             <TableHead>Namn</TableHead>
-            <TableHead>Beskrivning</TableHead>
+            <TableHead>Typ</TableHead>
             <TableHead className="text-right">% endast prov.</TableHead>
             <TableHead className="text-right">% med grundlön</TableHead>
             <TableHead className="w-24"></TableHead>
@@ -312,8 +312,15 @@ function ProductsAdmin() {
         <TableBody>
           {(products ?? []).map(p => (
             <TableRow key={p.id}>
-              <TableCell className="font-medium">{p.name}</TableCell>
-              <TableCell className="text-muted-foreground text-xs">{p.description || "—"}</TableCell>
+              <TableCell className="font-medium">
+                <div>{p.name}</div>
+                {p.description && <div className="text-[10px] text-muted-foreground">{p.description}</div>}
+              </TableCell>
+              <TableCell>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full ${p.screen_type === "egen" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+                  {p.screen_type === "egen" ? "Egen skärm" : "Extern skärm"}
+                </span>
+              </TableCell>
               <TableCell className="text-right">{p.commission_pct_provision_only ?? p.default_commission_pct}%</TableCell>
               <TableCell className="text-right">{p.commission_pct_with_base ?? p.default_commission_pct}%</TableCell>
               <TableCell className="text-right">
