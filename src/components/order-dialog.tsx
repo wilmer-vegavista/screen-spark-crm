@@ -186,6 +186,7 @@ export function OrderDialog({
         order_type: "offert", customer_id: null, company_name: "", org_number: "", vat_number: "",
         billing_address: "", postal_code: "", city: "",
         contact_name: "", contact_email: "", contact_phone: "", notes: "",
+        invoice_start_date: new Date(), billing_frequency: "engang", billing_duration_months: 1,
       });
       setItems([emptyItem()]);
       setTotalPrice("0");
