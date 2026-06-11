@@ -125,9 +125,27 @@ function SellersTable() {
                 </TableCell>
                 <TableCell className="text-right">{s.default_commission_pct}%</TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => { setEditing(s); setDialogOpen(true); }}>
-                    <Pencil className="size-3.5" />
-                  </Button>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Skicka ny inbjudan"
+                      onClick={async () => {
+                        if (!s.email) return;
+                        try {
+                          await resendSellerInvite({ data: { email: s.email } });
+                          toast.success("Inbjudan skickad till " + s.email);
+                        } catch (e: any) {
+                          toast.error(e.message ?? "Kunde inte skicka inbjudan");
+                        }
+                      }}
+                    >
+                      <Mail className="size-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => { setEditing(s); setDialogOpen(true); }}>
+                      <Pencil className="size-3.5" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
