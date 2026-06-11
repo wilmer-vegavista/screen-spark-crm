@@ -15,6 +15,7 @@ import {
   Settings,
   Wallet,
   UserCog,
+  Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ const nav: NavItem[] = [
   { to: "/material", label: "Material", icon: ImageIcon, group: "produktion" },
   { to: "/rapporter", label: "Rapporter", icon: FileBarChart, group: "produktion" },
   { to: "/saljare", label: "Säljare", icon: UserCog, group: "admin", adminOnly: true },
+  { to: "/produkter", label: "Produkter", icon: Package, group: "admin", adminOnly: true },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
