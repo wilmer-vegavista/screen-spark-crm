@@ -139,6 +139,37 @@ export function DealDialog({ open, onOpenChange, deal }: { open: boolean; onOpen
               <Input type="number" step="0.1" value={form.commission_pct_override} onChange={e => setForm({ ...form, commission_pct_override: e.target.value })} placeholder="Auto från produkt" />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>SOV (%)</Label>
+              <Input type="number" step="0.1" min="0" max="100" value={form.sov_pct} onChange={e => setForm({ ...form, sov_pct: e.target.value })} placeholder="Share of voice" />
+            </div>
+            <div>
+              <Label>Antal visningar</Label>
+              <Input type="number" min="0" value={form.impressions} onChange={e => setForm({ ...form, impressions: e.target.value })} placeholder="t.ex. 250000" />
+            </div>
+          </div>
+          <div className="space-y-2 rounded-md border p-3">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Kampanjperiod</Label>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setForm({ ...form, schedule_mode: "dates" })}
+                className={`flex-1 text-xs p-2 rounded border ${form.schedule_mode === "dates" ? "border-primary bg-primary/10" : "border-border"}`}>
+                Bestämda datum
+              </button>
+              <button type="button" onClick={() => setForm({ ...form, schedule_mode: "weeks" })}
+                className={`flex-1 text-xs p-2 rounded border ${form.schedule_mode === "weeks" ? "border-primary bg-primary/10" : "border-border"}`}>
+                Antal veckor (datum ej satta)
+              </button>
+            </div>
+            {form.schedule_mode === "dates" ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Start</Label><Input type="date" value={form.campaign_start} onChange={e => setForm({ ...form, campaign_start: e.target.value })} /></div>
+                <div><Label>Slut</Label><Input type="date" value={form.campaign_end} onChange={e => setForm({ ...form, campaign_end: e.target.value })} /></div>
+              </div>
+            ) : (
+              <div><Label>Antal veckor</Label><Input type="number" min="1" value={form.campaign_weeks} onChange={e => setForm({ ...form, campaign_weeks: e.target.value })} placeholder="t.ex. 4" /></div>
+            )}
+          </div>
           <div><Label>Källa</Label><Input value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} placeholder="Mejl, rekommendation, kampanj..." /></div>
           <div><Label>Anteckningar</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
           <DialogFooter className="gap-2">
