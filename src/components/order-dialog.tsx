@@ -152,6 +152,9 @@ export function OrderDialog({
         contact_phone: order.contact_phone ?? "",
         notes: order.notes ?? "",
       });
+      setSelectedWeeks(Array.isArray(order.selected_weeks) ? order.selected_weeks : []);
+      setExactDates(Array.isArray(order.exact_dates) ? order.exact_dates.map((d: string) => new Date(d)) : []);
+
       // load items
       supabase.from("order_items").select("*").eq("order_id", order.id).order("position").then(({ data }) => {
         if (data && data.length) {
