@@ -334,6 +334,7 @@ export function OrderDialog({
         sov_pct: it.sov_pct ? Number(it.sov_pct) : null,
         impressions: it.impressions ? Number(it.impressions) : null,
         weeks,
+        period_unit: it.period_unit,
         unit_price: unitPrice,
         commission_pct: pct,
         commission_amount: lineAmount * pct / 100,
