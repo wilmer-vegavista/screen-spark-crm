@@ -10,6 +10,7 @@ const createSchema = z.object({
   compensation_type: z.enum(["endast_provision", "med_grundlon"]),
   base_salary: z.number().min(0).optional(),
   default_commission_pct: z.number().min(0).optional(),
+  send_invite: z.boolean().optional().default(true),
 });
 
 const updateSchema = z.object({
@@ -44,16 +45,30 @@ export const createSeller = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // 1. Create auth user
-    const tempPassword = generateTempPassword();
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: { full_name: data.full_name },
-    });
-    if (userError) throw new Error(userError.message);
-    const userId = userData.user.id;
+    let userId: string;
+    let tempPassword: string | null = null;
+    let invited = false;
+
+    if (data.send_invite) {
+      // Send invitation email via Supabase auth (user sets own password)
+      const { data: inviteData, error: inviteErr } =
+        await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
+          data: { full_name: data.full_name },
+        });
+      if (inviteErr) throw new Error(inviteErr.message);
+      userId = inviteData.user.id;
+      invited = true;
+    } else {
+      tempPassword = generateTempPassword();
+      const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
+        email: data.email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: { full_name: data.full_name },
+      });
+      if (userError) throw new Error(userError.message);
+      userId = userData.user.id;
+    }
 
     // 2. Update profile with phone/title
     await supabaseAdmin
@@ -74,7 +89,18 @@ export const createSeller = createServerFn({ method: "POST" })
     });
     if (compError) throw new Error(compError.message);
 
-    return { userId, tempPassword };
+    return { userId, tempPassword, invited };
+  });
+
+export const resendSellerInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ email: z.string().email() }))
+  .handler(async ({ context, data }) => {
+    await checkAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const updateSeller = createServerFn({ method: "POST" })

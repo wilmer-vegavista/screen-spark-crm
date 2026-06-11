@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, Plus, Pencil, Loader2 } from "lucide-react";
-import { createSeller, updateSeller } from "@/lib/sellers.functions";
+import { Users, Plus, Pencil, Loader2, Mail } from "lucide-react";
+import { createSeller, updateSeller, resendSellerInvite } from "@/lib/sellers.functions";
 
 export const Route = createFileRoute("/_authenticated/saljare")({
   component: SaljarePage,
@@ -125,9 +125,27 @@ function SellersTable() {
                 </TableCell>
                 <TableCell className="text-right">{s.default_commission_pct}%</TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => { setEditing(s); setDialogOpen(true); }}>
-                    <Pencil className="size-3.5" />
-                  </Button>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Skicka ny inbjudan"
+                      onClick={async () => {
+                        if (!s.email) return;
+                        try {
+                          await resendSellerInvite({ data: { email: s.email } });
+                          toast.success("Inbjudan skickad till " + s.email);
+                        } catch (e: any) {
+                          toast.error(e.message ?? "Kunde inte skicka inbjudan");
+                        }
+                      }}
+                    >
+                      <Mail className="size-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => { setEditing(s); setDialogOpen(true); }}>
+                      <Pencil className="size-3.5" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -175,6 +193,14 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
     }
   }, [open, seller]);
 
+  const [sendInvite, setSendInvite] = useState(true);
+
+  useMemo(() => {
+    if (open) {
+      setSendInvite(true);
+    }
+  }, [open]);
+
   const save = async () => {
     if (!name || !email) {
       toast.error("Namn och e-post krävs");
@@ -204,10 +230,16 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
           compensation_type: type,
           base_salary: type === "endast_provision" ? 0 : Number(base),
           default_commission_pct: Number(pct),
+          send_invite: sendInvite,
         }});
-        toast.success("Säljare skapad");
-        setShowTempPassword(result.tempPassword);
-        onSaved();
+        if (result.invited) {
+          toast.success("Säljare skapad — inbjudan skickad till " + email);
+          onSaved();
+        } else {
+          toast.success("Säljare skapad");
+          setShowTempPassword(result.tempPassword);
+          onSaved();
+        }
       }
     } catch (e: any) {
       toast.error(e.message ?? "Något gick fel");
@@ -273,6 +305,22 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
             <Input type="number" step="0.1" min={0} value={pct} onChange={(e) => setPct(e.target.value)} />
             <p className="text-[10px] text-muted-foreground mt-1">Används endast om affären saknar produkt.</p>
           </div>
+          {!seller && (
+            <label className="flex items-start gap-2 rounded-md border p-3 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sendInvite}
+                onChange={(e) => setSendInvite(e.target.checked)}
+                className="mt-0.5"
+              />
+              <div>
+                <div className="font-semibold">Skicka inbjudan via e-post</div>
+                <div className="text-muted-foreground">
+                  Säljaren får ett mail med en länk där hen sätter sitt eget lösenord. Avmarkera för att istället generera ett tillfälligt lösenord.
+                </div>
+              </div>
+            </label>
+          )}
           {showTempPassword && (
             <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs">
               <div className="font-semibold text-warning">Tillfälligt lösenord</div>
