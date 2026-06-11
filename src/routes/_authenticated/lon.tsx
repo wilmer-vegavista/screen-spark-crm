@@ -534,6 +534,10 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
             </div>
           </div>
           <div>
+            <label className="text-xs font-medium">Material spec</label>
+            <Input value={materialSpec} onChange={e => setMaterialSpec(e.target.value)} placeholder="t.ex. MP4 H.264, max 20MB, 10 sek" />
+          </div>
+          <div>
             <label className="text-xs font-medium">Antal kontakter / vecka</label>
             <Input type="number" min="0" value={contactsPerWeek} onChange={e => setContactsPerWeek(e.target.value)} placeholder="t.ex. 25000" />
           </div>
