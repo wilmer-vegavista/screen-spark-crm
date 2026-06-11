@@ -49,10 +49,10 @@ export const createSeller = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     let userId: string;
-    let tempPassword: string | null = null;
+    let storedPassword: string | null = null;
     let invited = false;
 
-    if (data.send_invite) {
+    if (data.credential_mode === "invite") {
       // Send invitation email via Supabase auth (user sets own password)
       const { data: inviteData, error: inviteErr } =
         await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
@@ -62,15 +62,23 @@ export const createSeller = createServerFn({ method: "POST" })
       userId = inviteData.user.id;
       invited = true;
     } else {
-      tempPassword = generateTempPassword();
+      const password = data.password && data.password.length >= 6 ? data.password : generateTempPassword();
       const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
         email: data.email,
-        password: tempPassword,
+        password,
         email_confirm: true,
         user_metadata: { full_name: data.full_name },
       });
       if (userError) throw new Error(userError.message);
       userId = userData.user.id;
+      storedPassword = password;
+
+      // Spara lösenordet så admin kan se det igen
+      const { error: credErr } = await supabaseAdmin.from("seller_credentials").upsert({
+        user_id: userId,
+        initial_password: password,
+      });
+      if (credErr) throw new Error(credErr.message);
     }
 
     // 2. Update profile with phone/title
