@@ -59,7 +59,7 @@ function OrderPage() {
   const allOrders = data ?? [];
   const orders = sellerFilter === "all"
     ? allOrders
-    : allOrders.filter((o: any) => o.owner_id === sellerFilter || o.created_by === sellerFilter);
+    : allOrders.filter((o: any) => o.owner_id === sellerFilter);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
