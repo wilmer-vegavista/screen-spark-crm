@@ -38,7 +38,9 @@ function OrderPage() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sellerFilter, setSellerFilter] = useState<string>("all");
   const queryClient = useQueryClient();
+  const { isAdmin } = useCurrentUser();
 
   const { data } = useQuery({
     queryKey: ["orders"],
@@ -48,7 +50,18 @@ function OrderPage() {
     },
   });
 
-  const orders = data ?? [];
+  const { data: sellers } = useQuery({
+    queryKey: ["all-profiles-min"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("id, full_name, email").order("full_name");
+      return data ?? [];
+    },
+  });
+
+  const allOrders = data ?? [];
+  const orders = sellerFilter === "all"
+    ? allOrders
+    : allOrders.filter((o: any) => o.owner_id === sellerFilter || o.created_by === sellerFilter);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
