@@ -134,6 +134,20 @@ function OrderPage() {
         }
       />
       <div className="p-6 space-y-3">
+        <Card className="p-3 flex items-center gap-2 flex-wrap">
+          <Users className="size-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Säljare:</span>
+          <Select value={sellerFilter} onValueChange={setSellerFilter}>
+            <SelectTrigger className="w-64 h-8"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alla säljare</SelectItem>
+              {(sellers ?? []).map((s: any) => (
+                <SelectItem key={s.id} value={s.id}>{s.full_name || s.email}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-muted-foreground ml-auto">{orders.length} order{orders.length === 1 ? "" : "r"}</span>
+        </Card>
         {orders.length === 0 && (
           <Card className="p-8 text-center text-sm text-muted-foreground">Inga ordrar ännu</Card>
         )}
