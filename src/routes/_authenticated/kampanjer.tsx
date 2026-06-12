@@ -93,7 +93,9 @@ function Kampanjer() {
         <Section title="Live just nu" campaigns={grouped.live} onOpen={(c) => { setEditing(c); setOpen(true); }} highlight />
         <Section title="Kommande" campaigns={grouped.upcoming} onOpen={(c) => { setEditing(c); setOpen(true); }} />
         <Section title="Avslutade" campaigns={grouped.finished} onOpen={(c) => { setEditing(c); setOpen(true); }} />
+        <OrdersSchedule orders={scheduledOrders ?? []} />
       </div>
+
       <CampaignDialog open={open} onOpenChange={setOpen} campaign={editing} />
     </>
   );
