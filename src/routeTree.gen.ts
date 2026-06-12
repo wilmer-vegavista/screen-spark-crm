@@ -23,6 +23,7 @@ import { Route as AuthenticatedKampanjerRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBudgetRouteImport } from './routes/_authenticated/budget'
 import { Route as AuthenticatedAvslutasSnartRouteImport } from './routes/_authenticated/avslutas-snart'
+import { Route as AuthenticatedAvslutadRouteImport } from './routes/_authenticated/avslutad'
 import { Route as AuthenticatedAnvandareRouteImport } from './routes/_authenticated/anvandare'
 import { Route as AuthenticatedAktiviteterRouteImport } from './routes/_authenticated/aktiviteter'
 
@@ -96,6 +97,11 @@ const AuthenticatedAvslutasSnartRoute =
     path: '/avslutas-snart',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAvslutadRoute = AuthenticatedAvslutadRouteImport.update({
+  id: '/avslutad',
+  path: '/avslutad',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAnvandareRoute = AuthenticatedAnvandareRouteImport.update({
   id: '/anvandare',
   path: '/anvandare',
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/anvandare': typeof AuthenticatedAnvandareRoute
+  '/avslutad': typeof AuthenticatedAvslutadRoute
   '/avslutas-snart': typeof AuthenticatedAvslutasSnartRoute
   '/budget': typeof AuthenticatedBudgetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/anvandare': typeof AuthenticatedAnvandareRoute
+  '/avslutad': typeof AuthenticatedAvslutadRoute
   '/avslutas-snart': typeof AuthenticatedAvslutasSnartRoute
   '/budget': typeof AuthenticatedBudgetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/_authenticated/anvandare': typeof AuthenticatedAnvandareRoute
+  '/_authenticated/avslutad': typeof AuthenticatedAvslutadRoute
   '/_authenticated/avslutas-snart': typeof AuthenticatedAvslutasSnartRoute
   '/_authenticated/budget': typeof AuthenticatedBudgetRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/aktiviteter'
     | '/anvandare'
+    | '/avslutad'
     | '/avslutas-snart'
     | '/budget'
     | '/dashboard'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/aktiviteter'
     | '/anvandare'
+    | '/avslutad'
     | '/avslutas-snart'
     | '/budget'
     | '/dashboard'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/aktiviteter'
     | '/_authenticated/anvandare'
+    | '/_authenticated/avslutad'
     | '/_authenticated/avslutas-snart'
     | '/_authenticated/budget'
     | '/_authenticated/dashboard'
@@ -322,6 +334,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAvslutasSnartRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/avslutad': {
+      id: '/_authenticated/avslutad'
+      path: '/avslutad'
+      fullPath: '/avslutad'
+      preLoaderRoute: typeof AuthenticatedAvslutadRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/anvandare': {
       id: '/_authenticated/anvandare'
       path: '/anvandare'
@@ -342,6 +361,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAktiviteterRoute: typeof AuthenticatedAktiviteterRoute
   AuthenticatedAnvandareRoute: typeof AuthenticatedAnvandareRoute
+  AuthenticatedAvslutadRoute: typeof AuthenticatedAvslutadRoute
   AuthenticatedAvslutasSnartRoute: typeof AuthenticatedAvslutasSnartRoute
   AuthenticatedBudgetRoute: typeof AuthenticatedBudgetRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -358,6 +378,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAktiviteterRoute: AuthenticatedAktiviteterRoute,
   AuthenticatedAnvandareRoute: AuthenticatedAnvandareRoute,
+  AuthenticatedAvslutadRoute: AuthenticatedAvslutadRoute,
   AuthenticatedAvslutasSnartRoute: AuthenticatedAvslutasSnartRoute,
   AuthenticatedBudgetRoute: AuthenticatedBudgetRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
