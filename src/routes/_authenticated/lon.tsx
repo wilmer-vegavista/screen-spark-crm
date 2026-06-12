@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Wallet, Plus, Pencil, Trash2 } from "lucide-react";
+import { Wallet, Plus, Pencil, Trash2, UserCog } from "lucide-react";
 import { format, startOfMonth, endOfMonth, addMonths } from "date-fns";
 import { sv } from "date-fns/locale";
 import { TaxCalculator } from "@/components/tax-calculator";
@@ -26,9 +28,21 @@ const fmt = (n: number) =>
 function LonPage() {
   const { user, isAdmin } = useCurrentUser();
   const [monthOffset, setMonthOffset] = useState(0);
+  const [viewUserId, setViewUserId] = useState<string | null>(null);
   const month = useMemo(() => addMonths(new Date(), monthOffset), [monthOffset]);
   const monthStart = startOfMonth(month);
   const monthEnd = endOfMonth(month);
+
+  const { data: sellers } = useQuery({
+    queryKey: ["all-profiles-min"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("id, full_name, email").order("full_name");
+      return data ?? [];
+    },
+  });
+
+  const effectiveUserId = isAdmin ? (viewUserId ?? user?.id ?? null) : (user?.id ?? null);
 
   return (
     <>
@@ -53,8 +67,25 @@ function LonPage() {
               <TabsTrigger value="saljare">Säljarinställningar</TabsTrigger>
               <TabsTrigger value="skatt">Skatteberäkning</TabsTrigger>
             </TabsList>
-            <TabsContent value="min" className="mt-4">
-              {user && <SalaryCard userId={user.id} from={monthStart} to={monthEnd} />}
+            <TabsContent value="min" className="mt-4 space-y-4">
+              <Card className="p-4 flex items-center gap-3 flex-wrap">
+                <UserCog className="size-4 text-primary" />
+                <Label className="text-xs">Visa lön för säljare:</Label>
+                <Select value={effectiveUserId ?? ""} onValueChange={(v) => setViewUserId(v)}>
+                  <SelectTrigger className="w-72"><SelectValue placeholder="Välj säljare" /></SelectTrigger>
+                  <SelectContent>
+                    {(sellers ?? []).map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.full_name || s.email}{s.id === user?.id ? " (jag)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {viewUserId && viewUserId !== user?.id && (
+                  <Button variant="ghost" size="sm" onClick={() => setViewUserId(null)}>Återställ till mig</Button>
+                )}
+              </Card>
+              {effectiveUserId && <SalaryCard userId={effectiveUserId} from={monthStart} to={monthEnd} />}
             </TabsContent>
             <TabsContent value="alla" className="mt-4">
               <AllSellers from={monthStart} to={monthEnd} />
