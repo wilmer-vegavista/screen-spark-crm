@@ -18,6 +18,7 @@ import {
   Package,
   ShoppingCart,
   Target,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ const nav: NavItem[] = [
   { to: "/order", label: "Order", icon: ShoppingCart, group: "saljare" },
   { to: "/lon", label: "Lön", icon: Wallet, group: "saljare" },
   { to: "/kampanjer", label: "Kampanjer", icon: Calendar, group: "produktion" },
+  { to: "/avslutas-snart", label: "Avslutas snart", icon: Clock, group: "produktion" },
   { to: "/material", label: "Material", icon: ImageIcon, group: "produktion" },
   { to: "/rapporter", label: "Rapporter", icon: FileBarChart, group: "produktion" },
   { to: "/anvandare", label: "Användare", icon: UserCog, group: "admin", adminOnly: true },

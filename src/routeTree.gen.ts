@@ -22,6 +22,7 @@ import { Route as AuthenticatedKunderRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedKampanjerRouteImport } from './routes/_authenticated/kampanjer'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBudgetRouteImport } from './routes/_authenticated/budget'
+import { Route as AuthenticatedAvslutasSnartRouteImport } from './routes/_authenticated/avslutas-snart'
 import { Route as AuthenticatedAnvandareRouteImport } from './routes/_authenticated/anvandare'
 import { Route as AuthenticatedAktiviteterRouteImport } from './routes/_authenticated/aktiviteter'
 
@@ -89,6 +90,12 @@ const AuthenticatedBudgetRoute = AuthenticatedBudgetRouteImport.update({
   path: '/budget',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAvslutasSnartRoute =
+  AuthenticatedAvslutasSnartRouteImport.update({
+    id: '/avslutas-snart',
+    path: '/avslutas-snart',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAnvandareRoute = AuthenticatedAnvandareRouteImport.update({
   id: '/anvandare',
   path: '/anvandare',
@@ -106,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/anvandare': typeof AuthenticatedAnvandareRoute
+  '/avslutas-snart': typeof AuthenticatedAvslutasSnartRoute
   '/budget': typeof AuthenticatedBudgetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
@@ -122,6 +130,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/anvandare': typeof AuthenticatedAnvandareRoute
+  '/avslutas-snart': typeof AuthenticatedAvslutasSnartRoute
   '/budget': typeof AuthenticatedBudgetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
@@ -140,6 +149,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/_authenticated/anvandare': typeof AuthenticatedAnvandareRoute
+  '/_authenticated/avslutas-snart': typeof AuthenticatedAvslutasSnartRoute
   '/_authenticated/budget': typeof AuthenticatedBudgetRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/kampanjer': typeof AuthenticatedKampanjerRoute
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/aktiviteter'
     | '/anvandare'
+    | '/avslutas-snart'
     | '/budget'
     | '/dashboard'
     | '/kampanjer'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/aktiviteter'
     | '/anvandare'
+    | '/avslutas-snart'
     | '/budget'
     | '/dashboard'
     | '/kampanjer'
@@ -191,6 +203,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/aktiviteter'
     | '/_authenticated/anvandare'
+    | '/_authenticated/avslutas-snart'
     | '/_authenticated/budget'
     | '/_authenticated/dashboard'
     | '/_authenticated/kampanjer'
@@ -302,6 +315,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBudgetRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/avslutas-snart': {
+      id: '/_authenticated/avslutas-snart'
+      path: '/avslutas-snart'
+      fullPath: '/avslutas-snart'
+      preLoaderRoute: typeof AuthenticatedAvslutasSnartRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/anvandare': {
       id: '/_authenticated/anvandare'
       path: '/anvandare'
@@ -322,6 +342,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAktiviteterRoute: typeof AuthenticatedAktiviteterRoute
   AuthenticatedAnvandareRoute: typeof AuthenticatedAnvandareRoute
+  AuthenticatedAvslutasSnartRoute: typeof AuthenticatedAvslutasSnartRoute
   AuthenticatedBudgetRoute: typeof AuthenticatedBudgetRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedKampanjerRoute: typeof AuthenticatedKampanjerRoute
@@ -337,6 +358,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAktiviteterRoute: AuthenticatedAktiviteterRoute,
   AuthenticatedAnvandareRoute: AuthenticatedAnvandareRoute,
+  AuthenticatedAvslutasSnartRoute: AuthenticatedAvslutasSnartRoute,
   AuthenticatedBudgetRoute: AuthenticatedBudgetRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedKampanjerRoute: AuthenticatedKampanjerRoute,
@@ -360,13 +382,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
