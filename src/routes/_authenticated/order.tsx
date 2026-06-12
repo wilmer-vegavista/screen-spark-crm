@@ -17,11 +17,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, FileText, ShoppingCart, Trash2, X } from "lucide-react";
+import { Plus, FileText, ShoppingCart, Trash2, X, Users } from "lucide-react";
 import { OrderDialog } from "@/components/order-dialog";
 import { deleteOrders } from "@/lib/orders.functions";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCurrentUser } from "@/lib/hooks/use-current-user";
 
 export const Route = createFileRoute("/_authenticated/order")({
   component: OrderPage,
