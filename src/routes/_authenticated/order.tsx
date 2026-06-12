@@ -190,6 +190,16 @@ function OrderPage() {
             </div>
           </Card>
         ))}
+        {orders.length > 0 && (
+          <div className="flex justify-end pt-2">
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground">Totalt ordervärde</div>
+              <div className="text-lg font-bold">
+                {SEK(orders.reduce((sum: number, o: any) => sum + Number(o.total_excl_vat || 0), 0))} SEK
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <OrderDialog open={open} onOpenChange={setOpen} order={editing} />
 
