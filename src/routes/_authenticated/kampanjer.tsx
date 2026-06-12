@@ -143,3 +143,61 @@ function Section({ title, campaigns, onOpen, highlight }: { title: string; campa
     </div>
   );
 }
+
+function OrdersSchedule({ orders }: { orders: any[] }) {
+  const now = new Date();
+  const upcoming = orders.filter(o => isAfter(o._start, now));
+  const live = orders.filter(o => !isAfter(o._start, now) && !isBefore(o._end, now));
+  const finished = orders.filter(o => isBefore(o._end, now));
+
+  const renderGroup = (title: string, list: any[], highlight?: boolean) => (
+    <div>
+      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{title} <span>({list.length})</span></h4>
+      {list.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Inga ordrar</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {list.map(o => {
+            const weeks: number[] = o.selected_weeks?.length
+              ? o.selected_weeks
+              : Array.from(new Set([getISOWeek(o._start), getISOWeek(o._end)]));
+            return (
+              <Card key={o.id} className="p-4">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate flex items-center gap-1"><ShoppingCart className="size-3.5 shrink-0" />{o.company_name}</div>
+                    <div className="text-xs text-muted-foreground capitalize">{o.order_type} · {o.status}</div>
+                  </div>
+                  {highlight && (
+                    <span className="chip shrink-0" style={{ borderColor: "oklch(0.68 0.17 155)", color: "oklch(0.68 0.17 155)" }}>
+                      <span className="size-1.5 rounded-full bg-current animate-pulse" /> LIVE
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <CalIcon className="size-3" />
+                  {format(o._start, "d MMM yyyy", { locale: sv })} – {format(o._end, "d MMM yyyy", { locale: sv })}
+                </div>
+                {weeks.length > 0 && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Veckor: {weeks.sort((a, b) => a - b).map(w => `v${w}`).join(", ")}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 pt-4 border-t">
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Ordrar – schemalagda perioder</h3>
+      {renderGroup("Live just nu", live, true)}
+      {renderGroup("Kommande", upcoming)}
+      {renderGroup("Avslutade", finished)}
+    </div>
+  );
+}
+
