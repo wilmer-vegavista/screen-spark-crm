@@ -39,7 +39,6 @@ function OrderPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [sellerFilter, setSellerFilter] = useState<string>("all");
   const queryClient = useQueryClient();
-  const { isAdmin } = useCurrentUser();
 
   const { data } = useQuery({
     queryKey: ["orders"],
