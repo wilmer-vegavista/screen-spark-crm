@@ -5,10 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, Calendar as CalIcon, MapPin } from "lucide-react";
+import { Plus, Calendar as CalIcon, MapPin, ShoppingCart } from "lucide-react";
 import { CampaignDialog } from "@/components/campaign-dialog";
-import { format, differenceInDays, isAfter, isBefore } from "date-fns";
+import { format, differenceInDays, isAfter, isBefore, addMonths, parseISO, getISOWeek, getISOWeekYear, setISOWeek, setISOWeekYear, startOfISOWeek, endOfISOWeek, min as dmin, max as dmax } from "date-fns";
 import { sv } from "date-fns/locale";
+
 
 export const Route = createFileRoute("/_authenticated/kampanjer")({
   component: Kampanjer,
