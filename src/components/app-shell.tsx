@@ -42,6 +42,7 @@ const nav: NavItem[] = [
   { to: "/lon", label: "Lön", icon: Wallet, group: "saljare" },
   { to: "/kampanjer", label: "Kampanjer", icon: Calendar, group: "produktion" },
   { to: "/avslutas-snart", label: "Avslutas snart", icon: Clock, group: "produktion" },
+  { to: "/avslutad", label: "Avslutad", icon: CheckCircle, group: "produktion" },
   { to: "/material", label: "Material", icon: ImageIcon, group: "produktion" },
   { to: "/rapporter", label: "Rapporter", icon: FileBarChart, group: "produktion" },
   { to: "/anvandare", label: "Användare", icon: UserCog, group: "admin", adminOnly: true },
