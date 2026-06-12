@@ -17,11 +17,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, FileText, ShoppingCart, Trash2, X } from "lucide-react";
+import { Plus, FileText, ShoppingCart, Trash2, X, Users } from "lucide-react";
 import { OrderDialog } from "@/components/order-dialog";
 import { deleteOrders } from "@/lib/orders.functions";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/order")({
   component: OrderPage,
@@ -36,6 +37,7 @@ function OrderPage() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sellerFilter, setSellerFilter] = useState<string>("all");
   const queryClient = useQueryClient();
 
   const { data } = useQuery({
@@ -46,7 +48,18 @@ function OrderPage() {
     },
   });
 
-  const orders = data ?? [];
+  const { data: sellers } = useQuery({
+    queryKey: ["all-profiles-min"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("id, full_name, email").order("full_name");
+      return data ?? [];
+    },
+  });
+
+  const allOrders = data ?? [];
+  const orders = sellerFilter === "all"
+    ? allOrders
+    : allOrders.filter((o: any) => o.owner_id === sellerFilter || o.created_by === sellerFilter);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -119,6 +132,20 @@ function OrderPage() {
         }
       />
       <div className="p-6 space-y-3">
+        <Card className="p-3 flex items-center gap-2 flex-wrap">
+          <Users className="size-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Säljare:</span>
+          <Select value={sellerFilter} onValueChange={setSellerFilter}>
+            <SelectTrigger className="w-64 h-8"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alla säljare</SelectItem>
+              {(sellers ?? []).map((s: any) => (
+                <SelectItem key={s.id} value={s.id}>{s.full_name || s.email}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-muted-foreground ml-auto">{orders.length} order{orders.length === 1 ? "" : "r"}</span>
+        </Card>
         {orders.length === 0 && (
           <Card className="p-8 text-center text-sm text-muted-foreground">Inga ordrar ännu</Card>
         )}
