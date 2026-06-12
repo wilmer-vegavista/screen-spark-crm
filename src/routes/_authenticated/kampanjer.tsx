@@ -150,6 +150,13 @@ function OrdersSchedule({ orders }: { orders: any[] }) {
   const live = orders.filter(o => !isAfter(o._start, now) && !isBefore(o._end, now));
   const finished = orders.filter(o => isBefore(o._end, now));
 
+  const upcomingTitle = () => {
+    if (upcoming.length === 0) return "Kommande";
+    const s = dmin(upcoming.map(o => o._start));
+    const e = dmax(upcoming.map(o => o._end));
+    return `Kommande (går live ${format(s, "d MMM", { locale: sv })} – ${format(e, "d MMM yyyy", { locale: sv })})`;
+  };
+
   const renderGroup = (title: string, list: any[], highlight?: boolean) => (
     <div>
       <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{title} <span>({list.length})</span></h4>
@@ -195,7 +202,7 @@ function OrdersSchedule({ orders }: { orders: any[] }) {
     <div className="space-y-6 pt-4 border-t">
       <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Ordrar – schemalagda perioder</h3>
       {renderGroup("Live just nu", live, true)}
-      {renderGroup("Kommande", upcoming)}
+      {renderGroup(upcomingTitle(), upcoming)}
       {renderGroup("Avslutade", finished)}
     </div>
   );
