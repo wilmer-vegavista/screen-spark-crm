@@ -38,7 +38,7 @@ function AvslutasSnartPage() {
         start = dmin(ds);
         end = dmax(ds);
       } else if (o.invoice_start_date) {
-        start = parseISO(o) (;
+        start = parseISO(o.invoice_start_date);
         end = addMonths(start, o.billing_duration_months || 1);
       } else if (o.selected_weeks?.length) {
         const weekDates = o.selected_weeks.map((w: number) => {
