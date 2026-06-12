@@ -28,9 +28,21 @@ const fmt = (n: number) =>
 function LonPage() {
   const { user, isAdmin } = useCurrentUser();
   const [monthOffset, setMonthOffset] = useState(0);
+  const [viewUserId, setViewUserId] = useState<string | null>(null);
   const month = useMemo(() => addMonths(new Date(), monthOffset), [monthOffset]);
   const monthStart = startOfMonth(month);
   const monthEnd = endOfMonth(month);
+
+  const { data: sellers } = useQuery({
+    queryKey: ["all-profiles-min"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("id, full_name, email").order("full_name");
+      return data ?? [];
+    },
+  });
+
+  const effectiveUserId = isAdmin ? (viewUserId ?? user?.id ?? null) : (user?.id ?? null);
 
   return (
     <>
@@ -55,8 +67,25 @@ function LonPage() {
               <TabsTrigger value="saljare">Säljarinställningar</TabsTrigger>
               <TabsTrigger value="skatt">Skatteberäkning</TabsTrigger>
             </TabsList>
-            <TabsContent value="min" className="mt-4">
-              {user && <SalaryCard userId={user.id} from={monthStart} to={monthEnd} />}
+            <TabsContent value="min" className="mt-4 space-y-4">
+              <Card className="p-4 flex items-center gap-3 flex-wrap">
+                <UserCog className="size-4 text-primary" />
+                <Label className="text-xs">Visa lön för säljare:</Label>
+                <Select value={effectiveUserId ?? ""} onValueChange={(v) => setViewUserId(v)}>
+                  <SelectTrigger className="w-72"><SelectValue placeholder="Välj säljare" /></SelectTrigger>
+                  <SelectContent>
+                    {(sellers ?? []).map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.full_name || s.email}{s.id === user?.id ? " (jag)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {viewUserId && viewUserId !== user?.id && (
+                  <Button variant="ghost" size="sm" onClick={() => setViewUserId(null)}>Återställ till mig</Button>
+                )}
+              </Card>
+              {effectiveUserId && <SalaryCard userId={effectiveUserId} from={monthStart} to={monthEnd} />}
             </TabsContent>
             <TabsContent value="alla" className="mt-4">
               <AllSellers from={monthStart} to={monthEnd} />
