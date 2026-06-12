@@ -46,7 +46,7 @@ function AvslutasSnartPage() {
           return { s: startOfISOWeek(d), e: endOfISOWeek(d) };
         });
         start = dmin(weekDates.map((x: any) => x.s));
-        end =oreal(weekDates.map((x: any) => x.e));
+        end = dmax(weekDates.map((x: any) => x.e));
       }
       return { ...o, _start: start, _end: end };
     })
