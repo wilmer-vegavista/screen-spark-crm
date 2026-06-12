@@ -40,6 +40,41 @@ function Kampanjer() {
     },
   });
 
+  const { data: scheduledOrders } = useQuery({
+    queryKey: ["orders-scheduled"],
+    queryFn: async () => {
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("id, company_name, status, order_type, selected_weeks, exact_dates, invoice_start_date, billing_duration_months, billing_frequency, total_excl_vat")
+        .order("invoice_start_date", { ascending: true, nullsFirst: false });
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      return (orders ?? [])
+        .map((o: any) => {
+          let start: Date | null = null;
+          let end: Date | null = null;
+          if (o.exact_dates?.length) {
+            const ds = o.exact_dates.map((d: string) => parseISO(d));
+            start = dmin(ds);
+            end = dmax(ds);
+          } else if (o.invoice_start_date) {
+            start = parseISO(o.invoice_start_date);
+            end = addMonths(start, o.billing_duration_months || 1);
+          } else if (o.selected_weeks?.length) {
+            const weekDates = o.selected_weeks.map((w: number) => {
+              const d = setISOWeek(setISOWeekYear(new Date(currentYear, 5, 1), currentYear), w);
+              return { s: startOfISOWeek(d), e: endOfISOWeek(d) };
+            });
+            start = dmin(weekDates.map((x: any) => x.s));
+            end = dmax(weekDates.map((x: any) => x.e));
+          }
+          return { ...o, _start: start, _end: end };
+        })
+        .filter((o: any) => o._start && o._end);
+    },
+  });
+
+
   const now = new Date();
   const grouped = {
     upcoming: (data ?? []).filter(c => isAfter(new Date(c.start_date), now)),
