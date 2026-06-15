@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
+import { RecentSalesPanel } from "@/components/recent-sales";
 
 interface NavItem {
   to: string;
