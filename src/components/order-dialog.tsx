@@ -65,6 +65,8 @@ export function OrderDialog({
   const qc = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const { data: customers = [] } = useQuery({
     queryKey: ["customers-min"],
