@@ -903,7 +903,17 @@ export function OrderDialog({
             </Tabs>
           </Card>
 
-          <div><Label>Anteckningar</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
+          <div className="space-y-1">
+            <Label htmlFor="order-notes">Order anteckningar</Label>
+            <Textarea
+              id="order-notes"
+              value={form.notes}
+              onChange={e => setForm({ ...form, notes: e.target.value })}
+              placeholder="Skriv valfria anteckningar här – de visas på PDF:en under produktöversikten."
+              rows={4}
+            />
+            <p className="text-[11px] text-muted-foreground">Det du skriver här hamnar på orderbekräftelsen/offerten under rubriken "Order Anteckningar".</p>
+          </div>
 
           {/* Fakturering */}
           <Card className="p-4">
