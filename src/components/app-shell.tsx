@@ -68,14 +68,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-background">
-      <aside className="w-60 shrink-0 border-r bg-sidebar flex flex-col">
-        <div className="px-4 py-4 border-b">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <img src="/__l5e/assets-v1/e7f7e2a8-7f9d-4e0d-a296-adeeed75e2d1/vega-vista-logo.png" alt="Vega Vista" className="h-8 w-auto" />
+      <aside className="w-64 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col">
+        <div className="px-5 py-5 border-b border-sidebar-border">
+          <Link to="/dashboard" className="flex items-center gap-2 group">
+            <img
+              src="/__l5e/assets-v1/e7f7e2a8-7f9d-4e0d-a296-adeeed75e2d1/vega-vista-logo.png"
+              alt="Vega Vista"
+              className="h-9 w-auto transition-opacity group-hover:opacity-90"
+            />
           </Link>
         </div>
 
-        <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">
+        <nav className="flex-1 px-3 py-5 space-y-6 overflow-y-auto">
           <NavGroup label="Sälj">
             {visibleNav.filter(n => n.group === "saljare").map(n => (
               <NavLink key={n.to} to={n.to} label={n.label} icon={n.icon} active={pathname.startsWith(n.to)} />
@@ -95,17 +99,20 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </nav>
 
-        <div className="border-t p-3 space-y-2">
-          <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-sidebar-accent/40">
-            <div className="size-7 rounded-full flex items-center justify-center text-xs font-semibold" style={{ background: "var(--gradient-primary)", color: "var(--primary-foreground)" }}>
+        <div className="border-t border-sidebar-border p-3 space-y-2">
+          <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-sidebar-accent/40">
+            <div
+              className="size-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+              style={{ background: "var(--gradient-primary)", color: "var(--primary-foreground)" }}
+            >
               {(profile?.full_name || profile?.email || "?").slice(0, 1).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium truncate">{profile?.full_name || profile?.email}</div>
-              <div className="text-[10px] text-muted-foreground truncate">{roles.join(" · ") || "ingen roll"}</div>
+              <div className="text-xs font-semibold truncate tracking-tight">{profile?.full_name || profile?.email}</div>
+              <div className="text-[10px] text-muted-foreground truncate uppercase tracking-wider">{roles.join(" · ") || "ingen roll"}</div>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
+          <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground hover:text-foreground" onClick={handleSignOut}>
             <LogOut className="size-4 mr-2" /> Logga ut
           </Button>
         </div>
@@ -121,7 +128,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 function NavGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</div>
+      <div className="px-3 pb-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70 font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+        {label}
+      </div>
       <div className="space-y-0.5">{children}</div>
     </div>
   );
@@ -132,11 +141,19 @@ function NavLink({ to, label, icon: Icon, active }: { to: string; label: string;
     <Link
       to={to}
       className={cn(
-        "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
-        active ? "bg-sidebar-accent text-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-foreground"
+        "relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all",
+        active
+          ? "bg-sidebar-accent text-foreground shadow-sm"
+          : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-foreground"
       )}
     >
-      <Icon className="size-4" />
+      {active && (
+        <span
+          className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full"
+          style={{ background: "var(--gradient-primary)" }}
+        />
+      )}
+      <Icon className={cn("size-4 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
       {label}
     </Link>
   );
