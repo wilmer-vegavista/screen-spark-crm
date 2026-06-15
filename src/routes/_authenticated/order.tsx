@@ -25,6 +25,10 @@ import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/order")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    order: typeof s.order === "string" ? s.order : undefined,
+    product: typeof s.product === "string" ? s.product : undefined,
+  }),
   component: OrderPage,
 });
 
