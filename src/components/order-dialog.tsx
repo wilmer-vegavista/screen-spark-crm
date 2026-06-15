@@ -397,12 +397,15 @@ export function OrderDialog({
     setGenerating(true);
     try {
       const { data: u } = await supabase.auth.getUser();
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", u.user!.id).maybeSingle();
+      // Säljaren = den som registrerat ordern (created_by), annars ägaren, annars inloggad
+      const sellerId = (order as any)?.created_by ?? (order as any)?.owner_id ?? u.user?.id;
+      const { data: prof } = await supabase.from("profiles").select("*").eq("id", sellerId).maybeSingle();
       const productsMap: Record<string, any> = {};
       products.forEach((p: any) => { productsMap[p.id] = p; });
       await generateOrderPdf({
         order: {
           id: order?.id ?? crypto.randomUUID(),
+          created_at: (order as any)?.created_at ?? new Date().toISOString(),
           ...form,
           selected_weeks: selectedWeeks,
           exact_dates: exactDates.map(d => format(d, "yyyy-MM-dd")),
@@ -420,7 +423,7 @@ export function OrderDialog({
         }),
 
         products: productsMap,
-        sellerName: prof?.full_name ?? u.user?.email,
+        sellerName: prof?.full_name ?? prof?.email ?? u.user?.email,
         sellerEmail: prof?.email ?? u.user?.email,
         sellerTitle: "Account Manager",
       });
