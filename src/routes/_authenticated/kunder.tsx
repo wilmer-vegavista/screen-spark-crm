@@ -36,6 +36,16 @@ function Kunder() {
     },
   });
 
+  useEffect(() => {
+    if (!customerParam || !data) return;
+    const found = data.find((c: any) => c.id === customerParam);
+    if (found) {
+      setEditing(found);
+      setOpen(true);
+      navigate({ to: "/kunder", search: {} as any, replace: true });
+    }
+  }, [customerParam, data, navigate]);
+
   const filtered = (data ?? []).filter(c =>
     !q || c.company_name.toLowerCase().includes(q.toLowerCase()) || (c.contact_name?.toLowerCase().includes(q.toLowerCase()))
   );
