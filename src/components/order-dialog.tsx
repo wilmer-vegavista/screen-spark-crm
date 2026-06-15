@@ -805,14 +805,25 @@ export function OrderDialog({
                     </div>
                     <div className="grid grid-cols-12 gap-2 items-end">
                       <div className="col-span-3">
+                        <Label className="text-xs">Pris (ex moms)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={it.line_price}
+                          onChange={e => updItem(idx, { line_price: e.target.value })}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="col-span-2">
                         <Label className="text-xs">Provision %</Label>
                         <Input type="number" step="0.01" value={commissionPct} readOnly />
                       </div>
-                      <div className="col-span-4 text-sm">
-                        <div className="text-xs text-muted-foreground">Andel av total</div>
+                      <div className="col-span-3 text-sm">
+                        <div className="text-xs text-muted-foreground">Radens belopp</div>
                         <div className="font-semibold">{SEK(lineTotal)} SEK</div>
                       </div>
-                      <div className="col-span-5 text-sm">
+                      <div className="col-span-4 text-sm">
                         <div className="text-xs text-muted-foreground">Provision (rad)</div>
                         <div className="font-semibold text-primary">{SEK(commission)} SEK</div>
                       </div>
