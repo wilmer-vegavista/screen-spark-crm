@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format as fmtDate } from "date-fns";
-import logoUrl from "@/assets/vega-vista-logo.png";
+import logoAsset from "@/assets/vega-vista-logo.png.asset.json";
 
 const SEK = (n: number) =>
   new Intl.NumberFormat("sv-SE", { style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(n || 0)) + " SEK";
