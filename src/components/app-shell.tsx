@@ -70,7 +70,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex bg-background">
       <aside className="w-64 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col">
         <div className="px-5 py-5 border-b border-sidebar-border">
-          <Link to="/dashboard" className="flex items-center gap-2 group">
+          <Link to="/dashboard" className="inline-flex bg-white rounded-md p-2 group">
             <img
               src="/__l5e/assets-v1/e7f7e2a8-7f9d-4e0d-a296-adeeed75e2d1/vega-vista-logo.png"
               alt="Vega Vista"
