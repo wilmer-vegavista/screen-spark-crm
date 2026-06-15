@@ -85,7 +85,7 @@ export function GlobalSearch() {
           kind: "product",
           id: p.id,
           title: p.name,
-          subtitle: [p.location, p.category].filter(Boolean).join(" · "),
+          subtitle: [p.city, p.address].filter(Boolean).join(" · "),
         })
       );
       (items.data ?? []).forEach((it: any) => {
