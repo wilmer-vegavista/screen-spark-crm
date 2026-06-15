@@ -618,6 +618,7 @@ export function OrderDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Postnummer</Label><Input value={form.postal_code} onChange={e => setForm({ ...form, postal_code: e.target.value })} /></div>
                 <div><Label>Ort</Label><Input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} /></div>
+              </div>
               <div className="grid grid-cols-3 gap-3 pt-2 border-t mt-2">
                 <div>
                   <Label>Referensnummer</Label>
