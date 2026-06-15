@@ -220,6 +220,9 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   doc.setFontSize(11);
   doc.setTextColor(0);
 
+  // Bygg specifikationer per item och gruppera identiska specar
+  type SpecGroup = { names: string[]; specs: Array<[string, string]> };
+  const groups: SpecGroup[] = [];
   items.forEach((it) => {
     const p = products[it.product_id] || {};
     const specs: Array<[string, string]> = [];
@@ -230,13 +233,31 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
     specs.push(["Filformat:", p.file_format || "MP4, JPG, PNG"]);
     if (p.material_spec) specs.push(["Övrigt:", p.material_spec]);
 
+    const key = JSON.stringify(specs);
+    const name = it.product_name || p.name || "—";
+    const existing = groups.find((g) => JSON.stringify(g.specs) === key);
+    if (existing) {
+      if (!existing.names.includes(name)) existing.names.push(name);
+    } else {
+      groups.push({ names: [name], specs });
+    }
+  });
+
+  groups.forEach((g) => {
     if (y > pageH - margin - 120) { doc.addPage(); y = margin + 20; }
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text(`Material spec: ${it.product_name || p.name || "—"}`, margin, y);
-    y += 16;
-    specs.forEach(([k, v]) => {
+    const title = g.names.length > 1
+      ? `Material spec (gemensam för ${g.names.length} skärmar): ${g.names.join(", ")}`
+      : `Material spec: ${g.names[0]}`;
+    const titleLines = doc.splitTextToSize(title, pageW - margin * 2);
+    titleLines.forEach((ln: string) => {
+      doc.text(ln, margin, y);
+      y += 14;
+    });
+    y += 2;
+    g.specs.forEach(([k, v]) => {
       doc.setFont("helvetica", "bold");
       doc.text(`${k} ${v}`, margin, y);
       y += 14;
