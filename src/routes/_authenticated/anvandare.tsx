@@ -330,17 +330,19 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
           email,
           phone,
           title,
+          role,
           compensation_type: type,
           base_salary: type === "endast_provision" ? 0 : Number(base),
           default_commission_pct: Number(pct),
         }});
-        toast.success("Säljare uppdaterad");
+        toast.success("Användare uppdaterad");
       } else {
         const result = await createSeller({ data: {
           full_name: name,
           email,
           phone,
           title,
+          role,
           compensation_type: type,
           base_salary: type === "endast_provision" ? 0 : Number(base),
           default_commission_pct: Number(pct),
@@ -348,9 +350,9 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
           password: credMode === "password" ? password : undefined,
         }});
         if (result.invited) {
-          toast.success("Säljare skapad — inbjudan skickad till " + email);
+          toast.success("Användare skapad — inbjudan skickad till " + email);
         } else {
-          toast.success("Säljare skapad med lösenord");
+          toast.success("Användare skapad med lösenord");
         }
       }
       onSaved();
