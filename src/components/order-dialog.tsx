@@ -951,9 +951,13 @@ export function OrderDialog({
                       </div>
                     </div>
 
-                  </Card>
-                );
-              })}
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ));
+              })()}
             </div>
           </div>
 
