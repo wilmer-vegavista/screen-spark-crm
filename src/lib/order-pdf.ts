@@ -83,13 +83,22 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   doc.setTextColor(190);
   doc.text(docTitle, pageW - margin, 90, { align: "right" });
 
-  // Datum
+  // Datum (label vänster om värde, med ordentligt avstånd)
   doc.setFontSize(10);
   doc.setTextColor(0);
-  doc.setFont("helvetica", "bold");
-  doc.text("Datum:", pageW - margin - 78, 115);
-  doc.setFont("helvetica", "normal");
-  doc.text(fmtDate(new Date(), "yyyy-MM-dd"), pageW - margin, 115, { align: "right" });
+  const today = fmtDate(new Date(), "yyyy-MM-dd");
+  const orderDateRaw = order?.created_at ? new Date(order.created_at) : null;
+  const orderDate = orderDateRaw && !isNaN(orderDateRaw.getTime()) ? fmtDate(orderDateRaw, "yyyy-MM-dd") : today;
+
+  const drawDateRow = (label: string, value: string, rowY: number) => {
+    doc.setFont("helvetica", "normal");
+    const valueW = doc.getTextWidth(value);
+    doc.text(value, pageW - margin, rowY, { align: "right" });
+    doc.setFont("helvetica", "bold");
+    doc.text(label, pageW - margin - valueW - 10, rowY, { align: "right" });
+  };
+  drawDateRow("Orderdatum:", orderDate, 110);
+  drawDateRow("Utskriftsdatum:", today, 126);
 
   // Company address (right aligned)
   let addrY = 155;
