@@ -290,6 +290,7 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
   const [type, setType] = useState<"endast_provision" | "med_grundlon">("med_grundlon");
   const [base, setBase] = useState("0");
   const [pct, setPct] = useState("0");
+  const [role, setRole] = useState<"saljare" | "admin">("saljare");
   const [saving, setSaving] = useState(false);
 
   // Credential mode (endast vid skapande)
@@ -305,6 +306,7 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
       setType((seller?.compensation_type as any) ?? "med_grundlon");
       setBase(String(seller?.base_salary ?? 0));
       setPct(String(seller?.default_commission_pct ?? 0));
+      setRole((seller?.role as any) ?? "saljare");
       setCredMode("password");
       setPassword(generateSuggestedPassword());
     }
