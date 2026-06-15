@@ -161,7 +161,7 @@ function SellersTable() {
             ))}
             {(data ?? []).length === 0 && (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground py-6">
+                <TableCell colSpan={13} className="text-center text-muted-foreground py-6">
                   Inga användare ännu
                 </TableCell>
               </TableRow>
