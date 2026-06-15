@@ -895,9 +895,17 @@ export function OrderDialog({
                           </Select>
                         </div>
                       </div>
-                      <div className="col-span-1 flex justify-end">
-                        <Button type="button" size="icon" variant="ghost" onClick={() => setItems(a => a.filter((_, i) => i !== idx))}>
-                          <Trash2 className="size-4 text-destructive" />
+                      <div className="col-span-1 flex flex-col items-end gap-1">
+                        <div className="flex">
+                          <Button type="button" size="icon" variant="ghost" className="size-7" onClick={() => moveItem(idx, -1)} disabled={idx === 0}>
+                            <ArrowUp className="size-3.5" />
+                          </Button>
+                          <Button type="button" size="icon" variant="ghost" className="size-7" onClick={() => moveItem(idx, 1)} disabled={idx === items.length - 1}>
+                            <ArrowDown className="size-3.5" />
+                          </Button>
+                        </div>
+                        <Button type="button" size="icon" variant="ghost" className="size-7" onClick={() => setItems(a => a.filter((_, i) => i !== idx))}>
+                          <Trash2 className="size-3.5 text-destructive" />
                         </Button>
                       </div>
                     </div>
