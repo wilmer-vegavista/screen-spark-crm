@@ -471,13 +471,14 @@ export function OrderDialog({
       },
       items: items.filter(it => it.product_name.trim()).map(it => {
         const weeks = Number(it.weeks) || 1;
+        const lineAmount = useManual ? (Number(it.line_price) || 0) : perScreen;
         return {
           product_id: it.product_id,
           product_name: it.product_name,
           sov_pct: it.sov_pct ? Number(it.sov_pct) : null,
           impressions: it.impressions ? Number(it.impressions) : null,
           weeks,
-          unit_price: weeks > 0 ? perScreen / weeks : perScreen,
+          unit_price: weeks > 0 ? lineAmount / weeks : lineAmount,
         };
       }),
       products: productsMap,
