@@ -53,8 +53,8 @@ export function GlobalSearch() {
           .limit(8),
         supabase
           .from("products")
-          .select("id, name, location, category")
-          .or(`name.ilike.${like},location.ilike.${like},category.ilike.${like}`)
+          .select("id, name, city, address, screen_type")
+          .or(`name.ilike.${like},city.ilike.${like},address.ilike.${like}`)
           .limit(8),
         supabase
           .from("order_items")
@@ -85,7 +85,7 @@ export function GlobalSearch() {
           kind: "product",
           id: p.id,
           title: p.name,
-          subtitle: [p.location, p.category].filter(Boolean).join(" · "),
+          subtitle: [p.city, p.address].filter(Boolean).join(" · "),
         })
       );
       (items.data ?? []).forEach((it: any) => {

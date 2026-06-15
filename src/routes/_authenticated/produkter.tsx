@@ -27,6 +27,7 @@ type Product = {
   name: string;
   description: string | null;
   address: string | null;
+  city: string | null;
   screen_type: string;
   format: string | null;
   dimensions: string | null;
@@ -199,6 +200,7 @@ function ProductDialog({
       name: form.name,
       description: form.description || null,
       address: form.address || null,
+      city: (form as any).city || null,
       screen_type: form.screen_type || "egen",
       format: form.format || null,
       dimensions: form.dimensions || null,
@@ -241,6 +243,14 @@ function ProductDialog({
                 {SCREEN_TYPES.map(t => <SelectItem key={t} value={t}>{SCREEN_TYPE_LABEL[t]}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label>Stad / kategori</Label>
+            <Input
+              value={(form as any).city ?? ""}
+              placeholder="t.ex. Stockholm, Borås"
+              onChange={(e) => setForm({ ...form, city: e.target.value } as any)}
+            />
           </div>
           <div>
             <Label>Adress</Label>

@@ -770,6 +770,7 @@ export type Database = {
           active: boolean
           ad_duration_seconds: number | null
           address: string | null
+          city: string | null
           commission_pct_provision_only: number | null
           commission_pct_with_base: number | null
           contacts_per_week: number | null
@@ -792,6 +793,7 @@ export type Database = {
           active?: boolean
           ad_duration_seconds?: number | null
           address?: string | null
+          city?: string | null
           commission_pct_provision_only?: number | null
           commission_pct_with_base?: number | null
           contacts_per_week?: number | null
@@ -814,6 +816,7 @@ export type Database = {
           active?: boolean
           ad_duration_seconds?: number | null
           address?: string | null
+          city?: string | null
           commission_pct_provision_only?: number | null
           commission_pct_with_base?: number | null
           contacts_per_week?: number | null

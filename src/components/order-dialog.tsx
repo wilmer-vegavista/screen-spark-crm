@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Loader2, ChevronDown, CalendarIcon, X, Eye, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, FileDown, Loader2, ChevronDown, CalendarIcon, X, Eye, CheckCircle2, ArrowUp, ArrowDown, Package as PackageIcon } from "lucide-react";
 import { generateOrderPdf, type OrderPdfInput } from "@/lib/order-pdf";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
@@ -82,6 +82,29 @@ export function OrderDialog({
     queryFn: async () => {
       const { data } = await supabase.from("products").select("*").eq("active", true).order("name");
       return data ?? [];
+    },
+  });
+  const { data: packages = [] } = useQuery({
+    queryKey: ["packages-with-products"],
+    queryFn: async () => {
+      const { data: pkgs } = await supabase
+        .from("product_packages")
+        .select("id, name")
+        .eq("active", true)
+        .order("name");
+      if (!pkgs || pkgs.length === 0) return [];
+      const ids = pkgs.map((p: any) => p.id);
+      const { data: links } = await supabase
+        .from("package_products")
+        .select("package_id, product_id, position")
+        .in("package_id", ids);
+      return pkgs.map((p: any) => ({
+        ...p,
+        product_ids: (links ?? [])
+          .filter((l: any) => l.package_id === p.id)
+          .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+          .map((l: any) => l.product_id),
+      }));
     },
   });
   const { data: sellerComp } = useQuery({
@@ -278,6 +301,49 @@ export function OrderDialog({
 
   const updItem = (idx: number, patch: Partial<Item>) => {
     setItems(arr => arr.map((it, i) => i === idx ? { ...it, ...patch } : it));
+  };
+
+  const moveItem = (idx: number, dir: -1 | 1) => {
+    setItems(arr => {
+      const next = [...arr];
+      const target = idx + dir;
+      if (target < 0 || target >= next.length) return arr;
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  };
+
+  const addPackage = (pkg: { product_ids: string[] }) => {
+    if (!pkg.product_ids?.length) return;
+    setItems(arr => {
+      const cleaned = arr.filter(it => it.product_id || it.product_name.trim());
+      const existing = new Set(cleaned.map(it => it.product_id).filter(Boolean));
+      const additions: Item[] = pkg.product_ids
+        .filter(pid => !existing.has(pid))
+        .map(pid => {
+          const p = products.find((x: any) => x.id === pid);
+          if (!p) return null;
+          return {
+            product_id: p.id,
+            product_name: p.name,
+            sov_pct: "",
+            impressions: "",
+            weeks: "1",
+            period_unit: "veckor" as PeriodUnit,
+            unit_price: "0",
+            line_price: "0",
+            commission_pct: commissionPctFor(p).toString(),
+          } as Item;
+        })
+        .filter(Boolean) as Item[];
+      return [...cleaned, ...additions];
+    });
+  };
+
+  const cityFor = (pid: string | null) => {
+    if (!pid) return "Övrigt";
+    const p = products.find((x: any) => x.id === pid);
+    return (p?.city || "Övrigt") as string;
   };
 
   // Calculations — use per-screen price if any are set, otherwise split total equally
@@ -698,62 +764,110 @@ export function OrderDialog({
 
           {/* Skärmar */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
               <div className="text-sm font-semibold">Skärmar</div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button type="button" size="sm" variant="outline">
-                    <Plus className="size-4 mr-1" /> Välj skärmar <ChevronDown className="size-4 ml-1" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-2 max-h-96 overflow-y-auto" align="end">
-                  <div className="text-xs text-muted-foreground px-2 py-1">Bocka i de skärmar du vill lägga till</div>
-                  {products.length === 0 && (
-                    <div className="px-2 py-3 text-sm text-muted-foreground">Inga produkter att välja</div>
-                  )}
-                  {products.map((p: any) => {
-                    const checked = items.some(it => it.product_id === p.id);
-                    return (
-                      <label
-                        key={p.id}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(v) => {
-                            if (v) {
-                              setItems(arr => {
-                                const cleaned = arr.filter(it => it.product_id || it.product_name.trim());
-                                return [...cleaned, {
-                                  product_id: p.id,
-                                  product_name: p.name,
-                                  sov_pct: "",
-                                  impressions: "",
-                                  weeks: "1",
-                                  period_unit: "veckor" as PeriodUnit,
-                                  unit_price: "0",
-                                  line_price: "0",
-                                  commission_pct: commissionPctFor(p).toString(),
-                                }];
-                              });
-                            } else {
-                              setItems(arr => arr.filter(it => it.product_id !== p.id));
-                            }
-                          }}
-                        />
-                        <span className="text-sm flex-1">{p.name}</span>
-                      </label>
-                    );
-                  })}
-                </PopoverContent>
-              </Popover>
+              <div className="flex items-center gap-2">
+                {packages.length > 0 && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button type="button" size="sm" variant="outline">
+                        <PackageIcon className="size-4 mr-1" /> Lägg till paket <ChevronDown className="size-4 ml-1" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-1 max-h-80 overflow-y-auto" align="end">
+                      <div className="text-xs text-muted-foreground px-2 py-1">
+                        Lägger till alla skärmar i paketet
+                      </div>
+                      {packages.map((pkg: any) => (
+                        <button
+                          key={pkg.id}
+                          type="button"
+                          onClick={() => addPackage(pkg)}
+                          className="w-full text-left px-2 py-2 rounded hover:bg-accent flex items-center justify-between gap-2"
+                        >
+                          <span className="text-sm">{pkg.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {pkg.product_ids.length} st
+                          </span>
+                        </button>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
+                )}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button type="button" size="sm" variant="outline">
+                      <Plus className="size-4 mr-1" /> Välj skärmar <ChevronDown className="size-4 ml-1" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-2 max-h-96 overflow-y-auto" align="end">
+                    <div className="text-xs text-muted-foreground px-2 py-1">Bocka i de skärmar du vill lägga till</div>
+                    {products.length === 0 && (
+                      <div className="px-2 py-3 text-sm text-muted-foreground">Inga produkter att välja</div>
+                    )}
+                    {products.map((p: any) => {
+                      const checked = items.some(it => it.product_id === p.id);
+                      return (
+                        <label
+                          key={p.id}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              if (v) {
+                                setItems(arr => {
+                                  const cleaned = arr.filter(it => it.product_id || it.product_name.trim());
+                                  return [...cleaned, {
+                                    product_id: p.id,
+                                    product_name: p.name,
+                                    sov_pct: "",
+                                    impressions: "",
+                                    weeks: "1",
+                                    period_unit: "veckor" as PeriodUnit,
+                                    unit_price: "0",
+                                    line_price: "0",
+                                    commission_pct: commissionPctFor(p).toString(),
+                                  }];
+                                });
+                              } else {
+                                setItems(arr => arr.filter(it => it.product_id !== p.id));
+                              }
+                            }}
+                          />
+                          <span className="text-sm flex-1">
+                            {p.name}
+                            {p.city ? <span className="text-xs text-muted-foreground ml-1">· {p.city}</span> : null}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
-            <div className="space-y-3">
-              {items.map((it, idx) => {
-                const { lineTotal, commission, commissionPct } = calc[idx];
-                return (
-                  <Card key={idx} className="p-3 space-y-3">
+            <div className="space-y-4">
+              {(() => {
+                const groups: { city: string; entries: { it: Item; idx: number }[] }[] = [];
+                items.forEach((it, idx) => {
+                  const c = cityFor(it.product_id);
+                  const g = groups.find(x => x.city === c);
+                  if (g) g.entries.push({ it, idx });
+                  else groups.push({ city: c, entries: [{ it, idx }] });
+                });
+                return groups.map(g => (
+                  <div key={g.city} className="space-y-2">
+                    {groups.length > 1 && (
+                      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                        {g.city} <span className="text-muted-foreground/60">· {g.entries.length} st</span>
+                      </div>
+                    )}
+                    <div className="space-y-3">
+                      {g.entries.map(({ it, idx }) => {
+                        const { lineTotal, commission, commissionPct } = calc[idx];
+                        return (
+                          <Card key={idx} className="p-3 space-y-3">
                     <div className="grid grid-cols-12 gap-2 items-end">
                       <div className="col-span-5">
                         <Label className="text-xs">Skärm / produkt</Label>
@@ -797,9 +911,17 @@ export function OrderDialog({
                           </Select>
                         </div>
                       </div>
-                      <div className="col-span-1 flex justify-end">
-                        <Button type="button" size="icon" variant="ghost" onClick={() => setItems(a => a.filter((_, i) => i !== idx))}>
-                          <Trash2 className="size-4 text-destructive" />
+                      <div className="col-span-1 flex flex-col items-end gap-1">
+                        <div className="flex">
+                          <Button type="button" size="icon" variant="ghost" className="size-7" onClick={() => moveItem(idx, -1)} disabled={idx === 0}>
+                            <ArrowUp className="size-3.5" />
+                          </Button>
+                          <Button type="button" size="icon" variant="ghost" className="size-7" onClick={() => moveItem(idx, 1)} disabled={idx === items.length - 1}>
+                            <ArrowDown className="size-3.5" />
+                          </Button>
+                        </div>
+                        <Button type="button" size="icon" variant="ghost" className="size-7" onClick={() => setItems(a => a.filter((_, i) => i !== idx))}>
+                          <Trash2 className="size-3.5 text-destructive" />
                         </Button>
                       </div>
                     </div>
@@ -829,9 +951,13 @@ export function OrderDialog({
                       </div>
                     </div>
 
-                  </Card>
-                );
-              })}
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ));
+              })()}
             </div>
           </div>
 
