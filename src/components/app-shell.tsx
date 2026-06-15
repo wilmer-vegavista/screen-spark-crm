@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
+import { RecentSalesPanel } from "@/components/recent-sales";
 
 interface NavItem {
   to: string;
@@ -121,6 +122,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="flex-1 min-w-0 flex flex-col">
+        <div className="flex items-center justify-end gap-2 px-6 py-3 border-b border-border bg-background/60 backdrop-blur sticky top-0 z-40">
+          <RecentSalesPanel />
+        </div>
         {children}
       </main>
     </div>
