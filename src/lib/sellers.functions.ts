@@ -100,6 +100,14 @@ export const createSeller = createServerFn({ method: "POST" })
     });
     if (compError) throw new Error(compError.message);
 
+    // 4. If admin selected, grant admin role (trigger already gave them 'saljare')
+    if (data.role === "admin") {
+      const { error: roleErr } = await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
+      if (roleErr) throw new Error(roleErr.message);
+    }
+
     return { userId, password: storedPassword, invited };
   });
 
