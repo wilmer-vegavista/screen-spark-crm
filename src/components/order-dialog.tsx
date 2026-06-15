@@ -618,7 +618,21 @@ export function OrderDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Postnummer</Label><Input value={form.postal_code} onChange={e => setForm({ ...form, postal_code: e.target.value })} /></div>
                 <div><Label>Ort</Label><Input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} /></div>
+              <div className="grid grid-cols-3 gap-3 pt-2 border-t mt-2">
+                <div>
+                  <Label>Referensnummer</Label>
+                  <Input value={form.invoice_reference} onChange={e => setForm({ ...form, invoice_reference: e.target.value })} placeholder="Kundens referens" />
+                </div>
+                <div>
+                  <Label>Peppol-ID</Label>
+                  <Input value={form.invoice_peppol_id} onChange={e => setForm({ ...form, invoice_peppol_id: e.target.value })} placeholder="0007:..." />
+                </div>
+                <div>
+                  <Label>Faktura-mejl</Label>
+                  <Input type="email" value={form.invoice_email} onChange={e => setForm({ ...form, invoice_email: e.target.value })} placeholder="faktura@..." />
+                </div>
               </div>
+              <p className="text-[11px] text-muted-foreground">Sparas även på kundkortet så de följer med nästa order.</p>
             </div>
           </div>
 
