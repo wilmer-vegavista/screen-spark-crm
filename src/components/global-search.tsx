@@ -53,8 +53,8 @@ export function GlobalSearch() {
           .limit(8),
         supabase
           .from("products")
-          .select("id, name, location, category")
-          .or(`name.ilike.${like},location.ilike.${like},category.ilike.${like}`)
+          .select("id, name, city, address, screen_type")
+          .or(`name.ilike.${like},city.ilike.${like},address.ilike.${like}`)
           .limit(8),
         supabase
           .from("order_items")
