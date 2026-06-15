@@ -35,6 +35,7 @@ type Item = {
   weeks: string;
   period_unit: PeriodUnit;
   unit_price: string;
+  line_price: string;
   commission_pct: string;
 };
 
@@ -46,6 +47,7 @@ const emptyItem = (): Item => ({
   weeks: "1",
   period_unit: "veckor",
   unit_price: "0",
+  line_price: "0",
   commission_pct: "0",
 });
 
