@@ -118,6 +118,7 @@ function SellersTable() {
               <TableHead>Titel</TableHead>
               <TableHead>E-post</TableHead>
               <TableHead>Telefon</TableHead>
+              <TableHead>Roll</TableHead>
               <TableHead>Lösenord</TableHead>
               <TableHead>Typ</TableHead>
               <TableHead className="text-right">Grundlön</TableHead>
@@ -132,6 +133,11 @@ function SellersTable() {
                 <TableCell className="text-xs text-muted-foreground">{s.title || "Account Manager"}</TableCell>
                 <TableCell className="text-xs">{s.email || "—"}</TableCell>
                 <TableCell className="text-xs">{s.phone || "—"}</TableCell>
+                <TableCell>
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${s.role === "admin" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+                    {s.role === "admin" ? "Admin" : "Säljare"}
+                  </span>
+                </TableCell>
                 <TableCell><PasswordCell value={s.password} /></TableCell>
                 <TableCell className="text-xs">
                   {s.compensation_type === "endast_provision" ? "Endast prov." : "Med grundlön"}
