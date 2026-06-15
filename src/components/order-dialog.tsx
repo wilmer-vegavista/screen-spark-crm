@@ -1016,6 +1016,10 @@ export function OrderDialog({
                 <Trash2 className="size-4 mr-1" /> Ta bort
               </Button>
             )}
+            <Button type="button" variant="outline" onClick={handlePreview} disabled={previewLoading}>
+              {previewLoading ? <Loader2 className="size-4 mr-1 animate-spin" /> : <Eye className="size-4 mr-1" />}
+              Förhandsgranska
+            </Button>
             <Button type="button" variant="outline" onClick={handlePdf} disabled={generating}>
               {generating ? <Loader2 className="size-4 mr-1 animate-spin" /> : <FileDown className="size-4 mr-1" />}
               Ladda ner PDF
@@ -1027,6 +1031,48 @@ export function OrderDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* PDF-förhandsvisning */}
+      <Dialog
+        open={!!previewUrl}
+        onOpenChange={(o) => {
+          if (!o) {
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            setPreviewUrl(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle>Förhandsvisning av PDF</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 bg-muted">
+            {previewUrl && (
+              <iframe
+                src={previewUrl}
+                title="PDF-förhandsvisning"
+                className="w-full h-full border-0"
+              />
+            )}
+          </div>
+          <DialogFooter className="px-6 py-3 border-t gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+                setPreviewUrl(null);
+              }}
+            >
+              Stäng
+            </Button>
+            <Button type="button" onClick={handlePdf} disabled={generating}>
+              {generating ? <Loader2 className="size-4 mr-1 animate-spin" /> : <FileDown className="size-4 mr-1" />}
+              Ladda ner PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
