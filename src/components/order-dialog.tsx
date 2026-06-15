@@ -847,11 +847,27 @@ export function OrderDialog({
               </div>
             </div>
 
-            <div className="space-y-3">
-              {items.map((it, idx) => {
-                const { lineTotal, commission, commissionPct } = calc[idx];
-                return (
-                  <Card key={idx} className="p-3 space-y-3">
+            <div className="space-y-4">
+              {(() => {
+                const groups: { city: string; entries: { it: Item; idx: number }[] }[] = [];
+                items.forEach((it, idx) => {
+                  const c = cityFor(it.product_id);
+                  const g = groups.find(x => x.city === c);
+                  if (g) g.entries.push({ it, idx });
+                  else groups.push({ city: c, entries: [{ it, idx }] });
+                });
+                return groups.map(g => (
+                  <div key={g.city} className="space-y-2">
+                    {groups.length > 1 && (
+                      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+                        {g.city} <span className="text-muted-foreground/60">· {g.entries.length} st</span>
+                      </div>
+                    )}
+                    <div className="space-y-3">
+                      {g.entries.map(({ it, idx }) => {
+                        const { lineTotal, commission, commissionPct } = calc[idx];
+                        return (
+                          <Card key={idx} className="p-3 space-y-3">
                     <div className="grid grid-cols-12 gap-2 items-end">
                       <div className="col-span-5">
                         <Label className="text-xs">Skärm / produkt</Label>
