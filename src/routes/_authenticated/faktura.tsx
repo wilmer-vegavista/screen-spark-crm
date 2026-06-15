@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, CheckCircle2, Receipt, Users, FileText, ShoppingCart, Undo2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Receipt, Users, Undo2 } from "lucide-react";
 import { OrderDialog } from "@/components/order-dialog";
 import { format } from "date-fns";
 import { toast } from "sonner";
