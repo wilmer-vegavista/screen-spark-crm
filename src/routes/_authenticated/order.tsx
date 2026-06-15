@@ -194,6 +194,14 @@ function OrderPage() {
               ))}
             </SelectContent>
           </Select>
+          {productFilter && (
+            <Badge variant="secondary" className="gap-1">
+              Skärm: {productInfo?.name ?? "…"}
+              <button type="button" onClick={clearProductFilter} className="ml-1 hover:text-foreground">
+                <X className="size-3" />
+              </button>
+            </Badge>
+          )}
           <span className="text-xs text-muted-foreground ml-auto">{orders.length} order{orders.length === 1 ? "" : "r"}</span>
         </Card>
         {orders.length === 0 && (
