@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <img
               src="/__l5e/assets-v1/e7f7e2a8-7f9d-4e0d-a296-adeeed75e2d1/vega-vista-logo.png"
               alt="Vega Vista"
-              className="h-9 w-auto transition-opacity group-hover:opacity-90"
+              className="h-9 w-auto object-contain transition-opacity group-hover:opacity-90"
             />
           </Link>
         </div>
