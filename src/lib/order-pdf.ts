@@ -21,7 +21,7 @@ let logoDataUrl: string | null = null;
 async function loadLogo(): Promise<string | null> {
   if (logoDataUrl) return logoDataUrl;
   try {
-    const res = await fetch(logoUrl);
+    const res = await fetch(logoAsset.url);
     const blob = await res.blob();
     logoDataUrl = await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
