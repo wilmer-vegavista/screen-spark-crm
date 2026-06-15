@@ -267,5 +267,11 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
 
   const prefix = isOffert ? "Offert" : "Orderbekraftelse";
   const filename = `${prefix}_${(order.company_name || "kund").replace(/[^a-z0-9]+/gi, "_")}_${(order.id || "").slice(0, 8)}.pdf`;
+
+  if (mode === "blob") {
+    const blob = doc.output("blob");
+    return URL.createObjectURL(blob);
+  }
+
   doc.save(filename);
 }
