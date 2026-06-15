@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format as fmtDate } from "date-fns";
-import logoUrl from "@/assets/vega-vista-logo.png";
+import logoAsset from "@/assets/vega-vista-logo.png.asset.json";
 
 const SEK = (n: number) =>
   new Intl.NumberFormat("sv-SE", { style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(n || 0)) + " SEK";
@@ -21,7 +21,7 @@ let logoDataUrl: string | null = null;
 async function loadLogo(): Promise<string | null> {
   if (logoDataUrl) return logoDataUrl;
   try {
-    const res = await fetch(logoUrl);
+    const res = await fetch(logoAsset.url);
     const blob = await res.blob();
     logoDataUrl = await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
