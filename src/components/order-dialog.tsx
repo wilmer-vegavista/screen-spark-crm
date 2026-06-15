@@ -255,6 +255,9 @@ export function OrderDialog({
       contact_name: c.contact_name ?? "",
       contact_email: c.email ?? "",
       contact_phone: c.phone ?? "",
+      invoice_reference: f.invoice_reference || c.invoice_reference || "",
+      invoice_peppol_id: f.invoice_peppol_id || c.invoice_peppol_id || "",
+      invoice_email: f.invoice_email || c.invoice_email || "",
     }));
   };
 
