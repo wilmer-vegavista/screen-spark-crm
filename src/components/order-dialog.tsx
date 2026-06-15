@@ -404,6 +404,8 @@ export function OrderDialog({
         order: {
           id: order?.id ?? crypto.randomUUID(),
           ...form,
+          selected_weeks: selectedWeeks,
+          exact_dates: exactDates.map(d => format(d, "yyyy-MM-dd")),
         },
         items: items.filter(it => it.product_name.trim()).map(it => {
           const weeks = Number(it.weeks) || 1;
