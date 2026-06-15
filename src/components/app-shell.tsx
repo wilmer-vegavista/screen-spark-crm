@@ -71,13 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside className="w-60 shrink-0 border-r bg-sidebar flex flex-col">
         <div className="px-4 py-4 border-b">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="size-8 rounded-md flex items-center justify-center" style={{ background: "var(--gradient-primary)" }}>
-              <Monitor className="size-4 text-primary-foreground" />
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold">Skylt CRM</span>
-              <span className="text-[10px] text-muted-foreground">DOOH</span>
-            </div>
+            <img src="/__l5e/assets-v1/e7f7e2a8-7f9d-4e0d-a296-adeeed75e2d1/vega-vista-logo.png" alt="Vega Vista" className="h-8 w-auto" />
           </Link>
         </div>
 
