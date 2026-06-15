@@ -70,8 +70,13 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   const docTitle = isOffert ? "Offert" : "Orderbekräftelse";
 
   // ---- Header: logo left, big light title right ----
-  const logo = await loadLogo();
-  if (logo) doc.addImage(logo, "PNG", margin, 60, 170, 80);
+  const { dataUrl: logo, aspect } = await loadLogo();
+  if (logo && aspect) {
+    const maxH = 50;
+    const logoH = maxH;
+    const logoW = logoH * aspect;
+    doc.addImage(logo, "PNG", margin, 60, logoW, logoH);
+  }
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(34);
