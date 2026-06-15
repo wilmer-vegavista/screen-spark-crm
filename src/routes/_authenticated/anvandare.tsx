@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Pencil, Loader2, Mail, Eye, EyeOff, Copy, KeyRound } from "lucide-react";
-import { createSeller, updateSeller, resendSellerInvite, setSellerPassword } from "@/lib/sellers.functions";
+import { createSeller, updateSeller, resendSellerInvite, setSellerPassword, listSellersAdmin } from "@/lib/sellers.functions";
 
 export const Route = createFileRoute("/_authenticated/anvandare")({
   component: SaljarePage,
@@ -50,39 +50,7 @@ function SellersTable() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["sellers-admin"],
-    queryFn: async () => {
-      const [{ data: profiles }, { data: roles }, { data: comps }, { data: creds }] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, email, phone, title"),
-        supabase.from("user_roles").select("user_id, role"),
-        supabase.from("seller_compensation").select("*"),
-        supabase.from("seller_credentials").select("user_id, initial_password"),
-      ]);
-      const rolesByUser = new Map<string, string[]>();
-      (roles ?? []).forEach((r: any) => {
-        const arr = rolesByUser.get(r.user_id) ?? [];
-        arr.push(r.role);
-        rolesByUser.set(r.user_id, arr);
-      });
-      const compMap = new Map((comps ?? []).map((c: any) => [c.user_id, c]));
-      const credMap = new Map((creds ?? []).map((c: any) => [c.user_id, c.initial_password]));
-      return (profiles ?? [])
-        .filter((p: any) => {
-          const rs = rolesByUser.get(p.id) ?? [];
-          return rs.includes("saljare") || rs.includes("admin");
-        })
-        .map((p: any) => {
-          const c = compMap.get(p.id);
-          const rs = rolesByUser.get(p.id) ?? [];
-          return {
-            ...p,
-            role: rs.includes("admin") ? "admin" : "saljare",
-            compensation_type: c?.compensation_type ?? "med_grundlon",
-            base_salary: Number(c?.base_salary ?? 0),
-            default_commission_pct: Number(c?.default_commission_pct ?? 0),
-            password: credMap.get(p.id) ?? null,
-          };
-        });
-    },
+    queryFn: () => listSellersAdmin(),
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
