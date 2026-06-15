@@ -18,20 +18,31 @@ export type OrderPdfInput = {
 };
 
 let logoDataUrl: string | null = null;
-async function loadLogo(): Promise<string | null> {
-  if (logoDataUrl) return logoDataUrl;
+let logoAspect: number | null = null;
+
+async function loadLogo(): Promise<{ dataUrl: string | null; aspect: number | null }> {
+  if (logoDataUrl && logoAspect) return { dataUrl: logoDataUrl, aspect: logoAspect };
   try {
     const res = await fetch(logoAsset.url);
     const blob = await res.blob();
-    logoDataUrl = await new Promise<string>((resolve, reject) => {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
       r.onload = () => resolve(r.result as string);
       r.onerror = reject;
       r.readAsDataURL(blob);
     });
-    return logoDataUrl;
+    logoDataUrl = dataUrl;
+    // Get natural dimensions to preserve aspect ratio
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+    logoAspect = img.naturalWidth / img.naturalHeight;
+    return { dataUrl, aspect: logoAspect };
   } catch {
-    return null;
+    return { dataUrl: null, aspect: null };
   }
 }
 
@@ -59,8 +70,13 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   const docTitle = isOffert ? "Offert" : "Orderbekräftelse";
 
   // ---- Header: logo left, big light title right ----
-  const logo = await loadLogo();
-  if (logo) doc.addImage(logo, "PNG", margin, 60, 170, 80);
+  const { dataUrl: logo, aspect } = await loadLogo();
+  if (logo && aspect) {
+    const maxH = 50;
+    const logoH = maxH;
+    const logoW = logoH * aspect;
+    doc.addImage(logo, "PNG", margin, 60, logoW, logoH);
+  }
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(34);
