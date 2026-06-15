@@ -873,8 +873,9 @@ export function OrderDialog({
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Beloppet fördelas automatiskt jämnt över {activeItems.length || 0} skärm{activeItems.length === 1 ? "" : "ar"}
-              {activeItems.length > 0 && ` (${SEK(perScreen)} SEK per skärm)`}. SOV kan justeras per skärm ovan.
+              {useManual
+                ? `Pris per skärm används. Totalt: ${SEK(subtotal)} SEK`
+                : `Totalbeloppet fördelas jämnt över ${activeItems.length || 0} skärm${activeItems.length === 1 ? "" : "ar"}${activeItems.length > 0 ? ` (${SEK(perScreen)} SEK per skärm)` : ""}.`}
             </p>
           </Card>
 
