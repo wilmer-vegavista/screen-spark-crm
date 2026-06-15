@@ -15,6 +15,8 @@ export type OrderPdfInput = {
   sellerName?: string | null;
   sellerEmail?: string | null;
   sellerTitle?: string | null;
+  /** "download" sparar filen (standard). "blob" returnerar en object-URL för förhandsvisning. */
+  mode?: "download" | "blob";
 };
 
 let logoDataUrl: string | null = null;
