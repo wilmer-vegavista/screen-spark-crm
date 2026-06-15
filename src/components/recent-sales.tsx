@@ -48,6 +48,30 @@ function fireConfetti() {
   })();
 }
 
+function playCelebrationSound() {
+  try {
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const t = now + i * 0.1;
+      gain.gain.setValueAtTime(0.15, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+      osc.start(t);
+      osc.stop(t + 0.7);
+    });
+    setTimeout(() => ctx.close(), 1200);
+  } catch {
+    // ignore audio errors
+  }
+}
+
 export function RecentSalesPanel() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -74,6 +98,7 @@ export function RecentSalesPanel() {
     const item: RecentOrder = { ...o, seller_name };
     setBanner(item);
     fireConfetti();
+    playCelebrationSound();
     queryClient.invalidateQueries({ queryKey: ["recent-sales"] });
     setTimeout(() => setBanner(b => (b?.id === item.id ? null : b)), 7000);
   }, [queryClient]);
