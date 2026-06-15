@@ -98,6 +98,7 @@ export function RecentSalesPanel() {
     const item: RecentOrder = { ...o, seller_name };
     setBanner(item);
     fireConfetti();
+    playCelebrationSound();
     queryClient.invalidateQueries({ queryKey: ["recent-sales"] });
     setTimeout(() => setBanner(b => (b?.id === item.id ? null : b)), 7000);
   }, [queryClient]);
