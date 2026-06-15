@@ -409,6 +409,37 @@ export function OrderDialog({
     return orderId;
   };
 
+  const invoiceMissing = (() => {
+    const required = [form.company_name, form.org_number, form.billing_address, form.postal_code, form.city];
+    if (required.some(v => !v?.trim())) return true;
+    if (!form.invoice_email?.trim() && !form.invoice_peppol_id?.trim()) return true;
+    return false;
+  })();
+
+  const handleMarkReady = async () => {
+    if (invoiceMissing) {
+      toast.error("Fyll i alla fakturauppgifter (företag, org.nr, adress, postnr, ort + peppol-id eller faktura-mejl)");
+      return;
+    }
+    setSaving(true);
+    try {
+      const oid = await handleSave();
+      const targetId = oid ?? order?.id;
+      if (targetId) {
+        await supabase.from("orders").update({
+          invoice_status: "klar",
+          marked_ready_at: new Date().toISOString(),
+        }).eq("id", targetId);
+        toast.success("Markerad som klar att fakturera");
+        qc.invalidateQueries({ queryKey: ["orders"] });
+      }
+    } catch (err: any) {
+      toast.error(err?.message ?? "Kunde inte markera som klar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleRemove = async () => {
     if (!order || !confirm("Ta bort ordern?")) return;
     const { error } = await supabase.from("orders").delete().eq("id", order.id);
