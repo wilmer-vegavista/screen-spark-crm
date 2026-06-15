@@ -464,6 +464,60 @@ export type Database = {
           },
         ]
       }
+      order_materials: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          file_name: string
+          file_path: string
+          id: string
+          mime_type: string | null
+          notes: string | null
+          order_id: string
+          size_bytes: number | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          file_name: string
+          file_path: string
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          order_id: string
+          size_bytes?: number | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          file_name?: string
+          file_path?: string
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          order_id?: string
+          size_bytes?: number | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_materials_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_materials_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_splits: {
         Row: {
           created_at: string
