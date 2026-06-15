@@ -71,7 +71,7 @@ function buildPeriodText(order: any, item: any): string {
   return w > 0 ? `${w} ${w === 1 ? "vecka" : "veckor"}` : "—";
 }
 
-export async function generateOrderPdf({ order, items, products, sellerName, sellerEmail, sellerTitle }: OrderPdfInput) {
+export async function generateOrderPdf({ order, items, products, sellerName, sellerEmail, sellerTitle, mode = "download" }: OrderPdfInput): Promise<string | void> {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
