@@ -391,11 +391,22 @@ export function OrderDialog({
       if (error) { setSaving(false); return toast.error(error.message); }
     }
 
+    // Sync invoice details back to customer card
+    if (form.customer_id && (form.invoice_reference || form.invoice_peppol_id || form.invoice_email)) {
+      await supabase.from("customers").update({
+        invoice_reference: form.invoice_reference || null,
+        invoice_peppol_id: form.invoice_peppol_id || null,
+        invoice_email: form.invoice_email || null,
+      }).eq("id", form.customer_id);
+    }
+
     setSaving(false);
     toast.success(order ? "Order uppdaterad" : `${form.order_type === "offert" ? "Offert" : "Bokning"} skapad`);
     qc.invalidateQueries({ queryKey: ["orders"] });
     qc.invalidateQueries({ queryKey: ["deals"] });
+    qc.invalidateQueries({ queryKey: ["customers-min"] });
     onOpenChange(false);
+    return orderId;
   };
 
   const handleRemove = async () => {
