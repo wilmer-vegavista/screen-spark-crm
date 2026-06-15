@@ -181,5 +181,23 @@ export const updateSeller = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
+    // 4. Sync role
+    if (data.role !== undefined) {
+      if (data.role === "admin") {
+        const { error } = await supabaseAdmin
+          .from("user_roles")
+          .upsert({ user_id: data.user_id, role: "admin" }, { onConflict: "user_id,role" });
+        if (error) throw new Error(error.message);
+      } else {
+        // Demote: remove admin row, keep saljare
+        const { error } = await supabaseAdmin
+          .from("user_roles")
+          .delete()
+          .eq("user_id", data.user_id)
+          .eq("role", "admin");
+        if (error) throw new Error(error.message);
+      }
+    }
+
     return { ok: true };
   });
