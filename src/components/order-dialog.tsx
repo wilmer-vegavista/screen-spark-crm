@@ -35,6 +35,7 @@ type Item = {
   weeks: string;
   period_unit: PeriodUnit;
   unit_price: string;
+  line_price: string;
   commission_pct: string;
 };
 
@@ -46,6 +47,7 @@ const emptyItem = (): Item => ({
   weeks: "1",
   period_unit: "veckor",
   unit_price: "0",
+  line_price: "0",
   commission_pct: "0",
 });
 
@@ -207,6 +209,7 @@ export function OrderDialog({
             weeks: d.weeks?.toString() ?? "1",
             period_unit: ((d as any).period_unit ?? "veckor") as PeriodUnit,
             unit_price: d.unit_price?.toString() ?? "0",
+            line_price: (Number(d.unit_price || 0) * Number(d.weeks || 1)).toString(),
             commission_pct: d.commission_pct?.toString() ?? "0",
           })));
           const tot = data.reduce((s, d) => s + Number(d.unit_price || 0) * Number(d.weeks || 1), 0);
@@ -277,12 +280,15 @@ export function OrderDialog({
     setItems(arr => arr.map((it, i) => i === idx ? { ...it, ...patch } : it));
   };
 
-  // Calculations — total price is split equally across screens
+  // Calculations — use per-screen price if any are set, otherwise split total equally
   const total = Number(totalPrice) || 0;
   const activeItems = items.filter(it => it.product_name.trim());
+  const manualSum = activeItems.reduce((s, it) => s + (Number(it.line_price) || 0), 0);
+  const useManual = manualSum > 0;
   const perScreen = activeItems.length > 0 ? total / activeItems.length : 0;
   const calc = items.map(it => {
-    const lineTotal = it.product_name.trim() ? perScreen : 0;
+    const hasName = !!it.product_name.trim();
+    const lineTotal = hasName ? (useManual ? (Number(it.line_price) || 0) : perScreen) : 0;
     const commissionPct = commissionPctForItem(it);
     const commission = lineTotal * commissionPct / 100;
     return { lineTotal, commission, commissionPct };
@@ -338,7 +344,7 @@ export function OrderDialog({
     if (order) await supabase.from("order_items").delete().eq("order_id", orderId);
     const itemRows = items.filter(it => it.product_name.trim()).map((it, i) => {
       const weeks = Number(it.weeks) || 1;
-      const lineAmount = perScreen;
+      const lineAmount = useManual ? (Number(it.line_price) || 0) : perScreen;
       const unitPrice = weeks > 0 ? lineAmount / weeks : lineAmount;
       const pct = commissionPctForItem(it);
       return {
@@ -465,13 +471,14 @@ export function OrderDialog({
       },
       items: items.filter(it => it.product_name.trim()).map(it => {
         const weeks = Number(it.weeks) || 1;
+        const lineAmount = useManual ? (Number(it.line_price) || 0) : perScreen;
         return {
           product_id: it.product_id,
           product_name: it.product_name,
           sov_pct: it.sov_pct ? Number(it.sov_pct) : null,
           impressions: it.impressions ? Number(it.impressions) : null,
           weeks,
-          unit_price: weeks > 0 ? perScreen / weeks : perScreen,
+          unit_price: weeks > 0 ? lineAmount / weeks : lineAmount,
         };
       }),
       products: productsMap,
@@ -725,6 +732,7 @@ export function OrderDialog({
                                   weeks: "1",
                                   period_unit: "veckor" as PeriodUnit,
                                   unit_price: "0",
+                                  line_price: "0",
                                   commission_pct: commissionPctFor(p).toString(),
                                 }];
                               });
@@ -797,14 +805,25 @@ export function OrderDialog({
                     </div>
                     <div className="grid grid-cols-12 gap-2 items-end">
                       <div className="col-span-3">
+                        <Label className="text-xs">Pris (ex moms)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={it.line_price}
+                          onChange={e => updItem(idx, { line_price: e.target.value })}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="col-span-2">
                         <Label className="text-xs">Provision %</Label>
                         <Input type="number" step="0.01" value={commissionPct} readOnly />
                       </div>
-                      <div className="col-span-4 text-sm">
-                        <div className="text-xs text-muted-foreground">Andel av total</div>
+                      <div className="col-span-3 text-sm">
+                        <div className="text-xs text-muted-foreground">Radens belopp</div>
                         <div className="font-semibold">{SEK(lineTotal)} SEK</div>
                       </div>
-                      <div className="col-span-5 text-sm">
+                      <div className="col-span-4 text-sm">
                         <div className="text-xs text-muted-foreground">Provision (rad)</div>
                         <div className="font-semibold text-primary">{SEK(commission)} SEK</div>
                       </div>
@@ -820,7 +839,7 @@ export function OrderDialog({
           <Card className="p-4 border-primary/40">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-sm font-semibold">Totalt pris för hela ordern (ex moms)</Label>
+                <Label className="text-sm font-semibold">Totalt pris (fördelas jämnt om inget pris satts per skärm)</Label>
                 <div className="flex items-center gap-3 mt-2">
                   <Input
                     type="number"
@@ -854,8 +873,9 @@ export function OrderDialog({
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Beloppet fördelas automatiskt jämnt över {activeItems.length || 0} skärm{activeItems.length === 1 ? "" : "ar"}
-              {activeItems.length > 0 && ` (${SEK(perScreen)} SEK per skärm)`}. SOV kan justeras per skärm ovan.
+              {useManual
+                ? `Pris per skärm används. Totalt: ${SEK(subtotal)} SEK`
+                : `Totalbeloppet fördelas jämnt över ${activeItems.length || 0} skärm${activeItems.length === 1 ? "" : "ar"}${activeItems.length > 0 ? ` (${SEK(perScreen)} SEK per skärm)` : ""}.`}
             </p>
           </Card>
 
