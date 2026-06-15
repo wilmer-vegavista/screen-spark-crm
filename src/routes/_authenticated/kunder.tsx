@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,16 @@ import { CustomerDetailDialog } from "@/components/customer-detail-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/kunder")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    customer: typeof s.customer === "string" ? s.customer : undefined,
+  }),
   component: Kunder,
 });
 
 function Kunder() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { customer: customerParam } = Route.useSearch();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [q, setQ] = useState("");
