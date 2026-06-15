@@ -118,8 +118,20 @@ export const resendSellerInvite = createServerFn({ method: "POST" })
     await checkAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
-    if (error) throw new Error(error.message);
-    return { ok: true };
+    if (error) {
+      const msg = (error.message || "").toLowerCase();
+      // If user already exists, fall back to a password recovery / magic link instead of failing
+      if (msg.includes("already") && msg.includes("registered")) {
+        const { error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+          type: "recovery",
+          email: data.email,
+        });
+        if (linkErr) throw new Error(linkErr.message);
+        return { ok: true, resent: "recovery" as const };
+      }
+      throw new Error(error.message);
+    }
+    return { ok: true, resent: "invite" as const };
   });
 
 export const listSellersAdmin = createServerFn({ method: "GET" })
