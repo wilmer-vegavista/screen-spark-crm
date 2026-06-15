@@ -209,6 +209,7 @@ export function OrderDialog({
             weeks: d.weeks?.toString() ?? "1",
             period_unit: ((d as any).period_unit ?? "veckor") as PeriodUnit,
             unit_price: d.unit_price?.toString() ?? "0",
+            line_price: (Number(d.unit_price || 0) * Number(d.weeks || 1)).toString(),
             commission_pct: d.commission_pct?.toString() ?? "0",
           })));
           const tot = data.reduce((s, d) => s + Number(d.unit_price || 0) * Number(d.weeks || 1), 0);
