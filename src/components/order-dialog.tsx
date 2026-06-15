@@ -344,7 +344,7 @@ export function OrderDialog({
     if (order) await supabase.from("order_items").delete().eq("order_id", orderId);
     const itemRows = items.filter(it => it.product_name.trim()).map((it, i) => {
       const weeks = Number(it.weeks) || 1;
-      const lineAmount = perScreen;
+      const lineAmount = useManual ? (Number(it.line_price) || 0) : perScreen;
       const unitPrice = weeks > 0 ? lineAmount / weeks : lineAmount;
       const pct = commissionPctForItem(it);
       return {
