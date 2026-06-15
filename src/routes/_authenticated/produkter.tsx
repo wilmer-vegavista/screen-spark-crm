@@ -199,6 +199,7 @@ function ProductDialog({
       name: form.name,
       description: form.description || null,
       address: form.address || null,
+      city: (form as any).city || null,
       screen_type: form.screen_type || "egen",
       format: form.format || null,
       dimensions: form.dimensions || null,
