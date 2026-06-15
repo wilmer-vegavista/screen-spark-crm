@@ -839,7 +839,7 @@ export function OrderDialog({
           <Card className="p-4 border-primary/40">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-sm font-semibold">Totalt pris för hela ordern (ex moms)</Label>
+                <Label className="text-sm font-semibold">Totalt pris (fördelas jämnt om inget pris satts per skärm)</Label>
                 <div className="flex items-center gap-3 mt-2">
                   <Input
                     type="number"
