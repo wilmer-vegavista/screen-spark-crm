@@ -280,12 +280,15 @@ export function OrderDialog({
     setItems(arr => arr.map((it, i) => i === idx ? { ...it, ...patch } : it));
   };
 
-  // Calculations — total price is split equally across screens
+  // Calculations — use per-screen price if any are set, otherwise split total equally
   const total = Number(totalPrice) || 0;
   const activeItems = items.filter(it => it.product_name.trim());
+  const manualSum = activeItems.reduce((s, it) => s + (Number(it.line_price) || 0), 0);
+  const useManual = manualSum > 0;
   const perScreen = activeItems.length > 0 ? total / activeItems.length : 0;
   const calc = items.map(it => {
-    const lineTotal = it.product_name.trim() ? perScreen : 0;
+    const hasName = !!it.product_name.trim();
+    const lineTotal = hasName ? (useManual ? (Number(it.line_price) || 0) : perScreen) : 0;
     const commissionPct = commissionPctForItem(it);
     const commission = lineTotal * commissionPct / 100;
     return { lineTotal, commission, commissionPct };
