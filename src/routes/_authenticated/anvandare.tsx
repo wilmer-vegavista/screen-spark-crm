@@ -389,6 +389,27 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Account Manager" />
           </div>
           <div>
+            <label className="text-xs font-medium">Roll</label>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => setRole("saljare")}
+                className={`text-left p-3 rounded-md border text-xs ${role === "saljare" ? "border-primary bg-primary/10" : "border-border"}`}
+              >
+                <div className="font-semibold">Säljare</div>
+                <div className="text-muted-foreground mt-1">Skapar kunder, ordrar och offerter</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole("admin")}
+                className={`text-left p-3 rounded-md border text-xs ${role === "admin" ? "border-primary bg-primary/10" : "border-border"}`}
+              >
+                <div className="font-semibold">Admin</div>
+                <div className="text-muted-foreground mt-1">Full tillgång till systemet, inkl. användare och faktura</div>
+              </button>
+            </div>
+          </div>
+          <div>
             <label className="text-xs font-medium">Provisionskategori</label>
             <div className="grid grid-cols-2 gap-2 mt-1">
               <button
