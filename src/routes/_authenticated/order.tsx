@@ -36,12 +36,15 @@ const SEK = (n: number) =>
   new Intl.NumberFormat("sv-SE", { style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
 
 function OrderPage() {
+  const navigate = useNavigate();
+  const { order: orderParam, product: productParam } = Route.useSearch();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [sellerFilter, setSellerFilter] = useState<string>("all");
+  const [productFilter, setProductFilter] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data } = useQuery({
@@ -60,10 +63,53 @@ function OrderPage() {
     },
   });
 
+  const { data: orderIdsForProduct } = useQuery({
+    queryKey: ["orders-for-product", productFilter],
+    enabled: !!productFilter,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("order_items")
+        .select("order_id")
+        .eq("product_id", productFilter!);
+      return new Set((data ?? []).map((r: any) => r.order_id));
+    },
+  });
+
+  const { data: productInfo } = useQuery({
+    queryKey: ["product-info", productFilter],
+    enabled: !!productFilter,
+    queryFn: async () => {
+      const { data } = await supabase.from("products").select("name").eq("id", productFilter!).maybeSingle();
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (!orderParam || !data) return;
+    const found = data.find((o: any) => o.id === orderParam);
+    if (found) {
+      setEditing(found);
+      setOpen(true);
+      navigate({ to: "/order", search: (prev: any) => ({ ...prev, order: undefined }) as any, replace: true });
+    }
+  }, [orderParam, data, navigate]);
+
+  useEffect(() => {
+    if (productParam) setProductFilter(productParam);
+  }, [productParam]);
+
   const allOrders = data ?? [];
-  const orders = sellerFilter === "all"
+  let orders = sellerFilter === "all"
     ? allOrders
     : allOrders.filter((o: any) => o.owner_id === sellerFilter);
+  if (productFilter && orderIdsForProduct) {
+    orders = orders.filter((o: any) => orderIdsForProduct.has(o.id));
+  }
+
+  const clearProductFilter = () => {
+    setProductFilter(null);
+    navigate({ to: "/order", search: (prev: any) => ({ ...prev, product: undefined }) as any, replace: true });
+  };
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
