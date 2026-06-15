@@ -303,6 +303,49 @@ export function OrderDialog({
     setItems(arr => arr.map((it, i) => i === idx ? { ...it, ...patch } : it));
   };
 
+  const moveItem = (idx: number, dir: -1 | 1) => {
+    setItems(arr => {
+      const next = [...arr];
+      const target = idx + dir;
+      if (target < 0 || target >= next.length) return arr;
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  };
+
+  const addPackage = (pkg: { product_ids: string[] }) => {
+    if (!pkg.product_ids?.length) return;
+    setItems(arr => {
+      const cleaned = arr.filter(it => it.product_id || it.product_name.trim());
+      const existing = new Set(cleaned.map(it => it.product_id).filter(Boolean));
+      const additions: Item[] = pkg.product_ids
+        .filter(pid => !existing.has(pid))
+        .map(pid => {
+          const p = products.find((x: any) => x.id === pid);
+          if (!p) return null;
+          return {
+            product_id: p.id,
+            product_name: p.name,
+            sov_pct: "",
+            impressions: "",
+            weeks: "1",
+            period_unit: "veckor" as PeriodUnit,
+            unit_price: "0",
+            line_price: "0",
+            commission_pct: commissionPctFor(p).toString(),
+          } as Item;
+        })
+        .filter(Boolean) as Item[];
+      return [...cleaned, ...additions];
+    });
+  };
+
+  const cityFor = (pid: string | null) => {
+    if (!pid) return "Övrigt";
+    const p = products.find((x: any) => x.id === pid);
+    return (p?.city || "Övrigt") as string;
+  };
+
   // Calculations — use per-screen price if any are set, otherwise split total equally
   const total = Number(totalPrice) || 0;
   const activeItems = items.filter(it => it.product_name.trim());
