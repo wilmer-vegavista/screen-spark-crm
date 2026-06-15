@@ -1103,6 +1103,16 @@ export function OrderDialog({
               {generating ? <Loader2 className="size-4 mr-1 animate-spin" /> : <FileDown className="size-4 mr-1" />}
               Ladda ner PDF
             </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleMarkReady}
+              disabled={saving || invoiceMissing || form.invoice_status === "fakturerad"}
+              title={invoiceMissing ? "Fyll i alla fakturauppgifter först" : ""}
+            >
+              <CheckCircle2 className="size-4 mr-1" />
+              {form.invoice_status === "klar" ? "Klar (uppdatera)" : "Klar att fakturera"}
+            </Button>
             <Button type="submit" disabled={saving}>
               {saving && <Loader2 className="size-4 mr-1 animate-spin" />}
               Spara {form.order_type === "offert" ? "offert" : "bokning"}
