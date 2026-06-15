@@ -397,8 +397,8 @@ export function OrderDialog({
     setGenerating(true);
     try {
       const { data: u } = await supabase.auth.getUser();
-      // Säljaren = den som registrerat ordern (created_by), annars ägaren, annars inloggad
-      const sellerId = (order as any)?.created_by ?? (order as any)?.owner_id ?? u.user?.id;
+      // Säljaren = ägaren av ordern (owner_id), annars created_by, annars inloggad
+      const sellerId = (order as any)?.owner_id ?? (order as any)?.created_by ?? u.user?.id;
       const { data: prof } = await supabase.from("profiles").select("*").eq("id", sellerId).maybeSingle();
       const productsMap: Record<string, any> = {};
       products.forEach((p: any) => { productsMap[p.id] = p; });

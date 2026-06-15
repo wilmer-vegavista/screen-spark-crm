@@ -25,20 +25,28 @@ async function loadLogo(): Promise<{ dataUrl: string | null; aspect: number | nu
   try {
     const res = await fetch(logoAsset.url);
     const blob = await res.blob();
-    const dataUrl = await new Promise<string>((resolve, reject) => {
+    const rawDataUrl = await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
       r.onload = () => resolve(r.result as string);
       r.onerror = reject;
       r.readAsDataURL(blob);
     });
-    logoDataUrl = dataUrl;
-    // Get natural dimensions to preserve aspect ratio
     const img = new Image();
     await new Promise<void>((resolve, reject) => {
       img.onload = () => resolve();
       img.onerror = reject;
-      img.src = dataUrl;
+      img.src = rawDataUrl;
     });
+    // Komponera på vit bakgrund så jsPDF inte renderar transparens som svart
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+    logoDataUrl = dataUrl;
     logoAspect = img.naturalWidth / img.naturalHeight;
     return { dataUrl, aspect: logoAspect };
   } catch {
@@ -72,10 +80,10 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   // ---- Header: logo left, big light title right ----
   const { dataUrl: logo, aspect } = await loadLogo();
   if (logo && aspect) {
-    const maxH = 50;
+    const maxH = 60; // 20% större (var 50)
     const logoH = maxH;
     const logoW = logoH * aspect;
-    doc.addImage(logo, "PNG", margin, 60, logoW, logoH);
+    doc.addImage(logo, "JPEG", margin, 50, logoW, logoH);
   }
 
   doc.setFont("helvetica", "normal");
