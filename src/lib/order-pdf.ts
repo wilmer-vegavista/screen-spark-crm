@@ -15,6 +15,8 @@ export type OrderPdfInput = {
   sellerName?: string | null;
   sellerEmail?: string | null;
   sellerTitle?: string | null;
+  /** "download" sparar filen (standard). "blob" returnerar en object-URL för förhandsvisning. */
+  mode?: "download" | "blob";
 };
 
 let logoDataUrl: string | null = null;
@@ -69,7 +71,7 @@ function buildPeriodText(order: any, item: any): string {
   return w > 0 ? `${w} ${w === 1 ? "vecka" : "veckor"}` : "—";
 }
 
-export async function generateOrderPdf({ order, items, products, sellerName, sellerEmail, sellerTitle }: OrderPdfInput) {
+export async function generateOrderPdf({ order, items, products, sellerName, sellerEmail, sellerTitle, mode = "download" }: OrderPdfInput): Promise<string | void> {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -265,5 +267,11 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
 
   const prefix = isOffert ? "Offert" : "Orderbekraftelse";
   const filename = `${prefix}_${(order.company_name || "kund").replace(/[^a-z0-9]+/gi, "_")}_${(order.id || "").slice(0, 8)}.pdf`;
+
+  if (mode === "blob") {
+    const blob = doc.output("blob");
+    return URL.createObjectURL(blob);
+  }
+
   doc.save(filename);
 }
