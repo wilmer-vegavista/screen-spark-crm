@@ -20,6 +20,7 @@ import {
   Target,
   Clock,
   CheckCircle,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ const nav: NavItem[] = [
   { to: "/anvandare", label: "Användare", icon: UserCog, group: "admin", adminOnly: true },
   { to: "/produkter", label: "Produkter", icon: Package, group: "admin", adminOnly: true },
   { to: "/budget", label: "Budget", icon: Target, group: "admin", adminOnly: true },
+  { to: "/faktura", label: "Faktura", icon: Receipt, group: "admin", adminOnly: true },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

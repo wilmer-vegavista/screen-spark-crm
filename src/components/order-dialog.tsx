@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Loader2, ChevronDown, CalendarIcon, X, Eye } from "lucide-react";
+import { Plus, Trash2, FileDown, Loader2, ChevronDown, CalendarIcon, X, Eye, CheckCircle2 } from "lucide-react";
 import { generateOrderPdf, type OrderPdfInput } from "@/lib/order-pdf";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
@@ -155,6 +155,10 @@ export function OrderDialog({
     invoice_start_date: new Date() as Date,
     billing_frequency: "engang" as BillingFrequency,
     billing_duration_months: 1,
+    invoice_reference: "",
+    invoice_peppol_id: "",
+    invoice_email: "",
+    invoice_status: null as string | null,
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
   const [totalPrice, setTotalPrice] = useState<string>("0");
@@ -184,6 +188,10 @@ export function OrderDialog({
         invoice_start_date: order.invoice_start_date ? new Date(order.invoice_start_date) : new Date(),
         billing_frequency: (order.billing_frequency as BillingFrequency) ?? "engang",
         billing_duration_months: order.billing_duration_months ?? 1,
+        invoice_reference: order.invoice_reference ?? "",
+        invoice_peppol_id: order.invoice_peppol_id ?? "",
+        invoice_email: order.invoice_email ?? "",
+        invoice_status: order.invoice_status ?? null,
       });
       setSelectedWeeks(Array.isArray(order.selected_weeks) ? order.selected_weeks : []);
       setExactDates(Array.isArray(order.exact_dates) ? order.exact_dates.map((d: string) => new Date(d)) : []);
@@ -219,6 +227,7 @@ export function OrderDialog({
         billing_address: "", postal_code: "", city: "",
         contact_name: "", contact_email: "", contact_phone: "", notes: "",
         invoice_start_date: new Date(), billing_frequency: "engang", billing_duration_months: 1,
+        invoice_reference: "", invoice_peppol_id: "", invoice_email: "", invoice_status: null,
       });
       setItems([emptyItem()]);
       setTotalPrice("0");
@@ -246,6 +255,9 @@ export function OrderDialog({
       contact_name: c.contact_name ?? "",
       contact_email: c.email ?? "",
       contact_phone: c.phone ?? "",
+      invoice_reference: f.invoice_reference || c.invoice_reference || "",
+      invoice_peppol_id: f.invoice_peppol_id || c.invoice_peppol_id || "",
+      invoice_email: f.invoice_email || c.invoice_email || "",
     }));
   };
 
@@ -379,11 +391,53 @@ export function OrderDialog({
       if (error) { setSaving(false); return toast.error(error.message); }
     }
 
+    // Sync invoice details back to customer card
+    if (form.customer_id && (form.invoice_reference || form.invoice_peppol_id || form.invoice_email)) {
+      await supabase.from("customers").update({
+        invoice_reference: form.invoice_reference || null,
+        invoice_peppol_id: form.invoice_peppol_id || null,
+        invoice_email: form.invoice_email || null,
+      }).eq("id", form.customer_id);
+    }
+
     setSaving(false);
     toast.success(order ? "Order uppdaterad" : `${form.order_type === "offert" ? "Offert" : "Bokning"} skapad`);
     qc.invalidateQueries({ queryKey: ["orders"] });
     qc.invalidateQueries({ queryKey: ["deals"] });
+    qc.invalidateQueries({ queryKey: ["customers-min"] });
     onOpenChange(false);
+    return orderId;
+  };
+
+  const invoiceMissing = (() => {
+    const required = [form.company_name, form.org_number, form.billing_address, form.postal_code, form.city];
+    if (required.some(v => !v?.trim())) return true;
+    if (!form.invoice_email?.trim() && !form.invoice_peppol_id?.trim()) return true;
+    return false;
+  })();
+
+  const handleMarkReady = async () => {
+    if (invoiceMissing) {
+      toast.error("Fyll i alla fakturauppgifter (företag, org.nr, adress, postnr, ort + peppol-id eller faktura-mejl)");
+      return;
+    }
+    setSaving(true);
+    try {
+      const oid = await handleSave();
+      const targetId = oid ?? order?.id;
+      if (targetId) {
+        await supabase.from("orders").update({
+          invoice_status: "klar",
+          marked_ready_at: new Date().toISOString(),
+        }).eq("id", targetId);
+        toast.success("Markerad som klar att fakturera");
+        qc.invalidateQueries({ queryKey: ["orders"] });
+      }
+    } catch (err: any) {
+      toast.error(err?.message ?? "Kunde inte markera som klar");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleRemove = async () => {
@@ -607,6 +661,21 @@ export function OrderDialog({
                 <div><Label>Postnummer</Label><Input value={form.postal_code} onChange={e => setForm({ ...form, postal_code: e.target.value })} /></div>
                 <div><Label>Ort</Label><Input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} /></div>
               </div>
+              <div className="grid grid-cols-3 gap-3 pt-2 border-t mt-2">
+                <div>
+                  <Label>Referensnummer</Label>
+                  <Input value={form.invoice_reference} onChange={e => setForm({ ...form, invoice_reference: e.target.value })} placeholder="Kundens referens" />
+                </div>
+                <div>
+                  <Label>Peppol-ID</Label>
+                  <Input value={form.invoice_peppol_id} onChange={e => setForm({ ...form, invoice_peppol_id: e.target.value })} placeholder="0007:..." />
+                </div>
+                <div>
+                  <Label>Faktura-mejl</Label>
+                  <Input type="email" value={form.invoice_email} onChange={e => setForm({ ...form, invoice_email: e.target.value })} placeholder="faktura@..." />
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Sparas även på kundkortet så de följer med nästa order.</p>
             </div>
           </div>
 
@@ -1033,6 +1102,16 @@ export function OrderDialog({
             <Button type="button" variant="outline" onClick={handlePdf} disabled={generating}>
               {generating ? <Loader2 className="size-4 mr-1 animate-spin" /> : <FileDown className="size-4 mr-1" />}
               Ladda ner PDF
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleMarkReady}
+              disabled={saving || invoiceMissing || form.invoice_status === "fakturerad"}
+              title={invoiceMissing ? "Fyll i alla fakturauppgifter först" : ""}
+            >
+              <CheckCircle2 className="size-4 mr-1" />
+              {form.invoice_status === "klar" ? "Klar (uppdatera)" : "Klar att fakturera"}
             </Button>
             <Button type="submit" disabled={saving}>
               {saving && <Loader2 className="size-4 mr-1 animate-spin" />}

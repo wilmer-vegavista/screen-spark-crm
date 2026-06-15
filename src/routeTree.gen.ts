@@ -20,6 +20,7 @@ import { Route as AuthenticatedMaterialRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedLonRouteImport } from './routes/_authenticated/lon'
 import { Route as AuthenticatedKunderRouteImport } from './routes/_authenticated/kunder'
 import { Route as AuthenticatedKampanjerRouteImport } from './routes/_authenticated/kampanjer'
+import { Route as AuthenticatedFakturaRouteImport } from './routes/_authenticated/faktura'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBudgetRouteImport } from './routes/_authenticated/budget'
 import { Route as AuthenticatedAvslutasSnartRouteImport } from './routes/_authenticated/avslutas-snart'
@@ -81,6 +82,11 @@ const AuthenticatedKampanjerRoute = AuthenticatedKampanjerRouteImport.update({
   path: '/kampanjer',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFakturaRoute = AuthenticatedFakturaRouteImport.update({
+  id: '/faktura',
+  path: '/faktura',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/avslutas-snart': typeof AuthenticatedAvslutasSnartRoute
   '/budget': typeof AuthenticatedBudgetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/faktura': typeof AuthenticatedFakturaRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
   '/lon': typeof AuthenticatedLonRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/avslutas-snart': typeof AuthenticatedAvslutasSnartRoute
   '/budget': typeof AuthenticatedBudgetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/faktura': typeof AuthenticatedFakturaRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
   '/lon': typeof AuthenticatedLonRoute
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/_authenticated/avslutas-snart': typeof AuthenticatedAvslutasSnartRoute
   '/_authenticated/budget': typeof AuthenticatedBudgetRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/faktura': typeof AuthenticatedFakturaRoute
   '/_authenticated/kampanjer': typeof AuthenticatedKampanjerRoute
   '/_authenticated/kunder': typeof AuthenticatedKunderRoute
   '/_authenticated/lon': typeof AuthenticatedLonRoute
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/avslutas-snart'
     | '/budget'
     | '/dashboard'
+    | '/faktura'
     | '/kampanjer'
     | '/kunder'
     | '/lon'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/avslutas-snart'
     | '/budget'
     | '/dashboard'
+    | '/faktura'
     | '/kampanjer'
     | '/kunder'
     | '/lon'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/_authenticated/avslutas-snart'
     | '/_authenticated/budget'
     | '/_authenticated/dashboard'
+    | '/_authenticated/faktura'
     | '/_authenticated/kampanjer'
     | '/_authenticated/kunder'
     | '/_authenticated/lon'
@@ -313,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKampanjerRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/faktura': {
+      id: '/_authenticated/faktura'
+      path: '/faktura'
+      fullPath: '/faktura'
+      preLoaderRoute: typeof AuthenticatedFakturaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -365,6 +384,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAvslutasSnartRoute: typeof AuthenticatedAvslutasSnartRoute
   AuthenticatedBudgetRoute: typeof AuthenticatedBudgetRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedFakturaRoute: typeof AuthenticatedFakturaRoute
   AuthenticatedKampanjerRoute: typeof AuthenticatedKampanjerRoute
   AuthenticatedKunderRoute: typeof AuthenticatedKunderRoute
   AuthenticatedLonRoute: typeof AuthenticatedLonRoute
@@ -382,6 +402,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAvslutasSnartRoute: AuthenticatedAvslutasSnartRoute,
   AuthenticatedBudgetRoute: AuthenticatedBudgetRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedFakturaRoute: AuthenticatedFakturaRoute,
   AuthenticatedKampanjerRoute: AuthenticatedKampanjerRoute,
   AuthenticatedKunderRoute: AuthenticatedKunderRoute,
   AuthenticatedLonRoute: AuthenticatedLonRoute,

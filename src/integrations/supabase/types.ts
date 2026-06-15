@@ -190,6 +190,9 @@ export type Database = {
           email: string | null
           id: string
           industry: string | null
+          invoice_email: string | null
+          invoice_peppol_id: string | null
+          invoice_reference: string | null
           notes: string | null
           org_number: string | null
           owner_id: string | null
@@ -208,6 +211,9 @@ export type Database = {
           email?: string | null
           id?: string
           industry?: string | null
+          invoice_email?: string | null
+          invoice_peppol_id?: string | null
+          invoice_reference?: string | null
           notes?: string | null
           org_number?: string | null
           owner_id?: string | null
@@ -226,6 +232,9 @@ export type Database = {
           email?: string | null
           id?: string
           industry?: string | null
+          invoice_email?: string | null
+          invoice_peppol_id?: string | null
+          invoice_reference?: string | null
           notes?: string | null
           org_number?: string | null
           owner_id?: string | null
@@ -503,7 +512,13 @@ export type Database = {
           deal_id: string | null
           exact_dates: string[]
           id: string
+          invoice_email: string | null
+          invoice_peppol_id: string | null
+          invoice_reference: string | null
           invoice_start_date: string | null
+          invoice_status: string | null
+          invoiced_at: string | null
+          marked_ready_at: string | null
           notes: string | null
           order_type: Database["public"]["Enums"]["order_type"]
           org_number: string | null
@@ -531,7 +546,13 @@ export type Database = {
           deal_id?: string | null
           exact_dates?: string[]
           id?: string
+          invoice_email?: string | null
+          invoice_peppol_id?: string | null
+          invoice_reference?: string | null
           invoice_start_date?: string | null
+          invoice_status?: string | null
+          invoiced_at?: string | null
+          marked_ready_at?: string | null
           notes?: string | null
           order_type?: Database["public"]["Enums"]["order_type"]
           org_number?: string | null
@@ -559,7 +580,13 @@ export type Database = {
           deal_id?: string | null
           exact_dates?: string[]
           id?: string
+          invoice_email?: string | null
+          invoice_peppol_id?: string | null
+          invoice_reference?: string | null
           invoice_start_date?: string | null
+          invoice_status?: string | null
+          invoiced_at?: string | null
+          marked_ready_at?: string | null
           notes?: string | null
           order_type?: Database["public"]["Enums"]["order_type"]
           org_number?: string | null
