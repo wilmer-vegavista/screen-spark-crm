@@ -728,6 +728,7 @@ export function OrderDialog({
                                   weeks: "1",
                                   period_unit: "veckor" as PeriodUnit,
                                   unit_price: "0",
+                                  line_price: "0",
                                   commission_pct: commissionPctFor(p).toString(),
                                 }];
                               });
