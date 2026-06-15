@@ -87,7 +87,9 @@ function SellersTable() {
               <TableHead>E-post</TableHead>
               <TableHead>Telefon</TableHead>
               <TableHead>Roll</TableHead>
-              <TableHead>Lösenord</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Senast inloggad</TableHead>
+              <TableHead>Initialt lösenord</TableHead>
               <TableHead>Typ</TableHead>
               <TableHead className="text-right">Grundlön</TableHead>
               <TableHead className="text-right">Prov %</TableHead>
@@ -106,6 +108,16 @@ function SellersTable() {
                     {s.role === "admin" ? "Admin" : "Säljare"}
                   </span>
                 </TableCell>
+                <TableCell>
+                  {s.pending_invite ? (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">Inbjuden</span>
+                  ) : s.has_password ? (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">Aktiv</span>
+                  ) : (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-muted text-muted-foreground">Inget lösenord</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-xs">{s.last_sign_in_at ? new Date(s.last_sign_in_at).toLocaleString("sv-SE") : <span className="text-muted-foreground italic">aldrig</span>}</TableCell>
                 <TableCell><PasswordCell value={s.password} /></TableCell>
                 <TableCell className="text-xs">
                   {s.compensation_type === "endast_provision" ? "Endast prov." : "Med grundlön"}
