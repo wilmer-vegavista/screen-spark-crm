@@ -155,6 +155,10 @@ export function OrderDialog({
     invoice_start_date: new Date() as Date,
     billing_frequency: "engang" as BillingFrequency,
     billing_duration_months: 1,
+    invoice_reference: "",
+    invoice_peppol_id: "",
+    invoice_email: "",
+    invoice_status: null as string | null,
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
   const [totalPrice, setTotalPrice] = useState<string>("0");
