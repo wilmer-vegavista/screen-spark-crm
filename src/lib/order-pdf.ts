@@ -80,10 +80,10 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   // ---- Header: logo left, big light title right ----
   const { dataUrl: logo, aspect } = await loadLogo();
   if (logo && aspect) {
-    const maxH = 60; // 20% större (var 50)
+    const maxH = 110; // större logga
     const logoH = maxH;
     const logoW = logoH * aspect;
-    doc.addImage(logo, "JPEG", margin, 50, logoW, logoH);
+    doc.addImage(logo, "JPEG", margin, 40, logoW, logoH);
   }
 
   doc.setFont("helvetica", "normal");
