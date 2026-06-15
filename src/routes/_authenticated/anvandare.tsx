@@ -57,15 +57,25 @@ function SellersTable() {
         supabase.from("seller_compensation").select("*"),
         supabase.from("seller_credentials").select("user_id, initial_password"),
       ]);
-      const sellerIds = new Set((roles ?? []).filter((r: any) => r.role === "saljare").map((r: any) => r.user_id));
+      const rolesByUser = new Map<string, string[]>();
+      (roles ?? []).forEach((r: any) => {
+        const arr = rolesByUser.get(r.user_id) ?? [];
+        arr.push(r.role);
+        rolesByUser.set(r.user_id, arr);
+      });
       const compMap = new Map((comps ?? []).map((c: any) => [c.user_id, c]));
       const credMap = new Map((creds ?? []).map((c: any) => [c.user_id, c.initial_password]));
       return (profiles ?? [])
-        .filter((p: any) => sellerIds.has(p.id))
+        .filter((p: any) => {
+          const rs = rolesByUser.get(p.id) ?? [];
+          return rs.includes("saljare") || rs.includes("admin");
+        })
         .map((p: any) => {
           const c = compMap.get(p.id);
+          const rs = rolesByUser.get(p.id) ?? [];
           return {
             ...p,
+            role: rs.includes("admin") ? "admin" : "saljare",
             compensation_type: c?.compensation_type ?? "med_grundlon",
             base_salary: Number(c?.base_salary ?? 0),
             default_commission_pct: Number(c?.default_commission_pct ?? 0),
