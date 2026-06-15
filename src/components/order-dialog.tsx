@@ -395,46 +395,71 @@ export function OrderDialog({
     onOpenChange(false);
   };
 
+  const buildPdfInput = async (): Promise<Omit<OrderPdfInput, "mode">> => {
+    const { data: u } = await supabase.auth.getUser();
+    const sellerId = (order as any)?.owner_id ?? ownerId ?? (order as any)?.created_by ?? u.user?.id;
+    const { data: prof } = await supabase.from("profiles").select("*").eq("id", sellerId).maybeSingle();
+    const productsMap: Record<string, any> = {};
+    products.forEach((p: any) => { productsMap[p.id] = p; });
+    return {
+      order: {
+        id: order?.id ?? crypto.randomUUID(),
+        created_at: (order as any)?.created_at ?? new Date().toISOString(),
+        ...form,
+        selected_weeks: selectedWeeks,
+        exact_dates: exactDates.map(d => format(d, "yyyy-MM-dd")),
+      },
+      items: items.filter(it => it.product_name.trim()).map(it => {
+        const weeks = Number(it.weeks) || 1;
+        return {
+          product_id: it.product_id,
+          product_name: it.product_name,
+          sov_pct: it.sov_pct ? Number(it.sov_pct) : null,
+          impressions: it.impressions ? Number(it.impressions) : null,
+          weeks,
+          unit_price: weeks > 0 ? perScreen / weeks : perScreen,
+        };
+      }),
+      products: productsMap,
+      sellerName: prof?.full_name ?? prof?.email ?? u.user?.email,
+      sellerEmail: prof?.email ?? u.user?.email,
+      sellerTitle: "Account Manager",
+    };
+  };
+
   const handlePdf = async () => {
     setGenerating(true);
     try {
-      const { data: u } = await supabase.auth.getUser();
-      // Säljaren = ägaren av ordern (owner_id), annars created_by, annars inloggad
-      const sellerId = (order as any)?.owner_id ?? (order as any)?.created_by ?? u.user?.id;
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", sellerId).maybeSingle();
-      const productsMap: Record<string, any> = {};
-      products.forEach((p: any) => { productsMap[p.id] = p; });
-      await generateOrderPdf({
-        order: {
-          id: order?.id ?? crypto.randomUUID(),
-          created_at: (order as any)?.created_at ?? new Date().toISOString(),
-          ...form,
-          selected_weeks: selectedWeeks,
-          exact_dates: exactDates.map(d => format(d, "yyyy-MM-dd")),
-        },
-        items: items.filter(it => it.product_name.trim()).map(it => {
-          const weeks = Number(it.weeks) || 1;
-          return {
-            product_id: it.product_id,
-            product_name: it.product_name,
-            sov_pct: it.sov_pct ? Number(it.sov_pct) : null,
-            impressions: it.impressions ? Number(it.impressions) : null,
-            weeks,
-            unit_price: weeks > 0 ? perScreen / weeks : perScreen,
-          };
-        }),
-
-        products: productsMap,
-        sellerName: prof?.full_name ?? prof?.email ?? u.user?.email,
-        sellerEmail: prof?.email ?? u.user?.email,
-        sellerTitle: "Account Manager",
-      });
+      const input = await buildPdfInput();
+      await generateOrderPdf({ ...input, mode: "download" });
     } catch (err: any) {
       toast.error(err.message ?? "PDF kunde inte skapas");
     } finally {
       setGenerating(false);
     }
   };
+
+  const handlePreview = async () => {
+    setPreviewLoading(true);
+    try {
+      const input = await buildPdfInput();
+      const url = (await generateOrderPdf({ ...input, mode: "blob" })) as string;
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(url);
+    } catch (err: any) {
+      toast.error(err.message ?? "Förhandsvisning kunde inte skapas");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // Städa upp object-URL när komponenten unmountar
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
