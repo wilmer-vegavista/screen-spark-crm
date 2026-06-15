@@ -122,6 +122,67 @@ export const resendSellerInvite = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const listSellersAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await checkAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const [profilesRes, rolesRes, compsRes, credsRes] = await Promise.all([
+      supabaseAdmin.from("profiles").select("id, full_name, email, phone, title"),
+      supabaseAdmin.from("user_roles").select("user_id, role"),
+      supabaseAdmin.from("seller_compensation").select("*"),
+      supabaseAdmin.from("seller_credentials").select("user_id, initial_password"),
+    ]);
+
+    const authUsers: any[] = [];
+    let page = 1;
+    while (true) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
+      if (error) throw new Error(error.message);
+      authUsers.push(...data.users);
+      if (data.users.length < 200) break;
+      page++;
+    }
+    const authByUser = new Map(authUsers.map((u: any) => [u.id, u]));
+
+    const rolesByUser = new Map<string, string[]>();
+    (rolesRes.data ?? []).forEach((r: any) => {
+      const arr = rolesByUser.get(r.user_id) ?? [];
+      arr.push(r.role);
+      rolesByUser.set(r.user_id, arr);
+    });
+    const compMap = new Map((compsRes.data ?? []).map((c: any) => [c.user_id, c]));
+    const credMap = new Map((credsRes.data ?? []).map((c: any) => [c.user_id, c.initial_password]));
+
+    return (profilesRes.data ?? [])
+      .filter((p: any) => {
+        const rs = rolesByUser.get(p.id) ?? [];
+        return rs.includes("saljare") || rs.includes("admin");
+      })
+      .map((p: any) => {
+        const c: any = compMap.get(p.id);
+        const rs = rolesByUser.get(p.id) ?? [];
+        const u: any = authByUser.get(p.id);
+        const lastSignIn = u?.last_sign_in_at ?? null;
+        const invitedAt = u?.invited_at ?? null;
+        const hasPassword = Boolean(lastSignIn) || Boolean(credMap.get(p.id));
+        const pendingInvite = Boolean(invitedAt) && !lastSignIn;
+        return {
+          ...p,
+          role: rs.includes("admin") ? "admin" : "saljare",
+          compensation_type: c?.compensation_type ?? "med_grundlon",
+          base_salary: Number(c?.base_salary ?? 0),
+          default_commission_pct: Number(c?.default_commission_pct ?? 0),
+          password: credMap.get(p.id) ?? null,
+          last_sign_in_at: lastSignIn,
+          invited_at: invitedAt,
+          has_password: hasPassword,
+          pending_invite: pendingInvite,
+        };
+      });
+  });
+
 export const setSellerPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ user_id: z.string().uuid(), password: z.string().min(6) }))
