@@ -84,6 +84,29 @@ export function OrderDialog({
       return data ?? [];
     },
   });
+  const { data: packages = [] } = useQuery({
+    queryKey: ["packages-with-products"],
+    queryFn: async () => {
+      const { data: pkgs } = await supabase
+        .from("product_packages")
+        .select("id, name")
+        .eq("active", true)
+        .order("name");
+      if (!pkgs || pkgs.length === 0) return [];
+      const ids = pkgs.map((p: any) => p.id);
+      const { data: links } = await supabase
+        .from("package_products")
+        .select("package_id, product_id, position")
+        .in("package_id", ids);
+      return pkgs.map((p: any) => ({
+        ...p,
+        product_ids: (links ?? [])
+          .filter((l: any) => l.package_id === p.id)
+          .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+          .map((l: any) => l.product_id),
+      }));
+    },
+  });
   const { data: sellerComp } = useQuery({
     queryKey: ["my-compensation"],
     queryFn: async () => {
