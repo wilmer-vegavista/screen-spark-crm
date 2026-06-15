@@ -227,6 +227,7 @@ export function OrderDialog({
         billing_address: "", postal_code: "", city: "",
         contact_name: "", contact_email: "", contact_phone: "", notes: "",
         invoice_start_date: new Date(), billing_frequency: "engang", billing_duration_months: 1,
+        invoice_reference: "", invoice_peppol_id: "", invoice_email: "", invoice_status: null,
       });
       setItems([emptyItem()]);
       setTotalPrice("0");
