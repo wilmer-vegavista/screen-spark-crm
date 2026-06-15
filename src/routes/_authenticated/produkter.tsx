@@ -244,6 +244,14 @@ function ProductDialog({
             </Select>
           </div>
           <div>
+            <Label>Stad / kategori</Label>
+            <Input
+              value={(form as any).city ?? ""}
+              placeholder="t.ex. Stockholm, Borås"
+              onChange={(e) => setForm({ ...form, city: e.target.value } as any)}
+            />
+          </div>
+          <div>
             <Label>Adress</Label>
             <Input value={form.address ?? ""} onChange={(e) => setForm({ ...form, address: e.target.value })} />
           </div>
