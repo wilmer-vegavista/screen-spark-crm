@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Loader2, ChevronDown, CalendarIcon, X, Eye } from "lucide-react";
+import { Plus, Trash2, FileDown, Loader2, ChevronDown, CalendarIcon, X, Eye, CheckCircle2 } from "lucide-react";
 import { generateOrderPdf, type OrderPdfInput } from "@/lib/order-pdf";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
