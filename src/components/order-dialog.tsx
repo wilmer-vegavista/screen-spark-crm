@@ -764,55 +764,87 @@ export function OrderDialog({
 
           {/* Skärmar */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
               <div className="text-sm font-semibold">Skärmar</div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button type="button" size="sm" variant="outline">
-                    <Plus className="size-4 mr-1" /> Välj skärmar <ChevronDown className="size-4 ml-1" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-2 max-h-96 overflow-y-auto" align="end">
-                  <div className="text-xs text-muted-foreground px-2 py-1">Bocka i de skärmar du vill lägga till</div>
-                  {products.length === 0 && (
-                    <div className="px-2 py-3 text-sm text-muted-foreground">Inga produkter att välja</div>
-                  )}
-                  {products.map((p: any) => {
-                    const checked = items.some(it => it.product_id === p.id);
-                    return (
-                      <label
-                        key={p.id}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(v) => {
-                            if (v) {
-                              setItems(arr => {
-                                const cleaned = arr.filter(it => it.product_id || it.product_name.trim());
-                                return [...cleaned, {
-                                  product_id: p.id,
-                                  product_name: p.name,
-                                  sov_pct: "",
-                                  impressions: "",
-                                  weeks: "1",
-                                  period_unit: "veckor" as PeriodUnit,
-                                  unit_price: "0",
-                                  line_price: "0",
-                                  commission_pct: commissionPctFor(p).toString(),
-                                }];
-                              });
-                            } else {
-                              setItems(arr => arr.filter(it => it.product_id !== p.id));
-                            }
-                          }}
-                        />
-                        <span className="text-sm flex-1">{p.name}</span>
-                      </label>
-                    );
-                  })}
-                </PopoverContent>
-              </Popover>
+              <div className="flex items-center gap-2">
+                {packages.length > 0 && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button type="button" size="sm" variant="outline">
+                        <PackageIcon className="size-4 mr-1" /> Lägg till paket <ChevronDown className="size-4 ml-1" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-1 max-h-80 overflow-y-auto" align="end">
+                      <div className="text-xs text-muted-foreground px-2 py-1">
+                        Lägger till alla skärmar i paketet
+                      </div>
+                      {packages.map((pkg: any) => (
+                        <button
+                          key={pkg.id}
+                          type="button"
+                          onClick={() => addPackage(pkg)}
+                          className="w-full text-left px-2 py-2 rounded hover:bg-accent flex items-center justify-between gap-2"
+                        >
+                          <span className="text-sm">{pkg.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {pkg.product_ids.length} st
+                          </span>
+                        </button>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
+                )}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button type="button" size="sm" variant="outline">
+                      <Plus className="size-4 mr-1" /> Välj skärmar <ChevronDown className="size-4 ml-1" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-2 max-h-96 overflow-y-auto" align="end">
+                    <div className="text-xs text-muted-foreground px-2 py-1">Bocka i de skärmar du vill lägga till</div>
+                    {products.length === 0 && (
+                      <div className="px-2 py-3 text-sm text-muted-foreground">Inga produkter att välja</div>
+                    )}
+                    {products.map((p: any) => {
+                      const checked = items.some(it => it.product_id === p.id);
+                      return (
+                        <label
+                          key={p.id}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              if (v) {
+                                setItems(arr => {
+                                  const cleaned = arr.filter(it => it.product_id || it.product_name.trim());
+                                  return [...cleaned, {
+                                    product_id: p.id,
+                                    product_name: p.name,
+                                    sov_pct: "",
+                                    impressions: "",
+                                    weeks: "1",
+                                    period_unit: "veckor" as PeriodUnit,
+                                    unit_price: "0",
+                                    line_price: "0",
+                                    commission_pct: commissionPctFor(p).toString(),
+                                  }];
+                                });
+                              } else {
+                                setItems(arr => arr.filter(it => it.product_id !== p.id));
+                              }
+                            }}
+                          />
+                          <span className="text-sm flex-1">
+                            {p.name}
+                            {p.city ? <span className="text-xs text-muted-foreground ml-1">· {p.city}</span> : null}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
             <div className="space-y-3">
