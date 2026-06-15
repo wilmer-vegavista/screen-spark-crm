@@ -7,11 +7,10 @@ const createSchema = z.object({
   email: z.string().email(),
   phone: z.string().optional(),
   title: z.string().optional(),
+  role: z.enum(["saljare", "admin"]).default("saljare"),
   compensation_type: z.enum(["endast_provision", "med_grundlon"]),
   base_salary: z.number().min(0).optional(),
   default_commission_pct: z.number().min(0).optional(),
-  // "invite" = mail med länk där säljaren sätter eget lösenord
-  // "password" = admin sätter ett lösenord direkt (sparas så det syns på admin-sidan)
   credential_mode: z.enum(["invite", "password"]).default("password"),
   password: z.string().min(6).optional(),
 });
@@ -22,6 +21,7 @@ const updateSchema = z.object({
   email: z.string().email().optional(),
   phone: z.string().optional(),
   title: z.string().optional(),
+  role: z.enum(["saljare", "admin"]).optional(),
   compensation_type: z.enum(["endast_provision", "med_grundlon"]).optional(),
   base_salary: z.number().min(0).optional(),
   default_commission_pct: z.number().min(0).optional(),
@@ -100,6 +100,14 @@ export const createSeller = createServerFn({ method: "POST" })
     });
     if (compError) throw new Error(compError.message);
 
+    // 4. If admin selected, grant admin role (trigger already gave them 'saljare')
+    if (data.role === "admin") {
+      const { error: roleErr } = await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
+      if (roleErr) throw new Error(roleErr.message);
+    }
+
     return { userId, password: storedPassword, invited };
   });
 
@@ -171,6 +179,24 @@ export const updateSeller = createServerFn({ method: "POST" })
       };
       const { error } = await supabaseAdmin.from("seller_compensation").upsert(payload);
       if (error) throw new Error(error.message);
+    }
+
+    // 4. Sync role
+    if (data.role !== undefined) {
+      if (data.role === "admin") {
+        const { error } = await supabaseAdmin
+          .from("user_roles")
+          .upsert({ user_id: data.user_id, role: "admin" }, { onConflict: "user_id,role" });
+        if (error) throw new Error(error.message);
+      } else {
+        // Demote: remove admin row, keep saljare
+        const { error } = await supabaseAdmin
+          .from("user_roles")
+          .delete()
+          .eq("user_id", data.user_id)
+          .eq("role", "admin");
+        if (error) throw new Error(error.message);
+      }
     }
 
     return { ok: true };

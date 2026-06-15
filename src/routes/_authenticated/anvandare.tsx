@@ -57,15 +57,25 @@ function SellersTable() {
         supabase.from("seller_compensation").select("*"),
         supabase.from("seller_credentials").select("user_id, initial_password"),
       ]);
-      const sellerIds = new Set((roles ?? []).filter((r: any) => r.role === "saljare").map((r: any) => r.user_id));
+      const rolesByUser = new Map<string, string[]>();
+      (roles ?? []).forEach((r: any) => {
+        const arr = rolesByUser.get(r.user_id) ?? [];
+        arr.push(r.role);
+        rolesByUser.set(r.user_id, arr);
+      });
       const compMap = new Map((comps ?? []).map((c: any) => [c.user_id, c]));
       const credMap = new Map((creds ?? []).map((c: any) => [c.user_id, c.initial_password]));
       return (profiles ?? [])
-        .filter((p: any) => sellerIds.has(p.id))
+        .filter((p: any) => {
+          const rs = rolesByUser.get(p.id) ?? [];
+          return rs.includes("saljare") || rs.includes("admin");
+        })
         .map((p: any) => {
           const c = compMap.get(p.id);
+          const rs = rolesByUser.get(p.id) ?? [];
           return {
             ...p,
+            role: rs.includes("admin") ? "admin" : "saljare",
             compensation_type: c?.compensation_type ?? "med_grundlon",
             base_salary: Number(c?.base_salary ?? 0),
             default_commission_pct: Number(c?.default_commission_pct ?? 0),
@@ -108,6 +118,7 @@ function SellersTable() {
               <TableHead>Titel</TableHead>
               <TableHead>E-post</TableHead>
               <TableHead>Telefon</TableHead>
+              <TableHead>Roll</TableHead>
               <TableHead>Lösenord</TableHead>
               <TableHead>Typ</TableHead>
               <TableHead className="text-right">Grundlön</TableHead>
@@ -122,6 +133,11 @@ function SellersTable() {
                 <TableCell className="text-xs text-muted-foreground">{s.title || "Account Manager"}</TableCell>
                 <TableCell className="text-xs">{s.email || "—"}</TableCell>
                 <TableCell className="text-xs">{s.phone || "—"}</TableCell>
+                <TableCell>
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${s.role === "admin" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+                    {s.role === "admin" ? "Admin" : "Säljare"}
+                  </span>
+                </TableCell>
                 <TableCell><PasswordCell value={s.password} /></TableCell>
                 <TableCell className="text-xs">
                   {s.compensation_type === "endast_provision" ? "Endast prov." : "Med grundlön"}
@@ -165,7 +181,7 @@ function SellersTable() {
             ))}
             {(data ?? []).length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground py-6">
+                <TableCell colSpan={10} className="text-center text-muted-foreground py-6">
                   Inga användare ännu
                 </TableCell>
               </TableRow>
@@ -274,6 +290,7 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
   const [type, setType] = useState<"endast_provision" | "med_grundlon">("med_grundlon");
   const [base, setBase] = useState("0");
   const [pct, setPct] = useState("0");
+  const [role, setRole] = useState<"saljare" | "admin">("saljare");
   const [saving, setSaving] = useState(false);
 
   // Credential mode (endast vid skapande)
@@ -289,6 +306,7 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
       setType((seller?.compensation_type as any) ?? "med_grundlon");
       setBase(String(seller?.base_salary ?? 0));
       setPct(String(seller?.default_commission_pct ?? 0));
+      setRole((seller?.role as any) ?? "saljare");
       setCredMode("password");
       setPassword(generateSuggestedPassword());
     }
@@ -312,17 +330,19 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
           email,
           phone,
           title,
+          role,
           compensation_type: type,
           base_salary: type === "endast_provision" ? 0 : Number(base),
           default_commission_pct: Number(pct),
         }});
-        toast.success("Säljare uppdaterad");
+        toast.success("Användare uppdaterad");
       } else {
         const result = await createSeller({ data: {
           full_name: name,
           email,
           phone,
           title,
+          role,
           compensation_type: type,
           base_salary: type === "endast_provision" ? 0 : Number(base),
           default_commission_pct: Number(pct),
@@ -330,9 +350,9 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
           password: credMode === "password" ? password : undefined,
         }});
         if (result.invited) {
-          toast.success("Säljare skapad — inbjudan skickad till " + email);
+          toast.success("Användare skapad — inbjudan skickad till " + email);
         } else {
-          toast.success("Säljare skapad med lösenord");
+          toast.success("Användare skapad med lösenord");
         }
       }
       onSaved();
@@ -367,6 +387,27 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
           <div>
             <label className="text-xs font-medium">Titel</label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Account Manager" />
+          </div>
+          <div>
+            <label className="text-xs font-medium">Roll</label>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => setRole("saljare")}
+                className={`text-left p-3 rounded-md border text-xs ${role === "saljare" ? "border-primary bg-primary/10" : "border-border"}`}
+              >
+                <div className="font-semibold">Säljare</div>
+                <div className="text-muted-foreground mt-1">Skapar kunder, ordrar och offerter</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole("admin")}
+                className={`text-left p-3 rounded-md border text-xs ${role === "admin" ? "border-primary bg-primary/10" : "border-border"}`}
+              >
+                <div className="font-semibold">Admin</div>
+                <div className="text-muted-foreground mt-1">Full tillgång till systemet, inkl. användare och faktura</div>
+              </button>
+            </div>
           </div>
           <div>
             <label className="text-xs font-medium">Provisionskategori</label>
