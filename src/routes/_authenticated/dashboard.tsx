@@ -202,7 +202,7 @@ function Dashboard() {
   const mySalaryTotal = baseSalary + myCommission;
 
   // Daily pace toward my monthly budget (business days remaining)
-  const daysLeft = Math.max(differenceInBusinessDays(monthEnd, now) + 1, 1);
+  const daysLeft = Math.max(businessDaysBetween(now, monthEnd), 1);
   const myRemaining = Math.max(myBudget - mySoldThisMonth, 0);
   const myPerDay = myBudget > 0 ? myRemaining / daysLeft : 0;
   const myBudgetPct = myBudget > 0 ? Math.min(100, (mySoldThisMonth / myBudget) * 100) : 0;
