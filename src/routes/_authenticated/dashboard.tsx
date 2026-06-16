@@ -319,21 +319,59 @@ function Dashboard() {
           </div>
         </Card>
 
-        {/* Seller bar chart */}
+        {/* Seller leaderboard */}
         <Card className="p-5">
-          <h3 className="text-sm font-semibold mb-4">Försäljning per säljare i år</h3>
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy className="size-4 text-amber-500" />
+            <h3 className="text-sm font-semibold">Säljartoppen i år</h3>
+          </div>
           {sellerChart.length === 0 ? (
             <div className="text-sm text-muted-foreground py-12 text-center">Ingen försäljning i år ännu</div>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={sellerChart}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="name" className="text-xs" />
-                <YAxis className="text-xs" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
-                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                {sellerChart.slice(0, 3).map((s) => {
+                  const styles = [
+                    { ring: "ring-amber-400/60 bg-amber-500/10", text: "text-amber-500", Icon: Trophy, label: "1:a" },
+                    { ring: "ring-zinc-300/60 bg-zinc-400/10", text: "text-zinc-300", Icon: Medal, label: "2:a" },
+                    { ring: "ring-orange-400/60 bg-orange-500/10", text: "text-orange-400", Icon: Award, label: "3:a" },
+                  ][s.rank - 1];
+                  const Icon = styles.Icon;
+                  return (
+                    <div key={s.id} className={`rounded-lg p-4 ring-1 ${styles.ring}`}>
+                      <div className="flex items-center justify-between">
+                        <div className={`flex items-center gap-2 ${styles.text}`}>
+                          <Icon className="size-4" />
+                          <span className="text-xs font-semibold uppercase tracking-wider">{styles.label} plats</span>
+                        </div>
+                        <span className={`text-xl font-bold ${styles.text}`}>#{s.rank}</span>
+                      </div>
+                      <div className="mt-2 text-base font-semibold truncate" title={s.fullName}>{s.fullName}</div>
+                      <div className="text-sm text-muted-foreground">{fmt(s.value)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <ResponsiveContainer width="100%" height={Math.max(260, sellerChart.length * 44)}>
+                <BarChart data={sellerChart} layout="vertical" margin={{ left: 8, right: 32 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis type="number" className="text-xs" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                  <YAxis type="category" dataKey="label" width={160} className="text-xs" />
+                  <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                  <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                    {sellerChart.map((s) => {
+                      const color =
+                        s.rank === 1 ? "hsl(45 95% 55%)" :
+                        s.rank === 2 ? "hsl(220 10% 75%)" :
+                        s.rank === 3 ? "hsl(25 90% 55%)" :
+                        "hsl(var(--primary))";
+                      return <Cell key={s.id} fill={color} />;
+                    })}
+                    <LabelList dataKey="value" position="right" formatter={(v: number) => fmt(v)} className="text-[10px]" />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </>
           )}
         </Card>
 
