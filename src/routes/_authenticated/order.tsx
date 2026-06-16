@@ -101,7 +101,7 @@ function OrderPage() {
   const allOrders = data ?? [];
   let orders = sellerFilter === "all"
     ? allOrders
-    : allOrders.filter((o: any) => o.owner_id === sellerFilter);
+    : allOrders.filter((o: any) => o.owner_id === sellerFilter || o.created_by === sellerFilter);
   if (productFilter && orderIdsForProduct) {
     orders = orders.filter((o: any) => orderIdsForProduct.has(o.id));
   }
