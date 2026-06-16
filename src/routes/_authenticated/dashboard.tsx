@@ -154,10 +154,11 @@ function Dashboard() {
   const sellerChart = Array.from(sellerSales.entries())
     .map(([uid, value]) => {
       const p = profileMap.get(uid);
-      const name = p?.full_name || p?.email || "Okänd";
-      return { name: name.split(" ")[0], value };
+      const fullName = p?.full_name || p?.email || "Okänd";
+      return { id: uid, name: fullName.split(" ")[0], fullName, value };
     })
-    .sort((a, b) => b.value - a.value);
+    .sort((a, b) => b.value - a.value)
+    .map((row, i) => ({ ...row, rank: i + 1, label: `#${i + 1} ${row.name}` }));
   const productChart = Array.from(productSales.entries())
     .map(([pid, value]) => ({
       name: pid === "ingen" ? "Övrigt" : (prodMap.get(pid)?.name ?? "Okänd"),
