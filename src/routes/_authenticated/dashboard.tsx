@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { Wallet, TrendingUp, FileText, Package, Target, CalendarDays } from "lucide-react";
-import { startOfMonth, endOfMonth, startOfQuarter, startOfYear, endOfYear, differenceInBusinessDays, subYears } from "date-fns";
+import { startOfMonth, endOfMonth, startOfQuarter, startOfYear, endOfYear, subYears } from "date-fns";
 import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
+import { businessDaysBetween } from "@/lib/swedish-holidays";
+import { Trophy, Medal, Award } from "lucide-react";
 import {
   BarChart,
   Bar,
