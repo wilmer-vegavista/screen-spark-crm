@@ -228,8 +228,9 @@ function SalaryCard({ userId, from, to }: { userId: string; from: Date; to: Date
               <TableRow>
                 <TableHead>Affär</TableHead>
                 <TableHead>Produkt</TableHead>
+                <TableHead>Fakturering</TableHead>
                 <TableHead>Stängd</TableHead>
-                <TableHead className="text-right">Värde</TableHead>
+                <TableHead className="text-right">Värde (mån)</TableHead>
                 <TableHead className="text-right">%</TableHead>
                 <TableHead className="text-right">Provision</TableHead>
               </TableRow>
@@ -239,6 +240,7 @@ function SalaryCard({ userId, from, to }: { userId: string; from: Date; to: Date
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.title}</TableCell>
                   <TableCell>{r.product}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{frequencyLabels[r.frequency]}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">{r.won_at ? format(new Date(r.won_at), "d MMM", { locale: sv }) : "—"}</TableCell>
                   <TableCell className="text-right">{fmt(r.value)}</TableCell>
                   <TableCell className="text-right">{r.pct}%</TableCell>
