@@ -327,9 +327,20 @@ function Dashboard() {
 
         {/* Seller leaderboard */}
         <Card className="p-5">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
             <Trophy className="size-4 text-amber-500" />
             <h3 className="text-sm font-semibold">Säljartoppen i år</h3>
+            <div className="ml-auto">
+              <Select value={leaderboardSeller} onValueChange={setLeaderboardSeller}>
+                <SelectTrigger className="h-8 w-56"><SelectValue placeholder="Alla säljare" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alla säljare</SelectItem>
+                  {sellerChartAll.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.fullName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           {sellerChart.length === 0 ? (
             <div className="text-sm text-muted-foreground py-12 text-center">Ingen försäljning i år ännu</div>
