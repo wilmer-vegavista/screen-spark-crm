@@ -32,8 +32,8 @@ async function fetchRecentSales(): Promise<RecentOrder[]> {
   const ownerIds = Array.from(new Set((orders ?? []).map(o => o.owner_id).filter(Boolean) as string[]));
   let nameMap = new Map<string, string>();
   if (ownerIds.length) {
-    const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ownerIds);
-    nameMap = new Map((profs ?? []).map(p => [p.id, p.full_name ?? ""]));
+    const { data: profs } = await supabase.from("profiles").select("id, full_name, email").in("id", ownerIds);
+    nameMap = new Map((profs ?? []).map(p => [p.id, (p.full_name && p.full_name.trim()) || p.email || ""]));
   }
   return (orders ?? []).map(o => ({ ...o, seller_name: o.owner_id ? nameMap.get(o.owner_id) ?? null : null }));
 }
