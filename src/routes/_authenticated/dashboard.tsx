@@ -164,7 +164,7 @@ function Dashboard() {
     .map((row, i) => ({ ...row, rank: i + 1, label: `#${i + 1} ${row.name}` }));
   const sellerChart = leaderboardSeller === "all"
     ? sellerChartAll
-    : sellerChartAll.filter(s => s.id === leaderboardSeller);
+    : sellerChartAll.filter(s => s.id === leaderboardSeller).map(s => ({ ...s, label: s.name }));
   const productChart = Array.from(productSales.entries())
     .map(([pid, value]) => ({
       name: pid === "ingen" ? "Övrigt" : (prodMap.get(pid)?.name ?? "Okänd"),
