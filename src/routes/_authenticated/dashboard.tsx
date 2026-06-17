@@ -164,7 +164,7 @@ function Dashboard() {
     .map((row, i) => ({ ...row, rank: i + 1, label: `#${i + 1} ${row.name}` }));
   const sellerChart = leaderboardSeller === "all"
     ? sellerChartAll
-    : sellerChartAll.filter(s => s.id === leaderboardSeller);
+    : sellerChartAll.filter(s => s.id === leaderboardSeller).map(s => ({ ...s, label: s.name }));
   const productChart = Array.from(productSales.entries())
     .map(([pid, value]) => ({
       name: pid === "ingen" ? "Övrigt" : (prodMap.get(pid)?.name ?? "Okänd"),
@@ -348,11 +348,13 @@ function Dashboard() {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
                 {sellerChart.slice(0, 3).map((s) => {
-                  const styles = [
-                    { ring: "ring-amber-400/60 bg-amber-500/10", text: "text-amber-500", Icon: Trophy, label: "1:a" },
-                    { ring: "ring-zinc-300/60 bg-zinc-400/10", text: "text-zinc-300", Icon: Medal, label: "2:a" },
-                    { ring: "ring-orange-400/60 bg-orange-500/10", text: "text-orange-400", Icon: Award, label: "3:a" },
-                  ][s.rank - 1];
+                  function podiumStyle(rank: number) {
+                    if (rank === 1) return { ring: "ring-amber-400/60 bg-amber-500/10", text: "text-amber-500", Icon: Trophy, label: "1:a" };
+                    if (rank === 2) return { ring: "ring-zinc-300/60 bg-zinc-400/10", text: "text-zinc-300", Icon: Medal, label: "2:a" };
+                    if (rank === 3) return { ring: "ring-orange-400/60 bg-orange-500/10", text: "text-orange-400", Icon: Award, label: "3:a" };
+                    return { ring: "ring-border bg-muted", text: "text-muted-foreground", Icon: Award, label: `${rank}:e` };
+                  }
+                  const styles = podiumStyle(s.rank);
                   const Icon = styles.Icon;
                   return (
                     <div key={s.id} className={`rounded-lg p-4 ring-1 ${styles.ring}`}>
