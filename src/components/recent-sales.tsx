@@ -32,8 +32,8 @@ async function fetchRecentSales(): Promise<RecentOrder[]> {
   const ownerIds = Array.from(new Set((orders ?? []).map(o => o.owner_id).filter(Boolean) as string[]));
   let nameMap = new Map<string, string>();
   if (ownerIds.length) {
-    const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ownerIds);
-    nameMap = new Map((profs ?? []).map(p => [p.id, p.full_name ?? ""]));
+    const { data: profs } = await supabase.from("profiles").select("id, full_name, email").in("id", ownerIds);
+    nameMap = new Map((profs ?? []).map(p => [p.id, (p.full_name && p.full_name.trim()) || p.email || ""]));
   }
   return (orders ?? []).map(o => ({ ...o, seller_name: o.owner_id ? nameMap.get(o.owner_id) ?? null : null }));
 }
@@ -92,8 +92,8 @@ export function RecentSalesPanel() {
     if (!o || o.order_type === "offert") return;
     let seller_name: string | null = null;
     if (o.owner_id) {
-      const { data: p } = await supabase.from("profiles").select("full_name").eq("id", o.owner_id).maybeSingle();
-      seller_name = p?.full_name ?? null;
+      const { data: p } = await supabase.from("profiles").select("full_name, email").eq("id", o.owner_id).maybeSingle();
+      seller_name = (p?.full_name && p.full_name.trim()) || p?.email || null;
     }
     const item: RecentOrder = { ...o, seller_name };
     setBanner(item);

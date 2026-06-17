@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Wallet, TrendingUp, FileText, Package, Target, CalendarDays } from "lucide-react";
 import { startOfMonth, endOfMonth, startOfQuarter, startOfYear, endOfYear, subYears } from "date-fns";
@@ -45,6 +46,7 @@ function pickPct(deal: any, product: any, compType: string, defaultPct: number) 
 
 function Dashboard() {
   const { user, isAdmin } = useCurrentUser();
+  const [leaderboardSeller, setLeaderboardSeller] = useState<string>("all");
   const now = new Date();
   const yearStart = startOfYear(now);
   const yearEnd = endOfYear(now);
@@ -151,14 +153,18 @@ function Dashboard() {
       productSales.set(pid, (productSales.get(pid) ?? 0) + amt);
     }
   }
-  const sellerChart = Array.from(sellerSales.entries())
+  const sellerChartAll = Array.from(sellerSales.entries())
     .map(([uid, value]) => {
       const p = profileMap.get(uid);
-      const fullName = p?.full_name || p?.email || "Okänd";
-      return { id: uid, name: fullName.split(" ")[0], fullName, value };
+      const fullName = (p?.full_name && p.full_name.trim()) || p?.email || "Okänd";
+      const first = fullName.split(" ")[0] || fullName;
+      return { id: uid, name: first, fullName, value };
     })
     .sort((a, b) => b.value - a.value)
     .map((row, i) => ({ ...row, rank: i + 1, label: `#${i + 1} ${row.name}` }));
+  const sellerChart = leaderboardSeller === "all"
+    ? sellerChartAll
+    : sellerChartAll.filter(s => s.id === leaderboardSeller);
   const productChart = Array.from(productSales.entries())
     .map(([pid, value]) => ({
       name: pid === "ingen" ? "Övrigt" : (prodMap.get(pid)?.name ?? "Okänd"),
@@ -321,9 +327,20 @@ function Dashboard() {
 
         {/* Seller leaderboard */}
         <Card className="p-5">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
             <Trophy className="size-4 text-amber-500" />
             <h3 className="text-sm font-semibold">Säljartoppen i år</h3>
+            <div className="ml-auto">
+              <Select value={leaderboardSeller} onValueChange={setLeaderboardSeller}>
+                <SelectTrigger className="h-8 w-56"><SelectValue placeholder="Alla säljare" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alla säljare</SelectItem>
+                  {sellerChartAll.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.fullName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           {sellerChart.length === 0 ? (
             <div className="text-sm text-muted-foreground py-12 text-center">Ingen försäljning i år ännu</div>
