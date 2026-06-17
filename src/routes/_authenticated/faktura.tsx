@@ -173,7 +173,17 @@ function FakturaPage() {
             <div className="text-right">
               <div className="text-sm font-semibold">{SEK(Number(o.total_excl_vat))} SEK</div>
             </div>
-            <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+            <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex gap-2">
+              {bucket === "saknar" && (
+                <>
+                  <Button size="sm" variant="outline" onClick={() => forceKlar(o.id)}>
+                    <CheckCircle2 className="size-4 mr-1" /> Flytta till klar
+                  </Button>
+                  <Button size="sm" onClick={() => markFakturerad(o.id)}>
+                    <Receipt className="size-4 mr-1" /> Markera fakturerad
+                  </Button>
+                </>
+              )}
               {bucket === "klar" && (
                 <Button size="sm" onClick={() => markFakturerad(o.id)}>
                   <Receipt className="size-4 mr-1" /> Markera fakturerad
