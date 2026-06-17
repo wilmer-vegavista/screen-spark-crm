@@ -45,6 +45,7 @@ function pickPct(deal: any, product: any, compType: string, defaultPct: number) 
 
 function Dashboard() {
   const { user, isAdmin } = useCurrentUser();
+  const [leaderboardSeller, setLeaderboardSeller] = useState<string>("all");
   const now = new Date();
   const yearStart = startOfYear(now);
   const yearEnd = endOfYear(now);
