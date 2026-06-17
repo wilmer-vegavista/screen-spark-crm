@@ -17,8 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, FileText, ShoppingCart, Trash2, X, Users, User } from "lucide-react";
-import { useCurrentUser } from "@/lib/hooks/use-current-user";
+import { Plus, FileText, ShoppingCart, Trash2, X, Users } from "lucide-react";
 import { OrderDialog } from "@/components/order-dialog";
 import { deleteOrders } from "@/lib/orders.functions";
 import { format } from "date-fns";
