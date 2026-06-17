@@ -17,6 +17,7 @@ import { Wallet, Plus, Pencil, Trash2, UserCog } from "lucide-react";
 import { format, startOfMonth, endOfMonth, addMonths } from "date-fns";
 import { sv } from "date-fns/locale";
 import { TaxCalculator } from "@/components/tax-calculator";
+import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/lib/billing";
 
 export const Route = createFileRoute("/_authenticated/lon")({
   component: LonPage,
@@ -134,6 +135,28 @@ function pickPct(deal: any, product: any, compType: string, defaultPct: number) 
   return defaultPct;
 }
 
+// Build commission events for a deal. If the deal has an order with
+// recurring billing, commission is split across the invoice schedule;
+// otherwise it's a single event at won_at.
+function dealCommissionEvents(deal: any, order: any | null, pct: number) {
+  const value = Number(deal.value ?? 0);
+  if (order && order.billing_frequency && order.billing_frequency !== "engang") {
+    const schedule = buildInvoiceSchedule(
+      order.invoice_start_date || deal.won_at,
+      order.billing_frequency as BillingFrequency,
+      Number(order.billing_duration_months ?? 0),
+      value,
+    );
+    return schedule.map(e => ({ date: e.date, amount: e.amount, commission: (e.amount * pct) / 100 }));
+  }
+  const d = deal.won_at ? new Date(deal.won_at) : new Date();
+  return [{ date: d, amount: value, commission: (value * pct) / 100 }];
+}
+
+function inRange(d: Date, from: Date, to: Date) {
+  return d >= from && d <= to;
+}
+
 function useSalary(userId: string, from: Date, to: Date) {
   return useQuery({
     queryKey: ["salary", userId, from.toISOString(), to.toISOString()],
@@ -144,21 +167,36 @@ function useSalary(userId: string, from: Date, to: Date) {
           .from("deals")
           .select("*")
           .eq("owner_id", userId)
-          .eq("stage", "vunnen")
-          .gte("won_at", from.toISOString())
-          .lte("won_at", to.toISOString()),
+          .eq("stage", "vunnen"),
         supabase.from("products").select("*"),
       ]);
+      const dealIds = (deals ?? []).map(d => d.id);
+      const { data: orders } = dealIds.length
+        ? await supabase.from("orders").select("*").in("deal_id", dealIds)
+        : { data: [] as any[] };
+      const orderByDeal = new Map((orders ?? []).map(o => [o.deal_id, o]));
       const prodMap = new Map((products ?? []).map(p => [p.id, p]));
       const compType = comp?.compensation_type ?? "med_grundlon";
       const baseSalary = compType === "endast_provision" ? 0 : Number(comp?.base_salary ?? 0);
       const defaultPct = Number(comp?.default_commission_pct ?? 0);
-      const rows = (deals ?? []).map(d => {
+      const rows = (deals ?? []).flatMap(d => {
         const product = d.product_id ? prodMap.get(d.product_id) : null;
         const pct = pickPct(d, product, compType, defaultPct);
-        const value = Number(d.value ?? 0);
-        const commission = (value * pct) / 100;
-        return { id: d.id, title: d.title, product: product?.name ?? "—", value, pct, commission, won_at: d.won_at };
+        const order = orderByDeal.get(d.id) ?? null;
+        const events = dealCommissionEvents(d, order, pct).filter(e => inRange(e.date, from, to));
+        if (!events.length) return [];
+        const value = events.reduce((s, e) => s + e.amount, 0);
+        const commission = events.reduce((s, e) => s + e.commission, 0);
+        return [{
+          id: d.id,
+          title: d.title,
+          product: product?.name ?? "—",
+          value,
+          pct,
+          commission,
+          won_at: d.won_at,
+          frequency: (order?.billing_frequency ?? "engang") as BillingFrequency,
+        }];
       });
       const totalCommission = rows.reduce((s, r) => s + r.commission, 0);
       const totalValue = rows.reduce((s, r) => s + r.value, 0);
@@ -190,8 +228,9 @@ function SalaryCard({ userId, from, to }: { userId: string; from: Date; to: Date
               <TableRow>
                 <TableHead>Affär</TableHead>
                 <TableHead>Produkt</TableHead>
+                <TableHead>Fakturering</TableHead>
                 <TableHead>Stängd</TableHead>
-                <TableHead className="text-right">Värde</TableHead>
+                <TableHead className="text-right">Värde (mån)</TableHead>
                 <TableHead className="text-right">%</TableHead>
                 <TableHead className="text-right">Provision</TableHead>
               </TableRow>
@@ -201,6 +240,7 @@ function SalaryCard({ userId, from, to }: { userId: string; from: Date; to: Date
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.title}</TableCell>
                   <TableCell>{r.product}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{frequencyLabels[r.frequency]}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">{r.won_at ? format(new Date(r.won_at), "d MMM", { locale: sv }) : "—"}</TableCell>
                   <TableCell className="text-right">{fmt(r.value)}</TableCell>
                   <TableCell className="text-right">{r.pct}%</TableCell>
@@ -241,11 +281,14 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
         supabase
           .from("deals")
           .select("*")
-          .eq("stage", "vunnen")
-          .gte("won_at", from.toISOString())
-          .lte("won_at", to.toISOString()),
+          .eq("stage", "vunnen"),
         supabase.from("products").select("*"),
       ]);
+      const dealIds = (deals ?? []).map(d => d.id);
+      const { data: orders } = dealIds.length
+        ? await supabase.from("orders").select("*").in("deal_id", dealIds)
+        : { data: [] as any[] };
+      const orderByDeal = new Map((orders ?? []).map(o => [o.deal_id, o]));
       const prodMap = new Map((products ?? []).map(p => [p.id, p]));
       const compMap = new Map((comps ?? []).map(c => [c.user_id, c]));
       const profileMap = new Map((profiles ?? []).map(p => [p.id, p]));
@@ -256,10 +299,14 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
         const compType = c?.compensation_type ?? "med_grundlon";
         const product = d.product_id ? prodMap.get(d.product_id) : null;
         const pct = pickPct(d, product, compType, Number(c?.default_commission_pct ?? 0));
-        const value = Number(d.value ?? 0);
+        const order = orderByDeal.get(d.id) ?? null;
+        const events = dealCommissionEvents(d, order, pct).filter(e => inRange(e.date, from, to));
+        if (!events.length) continue;
+        const value = events.reduce((s, e) => s + e.amount, 0);
+        const commission = events.reduce((s, e) => s + e.commission, 0);
         const cur = grouped.get(d.owner_id) ?? { value: 0, commission: 0, count: 0 };
         cur.value += value;
-        cur.commission += (value * pct) / 100;
+        cur.commission += commission;
         cur.count += 1;
         grouped.set(d.owner_id, cur);
       }
