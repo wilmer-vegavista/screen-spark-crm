@@ -107,6 +107,28 @@ function FakturaPage() {
     qc.invalidateQueries({ queryKey: ["orders"] });
   };
 
+  const forceKlar = async (id: string) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ invoice_status: "klar", invoiced_at: null })
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Flyttad till klar att fakturera");
+    qc.invalidateQueries({ queryKey: ["faktura-orders"] });
+    qc.invalidateQueries({ queryKey: ["orders"] });
+  };
+
+  const resetSaknar = async (id: string) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ invoice_status: null, invoiced_at: null })
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Återställd");
+    qc.invalidateQueries({ queryKey: ["faktura-orders"] });
+    qc.invalidateQueries({ queryKey: ["orders"] });
+  };
+
   const renderList = (list: any[], bucket: Bucket) => {
     if (list.length === 0) {
       return <Card className="p-8 text-center text-sm text-muted-foreground">Inga ordrar i denna kategori</Card>;
