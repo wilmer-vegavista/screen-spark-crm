@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Wallet, TrendingUp, FileText, Package, Target, CalendarDays } from "lucide-react";
 import { startOfMonth, endOfMonth, startOfQuarter, startOfYear, endOfYear, subYears } from "date-fns";
