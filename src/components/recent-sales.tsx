@@ -92,8 +92,8 @@ export function RecentSalesPanel() {
     if (!o || o.order_type === "offert") return;
     let seller_name: string | null = null;
     if (o.owner_id) {
-      const { data: p } = await supabase.from("profiles").select("full_name").eq("id", o.owner_id).maybeSingle();
-      seller_name = p?.full_name ?? null;
+      const { data: p } = await supabase.from("profiles").select("full_name, email").eq("id", o.owner_id).maybeSingle();
+      seller_name = (p?.full_name && p.full_name.trim()) || p?.email || null;
     }
     const item: RecentOrder = { ...o, seller_name };
     setBanner(item);
