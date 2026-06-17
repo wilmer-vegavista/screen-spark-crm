@@ -281,11 +281,14 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
         supabase
           .from("deals")
           .select("*")
-          .eq("stage", "vunnen")
-          .gte("won_at", from.toISOString())
-          .lte("won_at", to.toISOString()),
+          .eq("stage", "vunnen"),
         supabase.from("products").select("*"),
       ]);
+      const dealIds = (deals ?? []).map(d => d.id);
+      const { data: orders } = dealIds.length
+        ? await supabase.from("orders").select("*").in("deal_id", dealIds)
+        : { data: [] as any[] };
+      const orderByDeal = new Map((orders ?? []).map(o => [o.deal_id, o]));
       const prodMap = new Map((products ?? []).map(p => [p.id, p]));
       const compMap = new Map((comps ?? []).map(c => [c.user_id, c]));
       const profileMap = new Map((profiles ?? []).map(p => [p.id, p]));
@@ -296,10 +299,14 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
         const compType = c?.compensation_type ?? "med_grundlon";
         const product = d.product_id ? prodMap.get(d.product_id) : null;
         const pct = pickPct(d, product, compType, Number(c?.default_commission_pct ?? 0));
-        const value = Number(d.value ?? 0);
+        const order = orderByDeal.get(d.id) ?? null;
+        const events = dealCommissionEvents(d, order, pct).filter(e => inRange(e.date, from, to));
+        if (!events.length) continue;
+        const value = events.reduce((s, e) => s + e.amount, 0);
+        const commission = events.reduce((s, e) => s + e.commission, 0);
         const cur = grouped.get(d.owner_id) ?? { value: 0, commission: 0, count: 0 };
         cur.value += value;
-        cur.commission += (value * pct) / 100;
+        cur.commission += commission;
         cur.count += 1;
         grouped.set(d.owner_id, cur);
       }
