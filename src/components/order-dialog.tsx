@@ -409,7 +409,7 @@ export function OrderDialog({
           .from("customers")
           .select("id")
           .ilike("company_name", form.company_name.trim())
-          .eq("owner_id", effectiveOwner)
+          .eq("owner_id", effectiveOwner!)
           .maybeSingle();
         if (existing?.id) {
           customerId = existing.id;
