@@ -384,8 +384,53 @@ export function OrderDialog({
       return;
     }
 
+    // Auto-create / link customer card from invoice details
+    let customerId = form.customer_id;
+    if (form.company_name.trim()) {
+      const customerPayload = {
+        company_name: form.company_name.trim(),
+        org_number: form.org_number || null,
+        vat_number: form.vat_number || null,
+        billing_address: form.billing_address || null,
+        postal_code: form.postal_code || null,
+        city: form.city || null,
+        contact_name: form.contact_name || null,
+        email: form.contact_email || null,
+        phone: form.contact_phone || null,
+        invoice_reference: form.invoice_reference || null,
+        invoice_peppol_id: form.invoice_peppol_id || null,
+        invoice_email: form.invoice_email || null,
+      };
+      if (customerId) {
+        await supabase.from("customers").update(customerPayload).eq("id", customerId);
+      } else {
+        // Try to find existing customer for this owner with same company name
+        const { data: existing } = await supabase
+          .from("customers")
+          .select("id")
+          .ilike("company_name", form.company_name.trim())
+          .eq("owner_id", effectiveOwner!)
+          .maybeSingle();
+        if (existing?.id) {
+          customerId = existing.id;
+          await supabase.from("customers").update(customerPayload).eq("id", customerId);
+        } else {
+          const { data: newCust, error: custErr } = await supabase
+            .from("customers")
+            .insert({ ...customerPayload, owner_id: effectiveOwner, created_by: uid })
+            .select("id")
+            .single();
+          if (custErr) { setSaving(false); return toast.error("Kunde inte skapa kundkort: " + custErr.message); }
+          customerId = newCust!.id;
+        }
+      }
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      qc.invalidateQueries({ queryKey: ["customers-min"] });
+    }
+
     const orderPayload: any = {
       ...form,
+      customer_id: customerId,
       invoice_start_date: format(form.invoice_start_date, "yyyy-MM-dd"),
       total_excl_vat: subtotal,
       total_commission: totalCommission,
