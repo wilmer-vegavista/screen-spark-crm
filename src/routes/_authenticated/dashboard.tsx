@@ -57,7 +57,7 @@ function Dashboard() {
   const { data } = useQuery({
     queryKey: ["dashboard-stats", yearStart.toISOString()],
     queryFn: async () => {
-      const lookbackStart = subYears(yearStart, 2).toISOString().slice(0, 10);
+      
       const [
         { data: deals },
         { data: products },
