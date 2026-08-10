@@ -46,10 +46,12 @@ type Lead = {
 const norm = (v?: string | null) => (v ?? "").toLowerCase().replace(/[\s\-()+]/g, "").trim();
 
 const STATUS: Record<string, { label: string; cls: string }> = {
-  ny: { label: "Ny", cls: "bg-muted text-muted-foreground" },
-  pagaende: { label: "Pågående", cls: "bg-primary/10 text-primary" },
-  affar: { label: "Affär", cls: "bg-emerald-500/10 text-emerald-600" },
-  forlorad: { label: "Förlorad", cls: "bg-destructive/10 text-destructive" },
+  ej_svar: { label: "Ej svar", cls: "bg-muted text-muted-foreground" },
+  kallt_mail: { label: "Kallt mail", cls: "bg-sky-500/10 text-sky-600" },
+  pratat_telefon: { label: "Pratat i telefon", cls: "bg-primary/10 text-primary" },
+  offert: { label: "Offert", cls: "bg-amber-500/10 text-amber-600" },
+  nara_avslut: { label: "Nära avslut", cls: "bg-emerald-500/10 text-emerald-600" },
+  tackat_nej: { label: "Tackat nej", cls: "bg-destructive/10 text-destructive" },
 };
 
 function Leads() {
