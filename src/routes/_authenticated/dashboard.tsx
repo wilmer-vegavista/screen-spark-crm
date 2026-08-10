@@ -263,7 +263,37 @@ function Dashboard() {
     <>
       <PageHeader title="Dashboard" description="Översikt över sälj, budget och lön" />
       <div className="p-6 space-y-6">
+        {/* Sellers this month */}
+        <Card className="p-5">
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <Target className="size-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold">Säljare denna månad</h3>
+            <div className="ml-auto text-xs text-muted-foreground">
+              Totalt {fmt(monthTotal)}{companyBudget > 0 ? ` av ${fmt(companyBudget)} (${companyBudgetPct.toFixed(0)}%)` : ""}
+            </div>
+          </div>
+          {sellerMonthRows.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-8 text-center">Ingen försäljning eller budget satt denna månad</div>
+          ) : (
+            <div className="space-y-4">
+              {sellerMonthRows.map((s) => (
+                <div key={s.id}>
+                  <div className="flex items-baseline justify-between gap-3 mb-1">
+                    <div className="text-sm font-medium truncate">{s.name}</div>
+                    <div className="text-xs text-muted-foreground shrink-0">
+                      <span className="text-foreground font-semibold">{fmt(s.sold)}</span>
+                      {s.budget > 0 ? ` av ${fmt(s.budget)} · ${s.pct.toFixed(0)}%` : " · ingen budget"}
+                    </div>
+                  </div>
+                  <Progress value={s.pct} />
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
         {/* Top KPIs */}
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Stat label="Min lön (denna månad)" value={fmt(mySalaryTotal)} sub={`Grundlön ${fmt(baseSalary)} + Provision ${fmt(myCommission)}`} icon={Wallet} accent />
           <Stat label="Mina offerter ute" value={String(myOpen.length)} sub={`Värde ${fmt(myOpenValue)}`} icon={FileText} />
