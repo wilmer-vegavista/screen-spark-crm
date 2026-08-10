@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_authenticated/leads")({
 
 type Lead = {
   id: string;
-  company_name: string;
+  company_name: string | null;
   contact_name: string | null;
   phone: string | null;
   email: string | null;
@@ -205,10 +205,11 @@ function Leads() {
 
   const makeCustomer = async (l: Lead) => {
     if (!user) return;
+    const companyName = l.company_name?.trim() || "Namnlöst lead";
     const { data: existing } = await supabase
       .from("customers")
       .select("id")
-      .ilike("company_name", l.company_name)
+      .ilike("company_name", companyName)
       .maybeSingle();
 
     let customerId = existing?.id ?? null;
@@ -216,7 +217,7 @@ function Leads() {
       const { data, error } = await supabase
         .from("customers")
         .insert({
-          company_name: l.company_name,
+          company_name: companyName,
           contact_name: l.contact_name,
           phone: l.phone,
           email: l.email,
@@ -326,9 +327,10 @@ function Leads() {
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Företagsnamn</Label>
                         <Input
-                          value={l.company_name}
+                          value={l.company_name ?? ""}
                           disabled={!editable}
-                          onChange={e => patch(l, { company_name: e.target.value || "Namnlöst lead" })}
+                          placeholder="Lämna tom för namnlöst lead"
+                          onChange={e => patch(l, { company_name: e.target.value || null })}
                         />
                       </div>
                     </div>

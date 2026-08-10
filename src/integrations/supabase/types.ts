@@ -345,7 +345,7 @@ export type Database = {
       leads: {
         Row: {
           comment: string | null
-          company_name: string
+          company_name: string | null
           contact_name: string | null
           created_at: string
           created_by: string | null
@@ -360,7 +360,7 @@ export type Database = {
         }
         Insert: {
           comment?: string | null
-          company_name: string
+          company_name?: string | null
           contact_name?: string | null
           created_at?: string
           created_by?: string | null
@@ -375,7 +375,7 @@ export type Database = {
         }
         Update: {
           comment?: string | null
-          company_name?: string
+          company_name?: string | null
           contact_name?: string | null
           created_at?: string
           created_by?: string | null
