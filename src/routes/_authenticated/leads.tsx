@@ -205,10 +205,11 @@ function Leads() {
 
   const makeCustomer = async (l: Lead) => {
     if (!user) return;
+    const companyName = l.company_name?.trim() || "Namnlöst lead";
     const { data: existing } = await supabase
       .from("customers")
       .select("id")
-      .ilike("company_name", l.company_name)
+      .ilike("company_name", companyName)
       .maybeSingle();
 
     let customerId = existing?.id ?? null;
@@ -216,7 +217,7 @@ function Leads() {
       const { data, error } = await supabase
         .from("customers")
         .insert({
-          company_name: l.company_name,
+          company_name: companyName,
           contact_name: l.contact_name,
           phone: l.phone,
           email: l.email,
