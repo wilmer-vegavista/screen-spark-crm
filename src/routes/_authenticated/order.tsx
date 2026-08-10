@@ -24,6 +24,7 @@ import { deleteOrders } from "@/lib/orders.functions";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ORDER_SELECT } from "@/lib/order-columns";
 
 export const Route = createFileRoute("/_authenticated/order")({
   validateSearch: (s: Record<string, unknown>) => ({
