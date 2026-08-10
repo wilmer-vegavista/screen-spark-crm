@@ -51,7 +51,7 @@ function OrderPage() {
   const { data } = useQuery({
     queryKey: ["orders"],
     queryFn: async () => {
-      const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+      const { data } = await supabase.from("orders").select(ORDER_SELECT).order("created_at", { ascending: false });
       return data ?? [];
     },
   });

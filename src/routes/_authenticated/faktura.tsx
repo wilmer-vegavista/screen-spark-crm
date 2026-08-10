@@ -55,7 +55,7 @@ function FakturaPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("orders")
-        .select("*")
+        .select(ORDER_SELECT)
         .eq("order_type", "bokning")
         .order("created_at", { ascending: false });
       return data ?? [];

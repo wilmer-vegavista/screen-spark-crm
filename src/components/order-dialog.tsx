@@ -223,7 +223,7 @@ export function OrderDialog({
       setOwnerId(order.owner_id ?? null);
 
       // load items
-      supabase.from("order_items").select("*").eq("order_id", order.id).order("position").then(({ data }) => {
+      supabase.from("order_items").select(ORDER_ITEM_SELECT).eq("order_id", order.id).order("position").then(({ data }) => {
         if (data && data.length) {
           setItems(data.map(d => ({
             id: d.id, product_id: d.product_id, product_name: d.product_name,
