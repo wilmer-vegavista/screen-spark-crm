@@ -276,7 +276,7 @@ function Leads() {
                     <td className="border-b border-r p-0">
                       <div className="flex items-center">
                         {isDuplicate(l) && <AlertTriangle className="size-3.5 text-amber-500 ml-2 shrink-0" />}
-                        <Cell value={l.company_name} disabled={!editable} onSave={v => patch(l, { company_name: v })} />
+                        <Cell value={l.company_name} disabled={!editable} onSave={v => patch(l, { company_name: v ?? "Namnlöst lead" })} />
                       </div>
                     </td>
                     <td className="border-b border-r p-0"><Cell value={l.contact_name} disabled={!editable} onSave={v => patch(l, { contact_name: v })} /></td>
