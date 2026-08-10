@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_authenticated/leads")({
 
 type Lead = {
   id: string;
-  company_name: string;
+  company_name: string | null;
   contact_name: string | null;
   phone: string | null;
   email: string | null;
