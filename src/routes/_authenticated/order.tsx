@@ -57,6 +57,18 @@ function OrderPage() {
     },
   });
 
+  // Commission is only readable for orders the current user owns/created (or admin)
+  const { data: myCommissions } = useQuery({
+    queryKey: ["my-order-commissions"],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("my_order_commissions");
+      return new Map<string, number>(
+        ((data ?? []) as any[]).map(r => [r.order_id as string, Number(r.total_commission ?? 0)]),
+      );
+    },
+  });
+
+
   const { data: sellers } = useQuery({
     queryKey: ["all-profiles-min"],
     queryFn: async () => {
