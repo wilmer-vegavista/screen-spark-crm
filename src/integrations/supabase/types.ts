@@ -1001,6 +1001,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      my_order_commissions: {
+        Args: never
+        Returns: {
+          order_id: string
+          total_commission: number
+        }[]
+      }
     }
     Enums: {
       activity_type: "samtal" | "mote" | "mejl" | "uppgift" | "paminnelse"
