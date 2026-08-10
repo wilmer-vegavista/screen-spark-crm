@@ -195,16 +195,28 @@ function Dashboard() {
   const mySoldThisMonth = scheduleEntries
     .filter(e => e.owner_id === user?.id && e.date >= monthStart && e.date <= monthEnd)
     .reduce((s, e) => s + e.amount, 0);
-  const myWonThisMonth = (data?.wonDeals ?? []).filter(d => {
-    if (d.owner_id !== user?.id || !d.won_at) return false;
-    const w = new Date(d.won_at);
-    return w >= monthStart && w <= monthEnd;
-  });
-  const myCommission = myWonThisMonth.reduce((s, d) => {
+  // Commission is periodised: deals tied to an order with recurring billing
+  // pay out per invoice occasion (e.g. 60 000 kr / 12 months = 5 000 kr per month).
+  const orderByDeal = new Map((data?.orders ?? []).filter(o => o.deal_id).map(o => [o.deal_id as string, o]));
+  const myCommissionEvents = (data?.wonDeals ?? []).flatMap(d => {
+    if (d.owner_id !== user?.id) return [];
     const product = d.product_id ? prodMap.get(d.product_id) : null;
     const pct = pickPct(d, product, compType, defaultPct);
-    return s + (Number(d.value ?? 0) * pct) / 100;
-  }, 0);
+    const value = Number(d.value ?? 0);
+    const order: any = orderByDeal.get(d.id);
+    if (order && order.billing_frequency && order.billing_frequency !== "engang") {
+      return buildInvoiceSchedule(
+        order.invoice_start_date || d.won_at,
+        order.billing_frequency as BillingFrequency,
+        Number(order.billing_duration_months ?? 0),
+        value,
+      ).map(e => ({ date: e.date, commission: (e.amount * pct) / 100 }));
+    }
+    if (!d.won_at) return [];
+    return [{ date: new Date(d.won_at), commission: (value * pct) / 100 }];
+  });
+  const myWonThisMonth = myCommissionEvents.filter(e => e.date >= monthStart && e.date <= monthEnd);
+  const myCommission = myWonThisMonth.reduce((s, e) => s + e.commission, 0);
   const mySalaryTotal = baseSalary + myCommission;
 
   // Daily pace toward my monthly budget (business days remaining)
