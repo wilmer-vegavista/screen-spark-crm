@@ -21,6 +21,7 @@ import { format } from "date-fns";
 import { sv } from "date-fns/locale";
 import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/lib/billing";
 import { cn } from "@/lib/utils";
+import { ORDER_ITEM_SELECT } from "@/lib/order-columns";
 
 
 
@@ -222,8 +223,17 @@ export function OrderDialog({
       setExactDates(Array.isArray(order.exact_dates) ? order.exact_dates.map((d: string) => new Date(d)) : []);
       setOwnerId(order.owner_id ?? null);
 
-      // load items
-      supabase.from("order_items").select("*").eq("order_id", order.id).order("position").then(({ data }) => {
+      // load items (commission is protected in the DB and fetched separately)
+      (async () => {
+        const [{ data }, { data: comm }] = await Promise.all([
+          supabase.from("order_items").select(ORDER_ITEM_SELECT).eq("order_id", order.id).order("position"),
+          supabase.rpc("get_order_commission", { _order_id: order.id }),
+        ]);
+        const pctByItem = new Map<string, number>(
+          ((comm ?? []) as any[])
+            .filter(r => r.item_id)
+            .map(r => [r.item_id as string, Number(r.item_commission_pct ?? 0)]),
+        );
         if (data && data.length) {
           setItems(data.map(d => ({
             id: d.id, product_id: d.product_id, product_name: d.product_name,
@@ -233,7 +243,7 @@ export function OrderDialog({
             period_unit: ((d as any).period_unit ?? "veckor") as PeriodUnit,
             unit_price: d.unit_price?.toString() ?? "0",
             line_price: (Number(d.unit_price || 0) * Number(d.weeks || 1)).toString(),
-            commission_pct: d.commission_pct?.toString() ?? "0",
+            commission_pct: String(pctByItem.get(d.id) ?? 0),
           })));
           const tot = data.reduce((s, d) => s + Number(d.unit_price || 0) * Number(d.weeks || 1), 0);
           setTotalPrice(tot.toString());
@@ -241,7 +251,8 @@ export function OrderDialog({
           setItems([emptyItem()]);
           setTotalPrice("0");
         }
-      });
+      })();
+
 
       // load splits
       supabase.from("order_splits").select("user_id, share_pct").eq("order_id", order.id).then(({ data }) => {

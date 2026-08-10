@@ -18,6 +18,7 @@ import { format, startOfMonth, endOfMonth, addMonths } from "date-fns";
 import { sv } from "date-fns/locale";
 import { TaxCalculator } from "@/components/tax-calculator";
 import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/lib/billing";
+import { ORDER_SELECT } from "@/lib/order-columns";
 
 export const Route = createFileRoute("/_authenticated/lon")({
   component: LonPage,
@@ -172,7 +173,7 @@ function useSalary(userId: string, from: Date, to: Date) {
       ]);
       const dealIds = (deals ?? []).map(d => d.id);
       const { data: orders } = dealIds.length
-        ? await supabase.from("orders").select("*").in("deal_id", dealIds)
+        ? await supabase.from("orders").select(ORDER_SELECT).in("deal_id", dealIds)
         : { data: [] as any[] };
       const orderByDeal = new Map((orders ?? []).map(o => [o.deal_id, o]));
       const prodMap = new Map((products ?? []).map(p => [p.id, p]));
@@ -286,7 +287,7 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
       ]);
       const dealIds = (deals ?? []).map(d => d.id);
       const { data: orders } = dealIds.length
-        ? await supabase.from("orders").select("*").in("deal_id", dealIds)
+        ? await supabase.from("orders").select(ORDER_SELECT).in("deal_id", dealIds)
         : { data: [] as any[] };
       const orderByDeal = new Map((orders ?? []).map(o => [o.deal_id, o]));
       const prodMap = new Map((products ?? []).map(p => [p.id, p]));

@@ -24,6 +24,7 @@ import { deleteOrders } from "@/lib/orders.functions";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ORDER_SELECT } from "@/lib/order-columns";
 
 export const Route = createFileRoute("/_authenticated/order")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -51,10 +52,22 @@ function OrderPage() {
   const { data } = useQuery({
     queryKey: ["orders"],
     queryFn: async () => {
-      const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+      const { data } = await supabase.from("orders").select(ORDER_SELECT).order("created_at", { ascending: false });
       return data ?? [];
     },
   });
+
+  // Commission is only readable for orders the current user owns/created (or admin)
+  const { data: myCommissions } = useQuery({
+    queryKey: ["my-order-commissions"],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("my_order_commissions");
+      return new Map<string, number>(
+        ((data ?? []) as any[]).map(r => [r.order_id as string, Number(r.total_commission ?? 0)]),
+      );
+    },
+  });
+
 
   const { data: sellers } = useQuery({
     queryKey: ["all-profiles-min"],
@@ -244,7 +257,10 @@ function OrderPage() {
               </div>
               <div className="text-right">
                 <div className="text-sm font-semibold">{SEK(Number(o.total_excl_vat))} SEK</div>
-                <div className="text-xs text-primary">Provision: {SEK(Number(o.total_commission))} SEK</div>
+                {myCommissions?.has(o.id) && (
+                  <div className="text-xs text-primary">Provision: {SEK(Number(myCommissions.get(o.id)))} SEK</div>
+                )}
+
               </div>
             </div>
           </Card>

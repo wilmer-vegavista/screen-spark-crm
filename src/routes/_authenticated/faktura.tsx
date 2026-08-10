@@ -12,6 +12,7 @@ import { AlertCircle, CheckCircle2, Receipt, Users, Undo2 } from "lucide-react";
 import { OrderDialog } from "@/components/order-dialog";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { ORDER_SELECT } from "@/lib/order-columns";
 
 export const Route = createFileRoute("/_authenticated/faktura")({
   beforeLoad: async () => {
@@ -55,7 +56,7 @@ function FakturaPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("orders")
-        .select("*")
+        .select(ORDER_SELECT)
         .eq("order_type", "bokning")
         .order("created_at", { ascending: false });
       return data ?? [];

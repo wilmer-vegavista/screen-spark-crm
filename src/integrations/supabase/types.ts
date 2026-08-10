@@ -984,12 +984,29 @@ export type Database = {
     }
     Functions: {
       can_manage_order: { Args: { _order_id: string }; Returns: boolean }
+      get_order_commission: {
+        Args: { _order_id: string }
+        Returns: {
+          item_commission_amount: number
+          item_commission_pct: number
+          item_id: string
+          order_id: string
+          total_commission: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      my_order_commissions: {
+        Args: never
+        Returns: {
+          order_id: string
+          total_commission: number
+        }[]
       }
     }
     Enums: {
