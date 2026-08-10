@@ -342,6 +342,62 @@ export type Database = {
           },
         ]
       }
+      leads: {
+        Row: {
+          comment: string | null
+          company_name: string
+          contact_name: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          email: string | null
+          followup_date: string | null
+          id: string
+          owner_id: string | null
+          phone: string | null
+          status: Database["public"]["Enums"]["lead_status"]
+          updated_at: string
+        }
+        Insert: {
+          comment?: string | null
+          company_name: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          email?: string | null
+          followup_date?: string | null
+          id?: string
+          owner_id?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+        }
+        Update: {
+          comment?: string | null
+          company_name?: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          email?: string | null
+          followup_date?: string | null
+          id?: string
+          owner_id?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       materials: {
         Row: {
           assigned_to: string | null
@@ -1028,6 +1084,7 @@ export type Database = {
         | "forhandling"
         | "vunnen"
         | "forlorad"
+      lead_status: "ny" | "pagaende" | "affar" | "forlorad"
       material_status:
         | "ej_inkommet"
         | "under_produktion"
@@ -1184,6 +1241,7 @@ export const Constants = {
         "vunnen",
         "forlorad",
       ],
+      lead_status: ["ny", "pagaende", "affar", "forlorad"],
       material_status: [
         "ej_inkommet",
         "under_produktion",

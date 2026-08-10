@@ -18,6 +18,7 @@ import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedOrderRouteImport } from './routes/_authenticated/order'
 import { Route as AuthenticatedMaterialRouteImport } from './routes/_authenticated/material'
 import { Route as AuthenticatedLonRouteImport } from './routes/_authenticated/lon'
+import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedKunderRouteImport } from './routes/_authenticated/kunder'
 import { Route as AuthenticatedKampanjerRouteImport } from './routes/_authenticated/kampanjer'
 import { Route as AuthenticatedFakturaRouteImport } from './routes/_authenticated/faktura'
@@ -70,6 +71,11 @@ const AuthenticatedMaterialRoute = AuthenticatedMaterialRouteImport.update({
 const AuthenticatedLonRoute = AuthenticatedLonRouteImport.update({
   id: '/lon',
   path: '/lon',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLeadsRoute = AuthenticatedLeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedKunderRoute = AuthenticatedKunderRouteImport.update({
@@ -132,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/faktura': typeof AuthenticatedFakturaRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
+  '/leads': typeof AuthenticatedLeadsRoute
   '/lon': typeof AuthenticatedLonRoute
   '/material': typeof AuthenticatedMaterialRoute
   '/order': typeof AuthenticatedOrderRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/faktura': typeof AuthenticatedFakturaRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
+  '/leads': typeof AuthenticatedLeadsRoute
   '/lon': typeof AuthenticatedLonRoute
   '/material': typeof AuthenticatedMaterialRoute
   '/order': typeof AuthenticatedOrderRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/_authenticated/faktura': typeof AuthenticatedFakturaRoute
   '/_authenticated/kampanjer': typeof AuthenticatedKampanjerRoute
   '/_authenticated/kunder': typeof AuthenticatedKunderRoute
+  '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/lon': typeof AuthenticatedLonRoute
   '/_authenticated/material': typeof AuthenticatedMaterialRoute
   '/_authenticated/order': typeof AuthenticatedOrderRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/faktura'
     | '/kampanjer'
     | '/kunder'
+    | '/leads'
     | '/lon'
     | '/material'
     | '/order'
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/faktura'
     | '/kampanjer'
     | '/kunder'
+    | '/leads'
     | '/lon'
     | '/material'
     | '/order'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/_authenticated/faktura'
     | '/_authenticated/kampanjer'
     | '/_authenticated/kunder'
+    | '/_authenticated/leads'
     | '/_authenticated/lon'
     | '/_authenticated/material'
     | '/_authenticated/order'
@@ -311,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLonRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/leads': {
+      id: '/_authenticated/leads'
+      path: '/leads'
+      fullPath: '/leads'
+      preLoaderRoute: typeof AuthenticatedLeadsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/kunder': {
       id: '/_authenticated/kunder'
       path: '/kunder'
@@ -387,6 +406,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFakturaRoute: typeof AuthenticatedFakturaRoute
   AuthenticatedKampanjerRoute: typeof AuthenticatedKampanjerRoute
   AuthenticatedKunderRoute: typeof AuthenticatedKunderRoute
+  AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
   AuthenticatedLonRoute: typeof AuthenticatedLonRoute
   AuthenticatedMaterialRoute: typeof AuthenticatedMaterialRoute
   AuthenticatedOrderRoute: typeof AuthenticatedOrderRoute
@@ -405,6 +425,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFakturaRoute: AuthenticatedFakturaRoute,
   AuthenticatedKampanjerRoute: AuthenticatedKampanjerRoute,
   AuthenticatedKunderRoute: AuthenticatedKunderRoute,
+  AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
   AuthenticatedLonRoute: AuthenticatedLonRoute,
   AuthenticatedMaterialRoute: AuthenticatedMaterialRoute,
   AuthenticatedOrderRoute: AuthenticatedOrderRoute,

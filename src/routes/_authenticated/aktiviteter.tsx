@@ -42,42 +42,81 @@ function Aktiviteter() {
     else qc.invalidateQueries({ queryKey: ["activities"] });
   };
 
+  const groups = groupByDay(data ?? []);
+
   return (
     <>
       <PageHeader
         title="Aktiviteter"
-        description="Samtal, möten, uppgifter och påminnelser"
+        description="Samtal, möten, uppgifter och återkopplingar – dag för dag"
         actions={<Button onClick={() => setOpen(true)}><Plus className="size-4 mr-1" /> Ny aktivitet</Button>}
       />
-      <div className="p-6">
-        <Card className="divide-y">
-          {(data ?? []).length === 0 && <div className="p-6 text-sm text-muted-foreground text-center">Inga aktiviteter än</div>}
-          {data?.map(a => {
-            const overdue = a.due_at && !a.completed && isPast(new Date(a.due_at)) && !isToday(new Date(a.due_at));
-            return (
-              <div key={a.id} className="flex items-center gap-3 p-3">
-                <Checkbox checked={a.completed} onCheckedChange={() => toggle(a.id, a.completed)} />
-                <div className="flex-1 min-w-0">
-                  <div className={cn("text-sm font-medium", a.completed && "line-through text-muted-foreground")}>{a.title}</div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-2">
-                    <span className="capitalize">{a.type}</span>
-                    {a.description && <><span>·</span><span className="truncate">{a.description}</span></>}
+      <div className="p-6 space-y-6">
+        {(data ?? []).length === 0 && (
+          <Card><div className="p-6 text-sm text-muted-foreground text-center">Inga aktiviteter än</div></Card>
+        )}
+        {groups.map(g => (
+          <div key={g.key} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <h2 className={cn("text-sm font-semibold", g.tone === "overdue" && "text-destructive", g.tone === "today" && "text-primary")}>
+                {g.label}
+              </h2>
+              <span className="text-xs text-muted-foreground">{g.items.length} st</span>
+            </div>
+            <Card className="divide-y">
+              {g.items.map(a => {
+                const overdue = a.due_at && !a.completed && isPast(new Date(a.due_at)) && !isToday(new Date(a.due_at));
+                return (
+                  <div key={a.id} className="flex items-center gap-3 p-3">
+                    <Checkbox checked={a.completed} onCheckedChange={() => toggle(a.id, a.completed)} />
+                    <div className="flex-1 min-w-0">
+                      <div className={cn("text-sm font-medium", a.completed && "line-through text-muted-foreground")}>{a.title}</div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-2">
+                        <span className="capitalize">{a.type}</span>
+                        {a.description && <><span>·</span><span className="truncate">{a.description}</span></>}
+                      </div>
+                    </div>
+                    {a.due_at && (
+                      <div className={cn("text-xs", overdue ? "text-destructive font-medium" : "text-muted-foreground")}>
+                        {format(new Date(a.due_at), "d MMM HH:mm", { locale: sv })}
+                      </div>
+                    )}
                   </div>
-                </div>
-                {a.due_at && (
-                  <div className={cn("text-xs", overdue ? "text-destructive font-medium" : "text-muted-foreground")}>
-                    {format(new Date(a.due_at), "d MMM HH:mm", { locale: sv })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </Card>
+                );
+              })}
+            </Card>
+          </div>
+        ))}
       </div>
       <ActivityDialog open={open} onOpenChange={setOpen} />
     </>
   );
 }
+
+type Act = { id: string; completed: boolean; due_at: string | null; [k: string]: any };
+
+function groupByDay(items: Act[]) {
+  const groups: { key: string; label: string; tone: "overdue" | "today" | "future" | "none"; items: Act[] }[] = [];
+  const push = (key: string, label: string, tone: "overdue" | "today" | "future" | "none", item: Act) => {
+    let g = groups.find(g => g.key === key);
+    if (!g) { g = { key, label, tone, items: [] }; groups.push(g); }
+    g.items.push(item);
+  };
+
+  for (const a of items) {
+    if (a.completed) { push("done", "Klara", "none", a); continue; }
+    if (!a.due_at) { push("nodate", "Utan datum", "none", a); continue; }
+    const d = new Date(a.due_at);
+    const key = format(d, "yyyy-MM-dd");
+    if (isPast(d) && !isToday(d)) push("overdue", "Försenade", "overdue", a);
+    else if (isToday(d)) push(key, `Idag – ${format(d, "EEEE d MMMM", { locale: sv })}`, "today", a);
+    else push(key, format(d, "EEEE d MMMM yyyy", { locale: sv }), "future", a);
+  }
+
+  const rank = (k: string) => (k === "overdue" ? 0 : k === "nodate" ? 2 : k === "done" ? 3 : 1);
+  return groups.sort((a, b) => rank(a.key) - rank(b.key) || a.key.localeCompare(b.key));
+}
+
 
 function ActivityDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const qc = useQueryClient();

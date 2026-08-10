@@ -21,6 +21,7 @@ import {
   Clock,
   CheckCircle,
   Receipt,
+  Contact,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ const nav: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "saljare" },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare, group: "saljare" },
   { to: "/kunder", label: "Kunder", icon: Users, group: "saljare" },
+  { to: "/leads", label: "Leads", icon: Contact, group: "saljare" },
   { to: "/aktiviteter", label: "Aktiviteter", icon: CheckSquare, group: "saljare" },
   { to: "/order", label: "Order", icon: ShoppingCart, group: "saljare" },
   { to: "/lon", label: "Lön", icon: Wallet, group: "saljare" },
