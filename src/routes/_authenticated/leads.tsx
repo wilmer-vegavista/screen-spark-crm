@@ -326,9 +326,10 @@ function Leads() {
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Företagsnamn</Label>
                         <Input
-                          value={l.company_name}
+                          value={l.company_name ?? ""}
                           disabled={!editable}
-                          onChange={e => patch(l, { company_name: e.target.value || "Namnlöst lead" })}
+                          placeholder="Lämna tom för namnlöst lead"
+                          onChange={e => patch(l, { company_name: e.target.value || null })}
                         />
                       </div>
                     </div>
