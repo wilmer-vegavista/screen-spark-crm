@@ -115,7 +115,7 @@ function Dashboard() {
     const total = Number(o.total_excl_vat ?? 0);
     if (!total) continue;
     const sched = buildInvoiceSchedule(
-      o.invoice_start_date,
+      o.invoice_start_date || (o.created_at ? String(o.created_at).slice(0, 10) : null),
       (o.billing_frequency as BillingFrequency) ?? "engang",
       o.billing_duration_months ?? 1,
       total,
