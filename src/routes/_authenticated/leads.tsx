@@ -232,7 +232,7 @@ function Leads() {
       if (error) return toast.error(error.message);
       customerId = data.id;
     }
-    await supabase.from("leads").update({ customer_id: customerId, status: "affar" as any }).eq("id", l.id);
+    await supabase.from("leads").update({ customer_id: customerId, status: "nara_avslut" as any }).eq("id", l.id);
     qc.invalidateQueries({ queryKey: ["leads"] });
     qc.invalidateQueries({ queryKey: ["customers"] });
     toast.success("Kundkort skapat från lead");
