@@ -530,9 +530,27 @@ export function OrderDialog({
       }).eq("id", form.customer_id);
     }
 
+    // Notify Slack on new bookings
+    if (!order && form.order_type === "bokning") {
+      const sellerProfile: any = (sellers as any[]).find(s => s.id === effectiveOwner);
+      const sellerName =
+        (sellerProfile?.full_name && String(sellerProfile.full_name).trim()) ||
+        sellerProfile?.email ||
+        "Okänd säljare";
+      postSaleToSlack({
+        data: {
+          seller: sellerName,
+          company: form.company_name || "Okänd kund",
+          amount: subtotal,
+          orderType: "Bokning",
+        },
+      }).catch(() => {});
+    }
+
     setSaving(false);
     toast.success(order ? "Order uppdaterad" : `${form.order_type === "offert" ? "Offert" : "Bokning"} skapad`);
     qc.invalidateQueries({ queryKey: ["orders"] });
+
     qc.invalidateQueries({ queryKey: ["deals"] });
     qc.invalidateQueries({ queryKey: ["customers-min"] });
     onOpenChange(false);
