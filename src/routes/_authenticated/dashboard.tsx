@@ -152,6 +152,33 @@ function Dashboard() {
       productSales.set(pid, (productSales.get(pid) ?? 0) + amt);
     }
   }
+
+  // Per-seller sales this month vs their monthly budget
+  const sellerMonthSales = new Map<string, number>();
+  for (const e of scheduleEntries) {
+    if (!e.owner_id) continue;
+    if (e.date < monthStart || e.date > monthEnd) continue;
+    sellerMonthSales.set(e.owner_id, (sellerMonthSales.get(e.owner_id) ?? 0) + e.amount);
+  }
+  const thisMonthNo = now.getMonth() + 1;
+  const sellerIds = new Set<string>([
+    ...sellerMonthSales.keys(),
+    ...(data?.monthlyBudgets ?? []).filter(b => b.month === thisMonthNo).map(b => b.user_id),
+    ...(data?.comps ?? []).map(c => c.user_id),
+  ]);
+  const sellerMonthRows = Array.from(sellerIds)
+    .map(uid => {
+      const p = profileMap.get(uid);
+      const name = (p?.full_name && p.full_name.trim()) || p?.email || "Okänd";
+      const budgetRow = (data?.monthlyBudgets ?? []).find(b => b.user_id === uid && b.month === thisMonthNo);
+      const budget = Number(budgetRow?.amount ?? (compMap.get(uid) as any)?.monthly_budget ?? 0);
+      const sold = sellerMonthSales.get(uid) ?? 0;
+      const pct = budget > 0 ? Math.min(100, (sold / budget) * 100) : 0;
+      return { id: uid, name, budget, sold, pct };
+    })
+    .filter(r => r.budget > 0 || r.sold > 0)
+    .sort((a, b) => b.sold - a.sold);
+
   const sellerChartAll = Array.from(sellerSales.entries())
     .map(([uid, value]) => {
       const p = profileMap.get(uid);
