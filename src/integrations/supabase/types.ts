@@ -1084,7 +1084,13 @@ export type Database = {
         | "forhandling"
         | "vunnen"
         | "forlorad"
-      lead_status: "ny" | "pagaende" | "affar" | "forlorad"
+      lead_status:
+        | "tackat_nej"
+        | "kallt_mail"
+        | "ej_svar"
+        | "pratat_telefon"
+        | "offert"
+        | "nara_avslut"
       material_status:
         | "ej_inkommet"
         | "under_produktion"
@@ -1241,7 +1247,14 @@ export const Constants = {
         "vunnen",
         "forlorad",
       ],
-      lead_status: ["ny", "pagaende", "affar", "forlorad"],
+      lead_status: [
+        "tackat_nej",
+        "kallt_mail",
+        "ej_svar",
+        "pratat_telefon",
+        "offert",
+        "nara_avslut",
+      ],
       material_status: [
         "ej_inkommet",
         "under_produktion",
