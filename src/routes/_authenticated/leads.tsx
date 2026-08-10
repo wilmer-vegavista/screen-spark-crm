@@ -6,8 +6,10 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Plus, Trash2, UserPlus, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, UserPlus, AlertTriangle, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
@@ -17,9 +19,9 @@ export const Route = createFileRoute("/_authenticated/leads")({
   head: () => ({
     meta: [
       { title: "Leads – Vega Vista CRM" },
-      { name: "description", content: "Gemensam leadslista i kalkylarksformat med återkoppling och dubblettvarningar." },
+      { name: "description", content: "Gemensam leadslista – klicka på ett företag för att se alla uppgifter." },
       { property: "og:title", content: "Leads – Vega Vista CRM" },
-      { property: "og:description", content: "Gemensam leadslista i kalkylarksformat med återkoppling och dubblettvarningar." },
+      { property: "og:description", content: "Gemensam leadslista – klicka på ett företag för att se alla uppgifter." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -55,6 +57,7 @@ function Leads() {
   const { user, isAdmin } = useCurrentUser();
   const [search, setSearch] = useState("");
   const [sellerFilter, setSellerFilter] = useState("alla");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const seenRef = useRef<Set<string>>(new Set());
 
   const { data: leads } = useQuery({
@@ -138,6 +141,13 @@ function Leads() {
   });
 
   const canEdit = (l: Lead) => isAdmin || l.owner_id === user?.id || l.created_by === user?.id;
+
+  const toggle = (id: string) =>
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   const addRow = async () => {
     if (!user) return;
@@ -229,7 +239,7 @@ function Leads() {
     <>
       <PageHeader
         title="Leads"
-        description="Gemensam leadslista – alla säljare ser vem som jobbar med vilken kund"
+        description="Klicka på ett företag för att se och redigera alla uppgifter"
         actions={
           <Button onClick={addRow}>
             <Plus className="size-4 mr-1" /> Nytt lead
@@ -250,115 +260,147 @@ function Leads() {
           </Select>
         </div>
 
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full text-sm border-collapse min-w-[1100px]">
-            <thead>
-              <tr className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="border-b border-r px-3 py-2 font-semibold w-[190px]">Företagsnamn</th>
-                <th className="border-b border-r px-3 py-2 font-semibold w-[150px]">Kontaktperson</th>
-                <th className="border-b border-r px-3 py-2 font-semibold w-[130px]">Mobilnummer</th>
-                <th className="border-b border-r px-3 py-2 font-semibold w-[180px]">Mail</th>
-                <th className="border-b border-r px-3 py-2 font-semibold">Kommentar</th>
-                <th className="border-b border-r px-3 py-2 font-semibold w-[140px]">Återkoppling</th>
-                <th className="border-b border-r px-3 py-2 font-semibold w-[130px]">Status</th>
-                <th className="border-b border-r px-3 py-2 font-semibold w-[130px]">Säljare</th>
-                <th className="border-b px-3 py-2 font-semibold w-[90px]"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 && (
-                <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">Inga leads än</td></tr>
-              )}
-              {rows.map(l => {
-                const editable = canEdit(l);
-                return (
-                  <tr key={l.id} className={cn("hover:bg-muted/30", isDuplicate(l) && "bg-amber-500/5")}>
-                    <td className="border-b border-r p-0">
-                      <div className="flex items-center">
-                        {isDuplicate(l) && <AlertTriangle className="size-3.5 text-amber-500 ml-2 shrink-0" />}
-                        <Cell value={l.company_name} disabled={!editable} onSave={v => patch(l, { company_name: v ?? "Namnlöst lead" })} />
+        <Card className="divide-y">
+          {rows.length === 0 && (
+            <div className="p-8 text-center text-muted-foreground">Inga leads än</div>
+          )}
+          {rows.map(l => {
+            const editable = canEdit(l);
+            const isOpen = expanded.has(l.id);
+            return (
+              <div key={l.id} className={cn(isDuplicate(l) && "bg-amber-500/5")}>
+                {/* Header row – bara företagsnamn */}
+                <button
+                  type="button"
+                  onClick={() => toggle(l.id)}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+                >
+                  <ChevronRight className={cn("size-4 text-muted-foreground transition-transform", isOpen && "rotate-90")} />
+                  {isDuplicate(l) && <AlertTriangle className="size-4 text-amber-500 shrink-0" />}
+                  <span className="flex-1 font-medium truncate">{l.company_name || "Namnlöst lead"}</span>
+                  {l.followup_date && (
+                    <span className="hidden sm:inline text-xs text-muted-foreground">
+                      Återkoppling {new Date(l.followup_date).toLocaleDateString("sv-SE")}
+                    </span>
+                  )}
+                  <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", STATUS[l.status]?.cls)}>
+                    {STATUS[l.status]?.label ?? l.status}
+                  </span>
+                  <span className="hidden md:inline text-xs text-muted-foreground w-28 text-right truncate">
+                    {nameOf(l.owner_id ?? l.created_by)}
+                  </span>
+                </button>
+
+                {/* Expanded details */}
+                {isOpen && (
+                  <div className="px-6 pb-5 pt-1 space-y-4 bg-muted/20">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Kontaktperson</Label>
+                        <Input
+                          value={l.contact_name ?? ""}
+                          disabled={!editable}
+                          placeholder="För- och efternamn"
+                          onChange={e => patch(l, { contact_name: e.target.value || null })}
+                        />
                       </div>
-                    </td>
-                    <td className="border-b border-r p-0"><Cell value={l.contact_name} disabled={!editable} onSave={v => patch(l, { contact_name: v })} /></td>
-                    <td className="border-b border-r p-0"><Cell value={l.phone} disabled={!editable} onSave={v => patch(l, { phone: v })} /></td>
-                    <td className="border-b border-r p-0"><Cell value={l.email} disabled={!editable} onSave={v => patch(l, { email: v })} /></td>
-                    <td className="border-b border-r p-0"><Cell value={l.comment} disabled={!editable} onSave={v => patch(l, { comment: v })} placeholder="Vad har ni pratat om / planerar sälja?" /></td>
-                    <td className="border-b border-r p-0">
-                      <input
-                        type="date"
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Mobilnummer</Label>
+                        <Input
+                          value={l.phone ?? ""}
+                          disabled={!editable}
+                          placeholder="070-000 00 00"
+                          onChange={e => patch(l, { phone: e.target.value || null })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Mail</Label>
+                        <Input
+                          type="email"
+                          value={l.email ?? ""}
+                          disabled={!editable}
+                          placeholder="namn@foretag.se"
+                          onChange={e => patch(l, { email: e.target.value || null })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Företagsnamn</Label>
+                        <Input
+                          value={l.company_name}
+                          disabled={!editable}
+                          onChange={e => patch(l, { company_name: e.target.value || "Namnlöst lead" })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Kommentar – vad har ni pratat om / planerar sälja?</Label>
+                      <Textarea
+                        value={l.comment ?? ""}
                         disabled={!editable}
-                        value={l.followup_date ?? ""}
-                        onChange={e => patch(l, { followup_date: e.target.value || null })}
-                        className="w-full bg-transparent px-3 py-2 text-sm outline-none focus:bg-primary/5 disabled:opacity-70"
+                        rows={2}
+                        placeholder="Kort info om samtal eller planerad försäljning…"
+                        onChange={e => patch(l, { comment: e.target.value || null })}
                       />
-                    </td>
-                    <td className="border-b border-r px-2 py-1.5">
-                      <Select value={l.status} disabled={!editable} onValueChange={v => patch(l, { status: v })}>
-                        <SelectTrigger className={cn("h-8 border-0 text-xs font-medium", STATUS[l.status]?.cls)}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(STATUS).map(([k, v]) => (
-                            <SelectItem key={k} value={k}>{v.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="border-b border-r px-3 py-2 text-xs text-muted-foreground">{nameOf(l.owner_id ?? l.created_by)}</td>
-                    <td className="border-b px-2 py-1.5">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-7"
-                          title={l.customer_id ? "Kundkort finns" : "Skapa kundkort"}
-                          disabled={!editable || !!l.customer_id}
-                          onClick={() => makeCustomer(l)}
-                        >
-                          <UserPlus className={cn("size-4", l.customer_id ? "text-emerald-600" : "text-primary")} />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="size-7" disabled={!editable} onClick={() => remove(l)}>
-                          <Trash2 className="size-4 text-destructive" />
-                        </Button>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Återkoppling</Label>
+                        <input
+                          type="date"
+                          disabled={!editable}
+                          value={l.followup_date ?? ""}
+                          onChange={e => patch(l, { followup_date: e.target.value || null })}
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm outline-none focus:bg-primary/5 disabled:opacity-70"
+                        />
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Status</Label>
+                        <Select value={l.status} disabled={!editable} onValueChange={v => patch(l, { status: v })}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(STATUS).map(([k, v]) => (
+                              <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Säljare</Label>
+                        <div className="flex h-9 items-center text-sm text-muted-foreground">{nameOf(l.owner_id ?? l.created_by)}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!editable || !!l.customer_id}
+                        onClick={() => makeCustomer(l)}
+                      >
+                        <UserPlus className="size-4 mr-1.5" />
+                        {l.customer_id ? "Kundkort finns" : "Skapa kundkort"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive"
+                        disabled={!editable}
+                        onClick={() => remove(l)}
+                      >
+                        <Trash2 className="size-4 mr-1.5" /> Ta bort
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </Card>
       </div>
     </>
-  );
-}
-
-function Cell({
-  value,
-  onSave,
-  disabled,
-  placeholder,
-}: {
-  value: string | null | undefined;
-  onSave: (v: string | null) => void;
-  disabled?: boolean;
-  placeholder?: string;
-}) {
-  const [draft, setDraft] = useState(value ?? "");
-  useEffect(() => setDraft(value ?? ""), [value]);
-  return (
-    <input
-      value={draft}
-      disabled={disabled}
-      placeholder={placeholder}
-      onChange={e => setDraft(e.target.value)}
-      onBlur={() => {
-        if ((value ?? "") !== draft) onSave(draft.trim() || null);
-      }}
-      onKeyDown={e => {
-        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-      }}
-      className="w-full bg-transparent px-3 py-2 text-sm outline-none focus:bg-primary/5 disabled:opacity-70"
-    />
   );
 }
