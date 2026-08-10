@@ -152,6 +152,33 @@ function Dashboard() {
       productSales.set(pid, (productSales.get(pid) ?? 0) + amt);
     }
   }
+
+  // Per-seller sales this month vs their monthly budget
+  const sellerMonthSales = new Map<string, number>();
+  for (const e of scheduleEntries) {
+    if (!e.owner_id) continue;
+    if (e.date < monthStart || e.date > monthEnd) continue;
+    sellerMonthSales.set(e.owner_id, (sellerMonthSales.get(e.owner_id) ?? 0) + e.amount);
+  }
+  const thisMonthNo = now.getMonth() + 1;
+  const sellerIds = new Set<string>([
+    ...sellerMonthSales.keys(),
+    ...(data?.monthlyBudgets ?? []).filter(b => b.month === thisMonthNo).map(b => b.user_id),
+    ...(data?.comps ?? []).map(c => c.user_id),
+  ]);
+  const sellerMonthRows = Array.from(sellerIds)
+    .map(uid => {
+      const p = profileMap.get(uid);
+      const name = (p?.full_name && p.full_name.trim()) || p?.email || "Okänd";
+      const budgetRow = (data?.monthlyBudgets ?? []).find(b => b.user_id === uid && b.month === thisMonthNo);
+      const budget = Number(budgetRow?.amount ?? (compMap.get(uid) as any)?.monthly_budget ?? 0);
+      const sold = sellerMonthSales.get(uid) ?? 0;
+      const pct = budget > 0 ? Math.min(100, (sold / budget) * 100) : 0;
+      return { id: uid, name, budget, sold, pct };
+    })
+    .filter(r => r.budget > 0 || r.sold > 0)
+    .sort((a, b) => b.sold - a.sold);
+
   const sellerChartAll = Array.from(sellerSales.entries())
     .map(([uid, value]) => {
       const p = profileMap.get(uid);
@@ -236,7 +263,37 @@ function Dashboard() {
     <>
       <PageHeader title="Dashboard" description="Översikt över sälj, budget och lön" />
       <div className="p-6 space-y-6">
+        {/* Sellers this month */}
+        <Card className="p-5">
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <Target className="size-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold">Säljare denna månad</h3>
+            <div className="ml-auto text-xs text-muted-foreground">
+              Totalt {fmt(monthTotal)}{companyBudget > 0 ? ` av ${fmt(companyBudget)} (${companyBudgetPct.toFixed(0)}%)` : ""}
+            </div>
+          </div>
+          {sellerMonthRows.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-8 text-center">Ingen försäljning eller budget satt denna månad</div>
+          ) : (
+            <div className="space-y-4">
+              {sellerMonthRows.map((s) => (
+                <div key={s.id}>
+                  <div className="flex items-baseline justify-between gap-3 mb-1">
+                    <div className="text-sm font-medium truncate">{s.name}</div>
+                    <div className="text-xs text-muted-foreground shrink-0">
+                      <span className="text-foreground font-semibold">{fmt(s.sold)}</span>
+                      {s.budget > 0 ? ` av ${fmt(s.budget)} · ${s.pct.toFixed(0)}%` : " · ingen budget"}
+                    </div>
+                  </div>
+                  <Progress value={s.pct} />
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
         {/* Top KPIs */}
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Stat label="Min lön (denna månad)" value={fmt(mySalaryTotal)} sub={`Grundlön ${fmt(baseSalary)} + Provision ${fmt(myCommission)}`} icon={Wallet} accent />
           <Stat label="Mina offerter ute" value={String(myOpen.length)} sub={`Värde ${fmt(myOpenValue)}`} icon={FileText} />
