@@ -257,7 +257,10 @@ function OrderPage() {
               </div>
               <div className="text-right">
                 <div className="text-sm font-semibold">{SEK(Number(o.total_excl_vat))} SEK</div>
-                <div className="text-xs text-primary">Provision: {SEK(Number(o.total_commission))} SEK</div>
+                {myCommissions?.has(o.id) && (
+                  <div className="text-xs text-primary">Provision: {SEK(Number(myCommissions.get(o.id)))} SEK</div>
+                )}
+
               </div>
             </div>
           </Card>
