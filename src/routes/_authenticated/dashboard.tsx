@@ -57,7 +57,7 @@ function Dashboard() {
   const { data } = useQuery({
     queryKey: ["dashboard-stats", yearStart.toISOString()],
     queryFn: async () => {
-      const lookbackStart = subYears(yearStart, 2).toISOString().slice(0, 10);
+      
       const [
         { data: deals },
         { data: products },
@@ -67,16 +67,15 @@ function Dashboard() {
         { data: orders },
         { data: monthlyBudgets },
       ] = await Promise.all([
-        supabase.from("deals").select("*").gte("won_at", yearStart.toISOString()).lte("won_at", yearEnd.toISOString()).eq("stage", "vunnen"),
+        supabase.from("deals").select("*").gte("won_at", subYears(yearStart, 2).toISOString()).lte("won_at", yearEnd.toISOString()).eq("stage", "vunnen"),
         supabase.from("products").select("*"),
         supabase.from("profiles").select("id, full_name, email"),
         supabase.from("seller_compensation").select("*"),
         supabase.from("company_settings").select("*").maybeSingle(),
         supabase
           .from("orders")
-          .select("id, owner_id, total_excl_vat, invoice_start_date, billing_frequency, billing_duration_months, order_type")
-          .eq("order_type", "bokning")
-          .gte("invoice_start_date", lookbackStart),
+          .select("id, deal_id, owner_id, total_excl_vat, invoice_start_date, billing_frequency, billing_duration_months, order_type, created_at")
+          .eq("order_type", "bokning"),
         supabase.from("seller_monthly_budgets").select("*").eq("year", now.getFullYear()),
       ]);
       const orderIds = (orders ?? []).map(o => o.id);
@@ -116,7 +115,7 @@ function Dashboard() {
     const total = Number(o.total_excl_vat ?? 0);
     if (!total) continue;
     const sched = buildInvoiceSchedule(
-      o.invoice_start_date,
+      o.invoice_start_date || (o.created_at ? String(o.created_at).slice(0, 10) : null),
       (o.billing_frequency as BillingFrequency) ?? "engang",
       o.billing_duration_months ?? 1,
       total,
@@ -196,16 +195,28 @@ function Dashboard() {
   const mySoldThisMonth = scheduleEntries
     .filter(e => e.owner_id === user?.id && e.date >= monthStart && e.date <= monthEnd)
     .reduce((s, e) => s + e.amount, 0);
-  const myWonThisMonth = (data?.wonDeals ?? []).filter(d => {
-    if (d.owner_id !== user?.id || !d.won_at) return false;
-    const w = new Date(d.won_at);
-    return w >= monthStart && w <= monthEnd;
-  });
-  const myCommission = myWonThisMonth.reduce((s, d) => {
+  // Commission is periodised: deals tied to an order with recurring billing
+  // pay out per invoice occasion (e.g. 60 000 kr / 12 months = 5 000 kr per month).
+  const orderByDeal = new Map((data?.orders ?? []).filter(o => o.deal_id).map(o => [o.deal_id as string, o]));
+  const myCommissionEvents = (data?.wonDeals ?? []).flatMap(d => {
+    if (d.owner_id !== user?.id) return [];
     const product = d.product_id ? prodMap.get(d.product_id) : null;
     const pct = pickPct(d, product, compType, defaultPct);
-    return s + (Number(d.value ?? 0) * pct) / 100;
-  }, 0);
+    const value = Number(d.value ?? 0);
+    const order: any = orderByDeal.get(d.id);
+    if (order && order.billing_frequency && order.billing_frequency !== "engang") {
+      return buildInvoiceSchedule(
+        order.invoice_start_date || d.won_at,
+        order.billing_frequency as BillingFrequency,
+        Number(order.billing_duration_months ?? 0),
+        value,
+      ).map(e => ({ date: e.date, commission: (e.amount * pct) / 100 }));
+    }
+    if (!d.won_at) return [];
+    return [{ date: new Date(d.won_at), commission: (value * pct) / 100 }];
+  });
+  const myWonThisMonth = myCommissionEvents.filter(e => e.date >= monthStart && e.date <= monthEnd);
+  const myCommission = myWonThisMonth.reduce((s, e) => s + e.commission, 0);
   const mySalaryTotal = baseSalary + myCommission;
 
   // Daily pace toward my monthly budget (business days remaining)
