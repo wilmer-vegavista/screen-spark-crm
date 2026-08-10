@@ -22,6 +22,8 @@ import { sv } from "date-fns/locale";
 import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/lib/billing";
 import { cn } from "@/lib/utils";
 import { ORDER_ITEM_SELECT } from "@/lib/order-columns";
+import { postSaleToSlack } from "@/lib/slack.functions";
+
 
 
 
