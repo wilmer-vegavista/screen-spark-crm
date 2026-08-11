@@ -154,6 +154,21 @@ function dealCommissionEvents(deal: any, order: any | null, pct: number) {
   return [{ date: d, amount: value, commission: (value * pct) / 100 }];
 }
 
+function orderCommissionEvents(order: any, totalCommission: number) {
+  const schedule = buildInvoiceSchedule(
+    order.invoice_start_date || order.created_at,
+    (order.billing_frequency ?? "engang") as BillingFrequency,
+    Number(order.billing_duration_months ?? 0),
+    Number(order.total_excl_vat ?? 0),
+  );
+  const totalValue = Number(order.total_excl_vat ?? 0);
+  return schedule.map(event => ({
+    date: event.date,
+    amount: event.amount,
+    commission: totalValue > 0 ? totalCommission * (event.amount / totalValue) : 0,
+  }));
+}
+
 function inRange(d: Date, from: Date, to: Date) {
   return d >= from && d <= to;
 }
@@ -162,7 +177,7 @@ function useSalary(userId: string, from: Date, to: Date) {
   return useQuery({
     queryKey: ["salary", userId, from.toISOString(), to.toISOString()],
     queryFn: async () => {
-      const [{ data: comp }, { data: deals }, { data: products }] = await Promise.all([
+      const [{ data: comp }, { data: deals }, { data: products }, { data: ownedOrders }, { data: commissionRows }] = await Promise.all([
         supabase.from("seller_compensation").select("*").eq("user_id", userId).maybeSingle(),
         supabase
           .from("deals")
@@ -170,6 +185,8 @@ function useSalary(userId: string, from: Date, to: Date) {
           .eq("owner_id", userId)
           .eq("stage", "vunnen"),
         supabase.from("products").select("*"),
+        supabase.from("orders").select(ORDER_SELECT).eq("owner_id", userId),
+        supabase.rpc("my_order_commissions"),
       ]);
       const dealIds = (deals ?? []).map(d => d.id);
       const { data: orders } = dealIds.length
@@ -199,9 +216,28 @@ function useSalary(userId: string, from: Date, to: Date) {
           frequency: (order?.billing_frequency ?? "engang") as BillingFrequency,
         }];
       });
-      const totalCommission = rows.reduce((s, r) => s + r.commission, 0);
-      const totalValue = rows.reduce((s, r) => s + r.value, 0);
-      return { comp, compType, rows, baseSalary, defaultPct, totalCommission, totalValue, total: baseSalary + totalCommission };
+      const commissionMap = new Map((commissionRows ?? []).map(r => [r.order_id, Number(r.total_commission ?? 0)]));
+      const standaloneRows = (ownedOrders ?? []).flatMap(order => {
+        if (order.deal_id) return [];
+        const events = orderCommissionEvents(order, commissionMap.get(order.id) ?? 0).filter(e => inRange(e.date, from, to));
+        if (!events.length) return [];
+        const value = events.reduce((sum, event) => sum + event.amount, 0);
+        const commission = events.reduce((sum, event) => sum + event.commission, 0);
+        return [{
+          id: order.id,
+          title: order.company_name,
+          product: "Order",
+          value,
+          pct: value > 0 ? (commission / value) * 100 : 0,
+          commission,
+          won_at: order.invoice_start_date || order.created_at,
+          frequency: (order.billing_frequency ?? "engang") as BillingFrequency,
+        }];
+      });
+      const allRows = [...rows, ...standaloneRows];
+      const totalCommission = allRows.reduce((s, r) => s + r.commission, 0);
+      const totalValue = allRows.reduce((s, r) => s + r.value, 0);
+      return { comp, compType, rows: allRows, baseSalary, defaultPct, totalCommission, totalValue, total: baseSalary + totalCommission };
     },
   });
 }
@@ -276,7 +312,7 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
   const { data } = useQuery({
     queryKey: ["all-sellers-salary", from.toISOString(), to.toISOString()],
     queryFn: async () => {
-      const [{ data: comps }, { data: profiles }, { data: deals }, { data: products }] = await Promise.all([
+      const [{ data: comps }, { data: profiles }, { data: deals }, { data: products }, { data: allOrders }, { data: commissionRows }] = await Promise.all([
         supabase.from("seller_compensation").select("*"),
         supabase.from("profiles").select("id, full_name, email"),
         supabase
@@ -284,6 +320,8 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
           .select("*")
           .eq("stage", "vunnen"),
         supabase.from("products").select("*"),
+        supabase.from("orders").select(ORDER_SELECT),
+        supabase.rpc("my_order_commissions"),
       ]);
       const dealIds = (deals ?? []).map(d => d.id);
       const { data: orders } = dealIds.length
@@ -310,6 +348,17 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
         cur.commission += commission;
         cur.count += 1;
         grouped.set(d.owner_id, cur);
+      }
+      const commissionMap = new Map((commissionRows ?? []).map(r => [r.order_id, Number(r.total_commission ?? 0)]));
+      for (const order of allOrders ?? []) {
+        if (!order.owner_id || order.deal_id) continue;
+        const events = orderCommissionEvents(order, commissionMap.get(order.id) ?? 0).filter(e => inRange(e.date, from, to));
+        if (!events.length) continue;
+        const cur = grouped.get(order.owner_id) ?? { value: 0, commission: 0, count: 0 };
+        cur.value += events.reduce((sum, event) => sum + event.amount, 0);
+        cur.commission += events.reduce((sum, event) => sum + event.commission, 0);
+        cur.count += 1;
+        grouped.set(order.owner_id, cur);
       }
       for (const c of comps ?? []) {
         if (!grouped.has(c.user_id)) grouped.set(c.user_id, { value: 0, commission: 0, count: 0 });
