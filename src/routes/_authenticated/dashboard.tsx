@@ -250,6 +250,9 @@ function Dashboard() {
   const daysLeft = Math.max(businessDaysBetween(now, monthEnd), 1);
   const myRemaining = Math.max(myBudget - mySoldThisMonth, 0);
   const myPerDay = myBudget > 0 ? myRemaining / daysLeft : 0;
+  const weeksLeft = Math.max(daysLeft / 5, 0.2);
+  const myPerWeek = myBudget > 0 ? myRemaining / weeksLeft : 0;
+
   const myBudgetPct = myBudget > 0 ? Math.min(100, (mySoldThisMonth / myBudget) * 100) : 0;
 
   // Company budget = sum of all sellers' individual monthly budgets for current month
