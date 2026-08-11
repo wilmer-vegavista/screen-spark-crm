@@ -319,7 +319,7 @@ function Dashboard() {
                   <div className="text-xs text-muted-foreground">av {fmt(myBudget)}</div>
                 </div>
                 <Progress value={myBudgetPct} />
-                <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t">
+                <div className="grid grid-cols-3 gap-3 mt-4 pt-3 border-t">
                   <div>
                     <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Kvar till budget</div>
                     <div className="text-lg font-semibold">{fmt(myRemaining)}</div>
@@ -330,7 +330,14 @@ function Dashboard() {
                     </div>
                     <div className="text-lg font-semibold text-primary">{fmt(myPerDay)}</div>
                   </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                      <CalendarDays className="size-3" /> Behöver/vecka ({weeksLeft.toFixed(1)} v kvar)
+                    </div>
+                    <div className="text-lg font-semibold text-primary">{fmt(myPerWeek)}</div>
+                  </div>
                 </div>
+
               </>
             )}
           </Card>
