@@ -252,10 +252,9 @@ function Dashboard() {
   const myPerDay = myBudget > 0 ? myRemaining / daysLeft : 0;
   const myBudgetPct = myBudget > 0 ? Math.min(100, (mySoldThisMonth / myBudget) * 100) : 0;
 
-  // Company budget = sum of all sellers' monthly budgets for current month
-  const companyBudget = (data?.monthlyBudgets ?? [])
-    .filter(b => b.month === currentMonth)
-    .reduce((s, b) => s + Number(b.amount ?? 0), 0);
+  // Company budget = sum of all sellers' individual monthly budgets for current month
+  const companyBudget = sellerMonthRows.reduce((s, r) => s + r.budget, 0);
+
   const companyRemaining = Math.max(companyBudget - monthTotal, 0);
   const companyBudgetPct = companyBudget > 0 ? Math.min(100, (monthTotal / companyBudget) * 100) : 0;
 
