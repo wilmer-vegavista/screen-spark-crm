@@ -65,6 +65,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { profile, roles } = useCurrentUser();
   const isAdmin = roles.includes("admin");
+  const isProduktion = roles.includes("produktion");
 
   const handleSignOut = async () => {
     await queryClient.cancelQueries();
@@ -73,7 +74,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigate({ to: "/auth", replace: true });
   };
 
-  const visibleNav = nav.filter(n => !n.adminOnly || isAdmin);
+  const visibleNav = nav.filter(n =>
+    (!n.adminOnly || isAdmin) && (!n.adminOrProduktion || isAdmin || isProduktion)
+  );
+
 
   return (
     <div className="min-h-screen flex bg-background">
