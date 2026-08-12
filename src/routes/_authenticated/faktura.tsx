@@ -130,6 +130,17 @@ function FakturaPage() {
     qc.invalidateQueries({ queryKey: ["orders"] });
   };
 
+  const totalOf = (list: any[]) => list.reduce((s: number, o: any) => s + Number(o.total_excl_vat || 0), 0);
+
+  const renderTotal = (list: any[]) => (
+    <div className="flex justify-end pt-2">
+      <div className="text-right">
+        <div className="text-xs text-muted-foreground">Totalt ({list.length} ordrar)</div>
+        <div className="text-lg font-semibold">{SEK(totalOf(list))} SEK</div>
+      </div>
+    </div>
+  );
+
   const renderList = (list: any[], bucket: Bucket) => {
     if (list.length === 0) {
       return <Card className="p-8 text-center text-sm text-muted-foreground">Inga ordrar i denna kategori</Card>;
