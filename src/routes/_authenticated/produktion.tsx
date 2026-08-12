@@ -123,17 +123,21 @@ function ProduktionPage() {
             </div>
             <div className="text-xs text-muted-foreground mt-1">
               {format(new Date(o.created_at), "yyyy-MM-dd")}
-              {o.exact_dates?.length ? ` · ${o.exact_dates.join(", ")}` : ""}
-              {!o.exact_dates?.length && o.selected_weeks?.length ? ` · v.${o.selected_weeks.join(", ")}` : ""}
+              {o.exact_dates?.length ? ` · ${periodsLabel(o.exact_dates)}` : ""}
+              {o.selected_weeks?.length ? ` · v.${o.selected_weeks.join(", ")}` : ""}
             </div>
           </div>
           <div className="text-sm font-semibold whitespace-nowrap">{SEK(Number(o.total_excl_vat))} SEK</div>
           <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => { setScheduling(o); setScheduleOpen(true); }}>
+              <CalendarRange className="size-4 mr-1" /> Datum
+            </Button>
             {prev && (
               <Button size="sm" variant="outline" onClick={() => move(o.id, prev.key)}>
                 <ArrowLeft className="size-4 mr-1" /> {prev.label}
               </Button>
             )}
+
             {next && (
               <Button size="sm" onClick={() => move(o.id, next.key)}>
                 {next.label} <ArrowRight className="size-4 ml-1" />
