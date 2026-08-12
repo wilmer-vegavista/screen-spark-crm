@@ -1286,7 +1286,19 @@ export function OrderDialog({
                 </div>
               );
             })()}
+            <div className="mt-4">
+              <Label className="text-xs">Faktura info</Label>
+              <Textarea
+                className="mt-1"
+                rows={3}
+                value={form.invoice_info}
+                onChange={e => setForm(f => ({ ...f, invoice_info: e.target.value }))}
+                placeholder="T.ex. fakturan ska delas upp på 3 delar, särskilda betalningsvillkor, märkning m.m."
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Syns för admin under fliken Faktura.</p>
+            </div>
           </Card>
+
 
           <Separator />
 
