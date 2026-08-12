@@ -179,6 +179,7 @@ function ProduktionPage() {
         </Tabs>
       </div>
       <OrderDialog open={open} onOpenChange={setOpen} order={editing} />
+      <OrderScheduleDialog open={scheduleOpen} onOpenChange={setScheduleOpen} order={scheduling} />
     </>
   );
 }
