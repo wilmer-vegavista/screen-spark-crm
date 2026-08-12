@@ -186,6 +186,7 @@ export function OrderDialog({
     invoice_reference: "",
     invoice_peppol_id: "",
     invoice_email: "",
+    invoice_info: "",
     invoice_status: null as string | null,
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
@@ -219,6 +220,7 @@ export function OrderDialog({
         invoice_reference: order.invoice_reference ?? "",
         invoice_peppol_id: order.invoice_peppol_id ?? "",
         invoice_email: order.invoice_email ?? "",
+        invoice_info: order.invoice_info ?? "",
         invoice_status: order.invoice_status ?? null,
       });
       setSelectedWeeks(Array.isArray(order.selected_weeks) ? order.selected_weeks : []);
@@ -266,7 +268,7 @@ export function OrderDialog({
         billing_address: "", postal_code: "", city: "",
         contact_name: "", contact_email: "", contact_phone: "", notes: "",
         invoice_start_date: new Date(), billing_frequency: "engang", billing_duration_months: 1,
-        invoice_reference: "", invoice_peppol_id: "", invoice_email: "", invoice_status: null,
+        invoice_reference: "", invoice_peppol_id: "", invoice_email: "", invoice_info: "", invoice_status: null,
       });
       setItems([emptyItem()]);
       setTotalPrice("0");
@@ -1284,7 +1286,19 @@ export function OrderDialog({
                 </div>
               );
             })()}
+            <div className="mt-4">
+              <Label className="text-xs">Faktura info</Label>
+              <Textarea
+                className="mt-1"
+                rows={3}
+                value={form.invoice_info}
+                onChange={e => setForm(f => ({ ...f, invoice_info: e.target.value }))}
+                placeholder="T.ex. fakturan ska delas upp på 3 delar, särskilda betalningsvillkor, märkning m.m."
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Syns för admin under fliken Faktura.</p>
+            </div>
           </Card>
+
 
           <Separator />
 

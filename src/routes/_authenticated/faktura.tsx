@@ -164,6 +164,9 @@ function FakturaPage() {
               <div className="text-xs text-muted-foreground mt-1">
                 {format(new Date(o.created_at), "yyyy-MM-dd")} · {o.invoice_email || o.invoice_peppol_id || "ingen fakturakontakt"}
               </div>
+              {o.invoice_info && (
+                <div className="text-xs text-foreground mt-1 whitespace-pre-wrap">Faktura info: {o.invoice_info}</div>
+              )}
               {bucket === "saknar" && missingFields.length > 0 && (
                 <div className="text-xs text-destructive mt-1">Saknas: {missingFields.join(", ")}</div>
               )}
