@@ -48,6 +48,15 @@ export const Route = createFileRoute("/_authenticated/produktion")({
 const SEK = (n: number) =>
   new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 }).format(n || 0);
 
+const periodsLabel = (dates: string[]) => {
+  const list = [...dates].sort();
+  const out: string[] = [];
+  for (let i = 0; i < list.length; i += 2) {
+    out.push(list[i + 1] && list[i + 1] !== list[i] ? `${list[i]} – ${list[i + 1]}` : list[i]);
+  }
+  return out.join(" | ");
+};
+
 function ProduktionPage() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<Step>("datum_ej_bestamt");
