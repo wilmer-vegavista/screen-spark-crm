@@ -133,7 +133,6 @@ function ProduktionPage() {
             <div className="text-xs text-muted-foreground mt-1">
               {format(new Date(o.created_at), "yyyy-MM-dd")}
               {o.exact_dates?.length ? ` · ${periodsLabel(o.exact_dates)}` : ""}
-              {o.selected_weeks?.length ? ` · v.${o.selected_weeks.join(", ")}` : ""}
             </div>
           </div>
           <div className="text-sm font-semibold whitespace-nowrap">{SEK(Number(o.total_excl_vat))} SEK</div>
