@@ -1,0 +1,1 @@
+GRANT SELECT (production_status), UPDATE (production_status) ON public.orders TO authenticated;
