@@ -30,6 +30,10 @@ function fromExactDates(dates: string[] | null | undefined): Period[] {
   return out;
 }
 
+const MONTHS = ["Januari","Februari","Mars","April","Maj","Juni","Juli","Augusti","September","Oktober","November","December"];
+const CURRENT_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: 8 }, (_, i) => CURRENT_YEAR - 2 + i);
+
 export function OrderScheduleDialog({
   open,
   onOpenChange,
@@ -43,11 +47,14 @@ export function OrderScheduleDialog({
   const [periods, setPeriods] = useState<Period[]>([]);
   const [range, setRange] = useState<DateRange | undefined>();
   const [saving, setSaving] = useState(false);
+  const [month, setMonth] = useState<Date>(new Date());
 
   useEffect(() => {
     if (open) {
-      setPeriods(fromExactDates(order?.exact_dates));
+      const p = fromExactDates(order?.exact_dates);
+      setPeriods(p);
       setRange(undefined);
+      setMonth(p[0]?.start ?? new Date());
     }
   }, [open, order?.id]);
 
