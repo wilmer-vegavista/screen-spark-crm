@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRapporterRouteImport } from './routes/_authenticated/rapporter'
+import { Route as AuthenticatedProduktionRouteImport } from './routes/_authenticated/produktion'
 import { Route as AuthenticatedProdukterRouteImport } from './routes/_authenticated/produkter'
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedOrderRouteImport } from './routes/_authenticated/order'
@@ -46,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedRapporterRoute = AuthenticatedRapporterRouteImport.update({
   id: '/rapporter',
   path: '/rapporter',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedProduktionRoute = AuthenticatedProduktionRouteImport.update({
+  id: '/produktion',
+  path: '/produktion',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedProdukterRoute = AuthenticatedProdukterRouteImport.update({
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/order': typeof AuthenticatedOrderRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/produkter': typeof AuthenticatedProdukterRoute
+  '/produktion': typeof AuthenticatedProduktionRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
 }
 export interface FileRoutesByTo {
@@ -164,6 +171,7 @@ export interface FileRoutesByTo {
   '/order': typeof AuthenticatedOrderRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/produkter': typeof AuthenticatedProdukterRoute
+  '/produktion': typeof AuthenticatedProduktionRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
 }
 export interface FileRoutesById {
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/_authenticated/order': typeof AuthenticatedOrderRoute
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/produkter': typeof AuthenticatedProdukterRoute
+  '/_authenticated/produktion': typeof AuthenticatedProduktionRoute
   '/_authenticated/rapporter': typeof AuthenticatedRapporterRoute
 }
 export interface FileRouteTypes {
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/order'
     | '/pipeline'
     | '/produkter'
+    | '/produktion'
     | '/rapporter'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -228,6 +238,7 @@ export interface FileRouteTypes {
     | '/order'
     | '/pipeline'
     | '/produkter'
+    | '/produktion'
     | '/rapporter'
   id:
     | '__root__'
@@ -249,6 +260,7 @@ export interface FileRouteTypes {
     | '/_authenticated/order'
     | '/_authenticated/pipeline'
     | '/_authenticated/produkter'
+    | '/_authenticated/produktion'
     | '/_authenticated/rapporter'
   fileRoutesById: FileRoutesById
 }
@@ -286,6 +298,13 @@ declare module '@tanstack/react-router' {
       path: '/rapporter'
       fullPath: '/rapporter'
       preLoaderRoute: typeof AuthenticatedRapporterRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/produktion': {
+      id: '/_authenticated/produktion'
+      path: '/produktion'
+      fullPath: '/produktion'
+      preLoaderRoute: typeof AuthenticatedProduktionRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/produkter': {
@@ -412,6 +431,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOrderRoute: typeof AuthenticatedOrderRoute
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedProdukterRoute: typeof AuthenticatedProdukterRoute
+  AuthenticatedProduktionRoute: typeof AuthenticatedProduktionRoute
   AuthenticatedRapporterRoute: typeof AuthenticatedRapporterRoute
 }
 
@@ -431,6 +451,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOrderRoute: AuthenticatedOrderRoute,
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedProdukterRoute: AuthenticatedProdukterRoute,
+  AuthenticatedProduktionRoute: AuthenticatedProduktionRoute,
   AuthenticatedRapporterRoute: AuthenticatedRapporterRoute,
 }
 

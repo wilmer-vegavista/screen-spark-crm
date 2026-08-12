@@ -35,6 +35,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   group: string;
   adminOnly?: boolean;
+  adminOrProduktion?: boolean;
 }
 
 const nav: NavItem[] = [
@@ -45,6 +46,7 @@ const nav: NavItem[] = [
   { to: "/aktiviteter", label: "Aktiviteter", icon: CheckSquare, group: "saljare" },
   { to: "/order", label: "Order", icon: ShoppingCart, group: "saljare" },
   { to: "/lon", label: "Lön", icon: Wallet, group: "saljare" },
+  { to: "/produktion", label: "Produktion", icon: Settings, group: "produktion", adminOrProduktion: true },
   { to: "/kampanjer", label: "Kampanjer", icon: Calendar, group: "produktion" },
   { to: "/avslutas-snart", label: "Avslutas snart", icon: Clock, group: "produktion" },
   { to: "/avslutad", label: "Avslutad", icon: CheckCircle, group: "produktion" },
@@ -56,12 +58,14 @@ const nav: NavItem[] = [
   { to: "/faktura", label: "Faktura", icon: Receipt, group: "admin", adminOnly: true },
 ];
 
+
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { profile, roles } = useCurrentUser();
   const isAdmin = roles.includes("admin");
+  const isProduktion = roles.includes("produktion");
 
   const handleSignOut = async () => {
     await queryClient.cancelQueries();
@@ -70,7 +74,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigate({ to: "/auth", replace: true });
   };
 
-  const visibleNav = nav.filter(n => !n.adminOnly || isAdmin);
+  const visibleNav = nav.filter(n =>
+    (!n.adminOnly || isAdmin) && (!n.adminOrProduktion || isAdmin || isProduktion)
+  );
+
 
   return (
     <div className="min-h-screen flex bg-background">
