@@ -53,6 +53,9 @@ function ProduktionPage() {
   const [tab, setTab] = useState<Step>("datum_ej_bestamt");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduling, setScheduling] = useState<any | null>(null);
+
 
   const { data: orders = [] } = useQuery({
     queryKey: ["produktion-orders"],
