@@ -186,6 +186,7 @@ export function OrderDialog({
     invoice_reference: "",
     invoice_peppol_id: "",
     invoice_email: "",
+    invoice_info: "",
     invoice_status: null as string | null,
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
