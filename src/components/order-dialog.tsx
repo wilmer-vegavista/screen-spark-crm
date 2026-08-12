@@ -220,6 +220,7 @@ export function OrderDialog({
         invoice_reference: order.invoice_reference ?? "",
         invoice_peppol_id: order.invoice_peppol_id ?? "",
         invoice_email: order.invoice_email ?? "",
+        invoice_info: order.invoice_info ?? "",
         invoice_status: order.invoice_status ?? null,
       });
       setSelectedWeeks(Array.isArray(order.selected_weeks) ? order.selected_weeks : []);
