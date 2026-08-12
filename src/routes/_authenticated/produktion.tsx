@@ -7,8 +7,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CalendarClock, CalendarCheck, Rocket, ArrowRight, ArrowLeft } from "lucide-react";
+import { CalendarClock, CalendarCheck, Rocket, ArrowRight, ArrowLeft, CalendarRange } from "lucide-react";
 import { OrderDialog } from "@/components/order-dialog";
+import { OrderScheduleDialog } from "@/components/order-schedule-dialog";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { ORDER_SELECT } from "@/lib/order-columns";
@@ -47,11 +48,23 @@ export const Route = createFileRoute("/_authenticated/produktion")({
 const SEK = (n: number) =>
   new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 }).format(n || 0);
 
+const periodsLabel = (dates: string[]) => {
+  const list = [...dates].sort();
+  const out: string[] = [];
+  for (let i = 0; i < list.length; i += 2) {
+    out.push(list[i + 1] && list[i + 1] !== list[i] ? `${list[i]} – ${list[i + 1]}` : list[i]);
+  }
+  return out.join(" | ");
+};
+
 function ProduktionPage() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<Step>("datum_ej_bestamt");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduling, setScheduling] = useState<any | null>(null);
+
 
   const { data: orders = [] } = useQuery({
     queryKey: ["produktion-orders"],
@@ -119,17 +132,21 @@ function ProduktionPage() {
             </div>
             <div className="text-xs text-muted-foreground mt-1">
               {format(new Date(o.created_at), "yyyy-MM-dd")}
-              {o.exact_dates?.length ? ` · ${o.exact_dates.join(", ")}` : ""}
-              {!o.exact_dates?.length && o.selected_weeks?.length ? ` · v.${o.selected_weeks.join(", ")}` : ""}
+              {o.exact_dates?.length ? ` · ${periodsLabel(o.exact_dates)}` : ""}
+              {o.selected_weeks?.length ? ` · v.${o.selected_weeks.join(", ")}` : ""}
             </div>
           </div>
           <div className="text-sm font-semibold whitespace-nowrap">{SEK(Number(o.total_excl_vat))} SEK</div>
           <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => { setScheduling(o); setScheduleOpen(true); }}>
+              <CalendarRange className="size-4 mr-1" /> Datum
+            </Button>
             {prev && (
               <Button size="sm" variant="outline" onClick={() => move(o.id, prev.key)}>
                 <ArrowLeft className="size-4 mr-1" /> {prev.label}
               </Button>
             )}
+
             {next && (
               <Button size="sm" onClick={() => move(o.id, next.key)}>
                 {next.label} <ArrowRight className="size-4 ml-1" />
@@ -162,6 +179,7 @@ function ProduktionPage() {
         </Tabs>
       </div>
       <OrderDialog open={open} onOpenChange={setOpen} order={editing} />
+      <OrderScheduleDialog open={scheduleOpen} onOpenChange={setScheduleOpen} order={scheduling} />
     </>
   );
 }
