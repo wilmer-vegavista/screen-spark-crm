@@ -342,6 +342,33 @@ export type Database = {
           },
         ]
       }
+      fortnox_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string
+          id: boolean
+          refresh_token: string
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at: string
+          id?: boolean
+          refresh_token: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string
+          id?: boolean
+          refresh_token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           comment: string | null
@@ -621,6 +648,9 @@ export type Database = {
           customer_id: string | null
           deal_id: string | null
           exact_dates: string[]
+          fortnox_customer_number: string | null
+          fortnox_invoice_numbers: string[]
+          fortnox_synced_at: string | null
           id: string
           invoice_email: string | null
           invoice_info: string | null
@@ -657,6 +687,9 @@ export type Database = {
           customer_id?: string | null
           deal_id?: string | null
           exact_dates?: string[]
+          fortnox_customer_number?: string | null
+          fortnox_invoice_numbers?: string[]
+          fortnox_synced_at?: string | null
           id?: string
           invoice_email?: string | null
           invoice_info?: string | null
@@ -693,6 +726,9 @@ export type Database = {
           customer_id?: string | null
           deal_id?: string | null
           exact_dates?: string[]
+          fortnox_customer_number?: string | null
+          fortnox_invoice_numbers?: string[]
+          fortnox_synced_at?: string | null
           id?: string
           invoice_email?: string | null
           invoice_info?: string | null
