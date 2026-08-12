@@ -96,14 +96,40 @@ export function OrderScheduleDialog({
 
         <div className="grid gap-6 md:grid-cols-[auto_1fr]">
           <div className="space-y-2">
+            <div className="flex gap-2">
+              <Select
+                value={String(month.getMonth())}
+                onValueChange={(v) => setMonth(new Date(month.getFullYear(), Number(v), 1))}
+              >
+                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  {MONTHS.map((m, i) => (
+                    <SelectItem key={m} value={String(i)}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={String(month.getFullYear())}
+                onValueChange={(v) => setMonth(new Date(Number(v), month.getMonth(), 1))}
+              >
+                <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  {YEARS.map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Calendar
               mode="range"
               numberOfMonths={2}
               locale={sv}
               weekStartsOn={1}
-              showWeekNumber
+              month={month}
+              onMonthChange={setMonth}
               selected={range}
               onSelect={setRange}
+              className="pointer-events-auto"
             />
             <Button size="sm" className="w-full" disabled={!range?.from} onClick={addPeriod}>
               <CalendarPlus className="size-4 mr-1" /> Lägg till period
@@ -125,9 +151,6 @@ export function OrderScheduleDialog({
                       <div className="text-sm font-medium">
                         {format(p.start, "d MMM yyyy", { locale: sv })} – {format(p.end, "d MMM yyyy", { locale: sv })}
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        Veckor: {weeksOf(p).map((w) => `v${w}`).join(", ")}
-                      </div>
                     </div>
                     <Button
                       size="icon"
@@ -140,15 +163,9 @@ export function OrderScheduleDialog({
                 ))}
               </div>
             )}
-            {allWeeks.length > 0 && (
-              <div className="flex flex-wrap gap-1 pt-1">
-                {allWeeks.map((w) => (
-                  <Badge key={w} variant="secondary">v{w}</Badge>
-                ))}
-              </div>
-            )}
           </div>
         </div>
+
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
