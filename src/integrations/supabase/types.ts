@@ -623,6 +623,7 @@ export type Database = {
           exact_dates: string[]
           id: string
           invoice_email: string | null
+          invoice_info: string | null
           invoice_peppol_id: string | null
           invoice_reference: string | null
           invoice_start_date: string | null
@@ -657,6 +658,7 @@ export type Database = {
           exact_dates?: string[]
           id?: string
           invoice_email?: string | null
+          invoice_info?: string | null
           invoice_peppol_id?: string | null
           invoice_reference?: string | null
           invoice_start_date?: string | null
@@ -691,6 +693,7 @@ export type Database = {
           exact_dates?: string[]
           id?: string
           invoice_email?: string | null
+          invoice_info?: string | null
           invoice_peppol_id?: string | null
           invoice_reference?: string | null
           invoice_start_date?: string | null
