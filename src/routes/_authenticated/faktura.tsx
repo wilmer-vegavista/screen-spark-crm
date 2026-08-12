@@ -256,9 +256,9 @@ function FakturaPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="saknar" className="space-y-3 pt-4">{renderList(filtered.saknar, "saknar")}</TabsContent>
-          <TabsContent value="klar" className="space-y-3 pt-4">{renderList(filtered.klar, "klar")}</TabsContent>
-          <TabsContent value="fakturerad" className="space-y-3 pt-4">{renderList(filtered.fakturerad, "fakturerad")}</TabsContent>
+          <TabsContent value="saknar" className="space-y-3 pt-4">{renderList(filtered.saknar, "saknar")}{renderTotal(filtered.saknar)}</TabsContent>
+          <TabsContent value="klar" className="space-y-3 pt-4">{renderList(filtered.klar, "klar")}{renderTotal(filtered.klar)}</TabsContent>
+          <TabsContent value="fakturerad" className="space-y-3 pt-4">{renderList(filtered.fakturerad, "fakturerad")}{renderTotal(filtered.fakturerad)}</TabsContent>
         </Tabs>
       </div>
       <OrderDialog open={open} onOpenChange={setOpen} order={editing} />
