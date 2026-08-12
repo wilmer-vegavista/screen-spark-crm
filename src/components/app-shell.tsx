@@ -35,6 +35,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   group: string;
   adminOnly?: boolean;
+  adminOrProduktion?: boolean;
 }
 
 const nav: NavItem[] = [
@@ -45,6 +46,7 @@ const nav: NavItem[] = [
   { to: "/aktiviteter", label: "Aktiviteter", icon: CheckSquare, group: "saljare" },
   { to: "/order", label: "Order", icon: ShoppingCart, group: "saljare" },
   { to: "/lon", label: "Lön", icon: Wallet, group: "saljare" },
+  { to: "/produktion", label: "Produktion", icon: Settings, group: "produktion", adminOrProduktion: true },
   { to: "/kampanjer", label: "Kampanjer", icon: Calendar, group: "produktion" },
   { to: "/avslutas-snart", label: "Avslutas snart", icon: Clock, group: "produktion" },
   { to: "/avslutad", label: "Avslutad", icon: CheckCircle, group: "produktion" },
@@ -55,6 +57,7 @@ const nav: NavItem[] = [
   { to: "/budget", label: "Budget", icon: Target, group: "admin", adminOnly: true },
   { to: "/faktura", label: "Faktura", icon: Receipt, group: "admin", adminOnly: true },
 ];
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
