@@ -130,6 +130,17 @@ function FakturaPage() {
     qc.invalidateQueries({ queryKey: ["orders"] });
   };
 
+  const totalOf = (list: any[]) => list.reduce((s: number, o: any) => s + Number(o.total_excl_vat || 0), 0);
+
+  const renderTotal = (list: any[]) => (
+    <div className="flex justify-end pt-2">
+      <div className="text-right">
+        <div className="text-xs text-muted-foreground">Totalt ({list.length} ordrar)</div>
+        <div className="text-lg font-semibold">{SEK(totalOf(list))} SEK</div>
+      </div>
+    </div>
+  );
+
   const renderList = (list: any[], bucket: Bucket) => {
     if (list.length === 0) {
       return <Card className="p-8 text-center text-sm text-muted-foreground">Inga ordrar i denna kategori</Card>;
@@ -245,9 +256,9 @@ function FakturaPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="saknar" className="space-y-3 pt-4">{renderList(filtered.saknar, "saknar")}</TabsContent>
-          <TabsContent value="klar" className="space-y-3 pt-4">{renderList(filtered.klar, "klar")}</TabsContent>
-          <TabsContent value="fakturerad" className="space-y-3 pt-4">{renderList(filtered.fakturerad, "fakturerad")}</TabsContent>
+          <TabsContent value="saknar" className="space-y-3 pt-4">{renderList(filtered.saknar, "saknar")}{renderTotal(filtered.saknar)}</TabsContent>
+          <TabsContent value="klar" className="space-y-3 pt-4">{renderList(filtered.klar, "klar")}{renderTotal(filtered.klar)}</TabsContent>
+          <TabsContent value="fakturerad" className="space-y-3 pt-4">{renderList(filtered.fakturerad, "fakturerad")}{renderTotal(filtered.fakturerad)}</TabsContent>
         </Tabs>
       </div>
       <OrderDialog open={open} onOpenChange={setOpen} order={editing} />
