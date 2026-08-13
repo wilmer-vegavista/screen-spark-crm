@@ -5,7 +5,7 @@ const GATEWAY_URL = "https://connector-gateway.lovable.dev/slack/api";
 const CHANNEL = "done-deal";
 const BOT_NAME = "NY AFFÄR";
 const BOT_ICON_URL =
-  "https://vegavista.life/__l5e/assets-v1/95e26804-9628-48d0-9974-374b07d48e76/slack-money-face.png";
+  "https://vegavista.life/__l5e/assets-v1/b258893c-9888-4bb9-94d2-44d164406164/ny-affar-icon.jpg";
 
 type SaleInput = {
   seller: string;
