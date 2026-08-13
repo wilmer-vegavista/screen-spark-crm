@@ -3,6 +3,9 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/slack/api";
 const CHANNEL = "done-deal";
+const BOT_NAME = "Vega Vista CRM";
+const BOT_ICON_URL =
+  "https://vegavista.life/__l5e/assets-v1/e0aa9561-24bd-46eb-9405-0c63a73445c8/vega-vista-logo.png";
 
 type SaleInput = {
   seller: string;
@@ -54,6 +57,8 @@ export const postSaleToSlack = createServerFn({ method: "POST" })
     try {
       await slackFetch("chat.postMessage", {
         channel: CHANNEL,
+        username: BOT_NAME,
+        icon_url: BOT_ICON_URL,
         text: `🎉 DONE DEAL! ${data.seller} sålde till ${data.company} för ${amount}`,
         blocks: [
           {
