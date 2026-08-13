@@ -54,6 +54,8 @@ export const postSaleToSlack = createServerFn({ method: "POST" })
     try {
       await slackFetch("chat.postMessage", {
         channel: CHANNEL,
+        username: BOT_NAME,
+        icon_url: BOT_ICON_URL,
         text: `🎉 DONE DEAL! ${data.seller} sålde till ${data.company} för ${amount}`,
         blocks: [
           {
