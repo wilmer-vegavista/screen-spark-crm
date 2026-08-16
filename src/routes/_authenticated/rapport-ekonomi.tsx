@@ -12,7 +12,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Pencil } from "lucide-react";
+import { Pencil, FileDown } from "lucide-react";
+import { generateScreenReportPdf } from "@/lib/screen-report-pdf";
 import { format, parseISO } from "date-fns";
 import { sv } from "date-fns/locale";
 
@@ -20,15 +21,24 @@ export const Route = createFileRoute("/_authenticated/rapport-ekonomi")({
   head: () => ({
     meta: [
       { title: "Rapport ekonomi — Vega Vista CRM" },
-      { name: "description", content: "Intäkter per skärm, ägare, förädling och live-datum." },
+      { name: "description", content: "Intäkter per skärm, ägare, fördelning och live-datum." },
       { property: "og:title", content: "Rapport ekonomi — Vega Vista CRM" },
-      { property: "og:description", content: "Intäkter per skärm, ägare, förädling och live-datum." },
+      { property: "og:description", content: "Intäkter per skärm, ägare, fördelning och live-datum." },
     ],
   }),
   component: RapportEkonomiPage,
 });
 
 type Granularity = "manad" | "kvartal" | "halvar" | "ar";
+
+type DetailRow = {
+  orderId: string;
+  company: string;
+  date: string;
+  weeks: number;
+  unitPrice: number;
+  amount: number;
+};
 
 type ProductRow = {
   id: string;
@@ -83,13 +93,14 @@ function ReportView() {
   const [year, setYear] = useState(now.getFullYear());
   const [periodIdx, setPeriodIdx] = useState(now.getMonth());
   const [editing, setEditing] = useState<ProductRow | null>(null);
+  const [detail, setDetail] = useState<any | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["rapport-ekonomi"],
     queryFn: async () => {
       const [{ data: products }, { data: orders }, { data: items }] = await Promise.all([
         supabase.from("products").select("id, name, city, owner_name, revenue_share_pct, live_date").order("name"),
-        supabase.from("orders").select("id, invoice_start_date, created_at, status"),
+        supabase.from("orders").select("id, company_name, invoice_start_date, created_at, status"),
         supabase.from("order_items").select("order_id, product_id, product_name, unit_price, weeks"),
       ]);
       return {
@@ -105,18 +116,29 @@ function ReportView() {
   const rows = useMemo(() => {
     if (!data) return [];
     const orderDate = new Map<string, Date>();
+    const orderCompany = new Map<string, string>();
     for (const o of data.orders) {
       const raw = (o as any).invoice_start_date || (o as any).created_at;
       if (raw) orderDate.set((o as any).id, typeof raw === "string" ? parseISO(raw) : raw);
+      orderCompany.set((o as any).id, (o as any).company_name || "Okänd kund");
     }
-    const byProduct = new Map<string, { name: string; revenue: number; count: number }>();
+    const byProduct = new Map<string, { name: string; revenue: number; count: number; detail: DetailRow[] }>();
     for (const it of data.items as any[]) {
       const d = orderDate.get(it.order_id);
       if (!d || d < from || d > to) continue;
       const key = it.product_id || `name:${it.product_name}`;
-      const cur = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0 };
-      cur.revenue += Number(it.unit_price || 0) * Number(it.weeks || 1);
+      const cur = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0, detail: [] as DetailRow[] };
+      const amount = Number(it.unit_price || 0) * Number(it.weeks || 1);
+      cur.revenue += amount;
       cur.count += 1;
+      cur.detail.push({
+        orderId: it.order_id,
+        company: orderCompany.get(it.order_id) || "Okänd kund",
+        date: d.toISOString(),
+        weeks: Number(it.weeks || 1),
+        unitPrice: Number(it.unit_price || 0),
+        amount,
+      });
       byProduct.set(key, cur);
     }
     const list = data.products.map(p => {
@@ -130,6 +152,7 @@ function ReportView() {
         orders: agg?.count ?? 0,
         share: (revenue * pct) / 100,
         net: revenue - (revenue * pct) / 100,
+        detail: agg?.detail ?? [],
       };
     });
     // products no longer in list but present in items
@@ -142,8 +165,10 @@ function ReportView() {
         orders: agg.count,
         share: 0,
         net: agg.revenue,
+        detail: agg.detail,
       });
     }
+
     return list.sort((a, b) => b.revenue - a.revenue);
   }, [data, from.getTime(), to.getTime()]);
 
@@ -159,7 +184,7 @@ function ReportView() {
     <>
       <PageHeader
         title="Rapport ekonomi"
-        description="Intäkt per skärm, ägare, förädling och live-datum"
+        description="Intäkt per skärm, ägare, fördelning och live-datum"
       />
       <div className="p-6 space-y-5">
         <Card className="p-4 flex flex-wrap items-end gap-3">
@@ -209,8 +234,8 @@ function ReportView() {
 
         <div className="grid gap-3 sm:grid-cols-3">
           <Stat label="Total intäkt" value={SEK(totals.revenue)} />
-          <Stat label="Förädling" value={SEK(totals.share)} />
-          <Stat label="Netto efter förädling" value={SEK(totals.net)} />
+          <Stat label="Fördelning" value={SEK(totals.share)} />
+          <Stat label="Netto efter fördelning" value={SEK(totals.net)} />
         </div>
 
         <Card>
@@ -222,8 +247,8 @@ function ReportView() {
                 <TableHead>Live</TableHead>
                 <TableHead className="text-right">Ordrar</TableHead>
                 <TableHead className="text-right">Intäkt</TableHead>
-                <TableHead className="text-right">Förädling %</TableHead>
-                <TableHead className="text-right">Förädling</TableHead>
+                <TableHead className="text-right">Fördelning %</TableHead>
+                <TableHead className="text-right">Fördelning</TableHead>
                 <TableHead className="text-right">Netto</TableHead>
                 <TableHead />
               </TableRow>
@@ -238,7 +263,13 @@ function ReportView() {
               {rows.map((r, i) => (
                 <TableRow key={r.product?.id ?? `x-${i}`}>
                   <TableCell className="font-medium">
-                    {r.name}
+                    <button
+                      type="button"
+                      className="text-left hover:underline"
+                      onClick={() => setDetail(r)}
+                    >
+                      {r.name}
+                    </button>
                     {r.product?.city && <span className="text-xs text-muted-foreground"> · {r.product.city}</span>}
                   </TableCell>
                   <TableCell className="text-sm">{r.product?.owner_name || <span className="text-muted-foreground">—</span>}</TableCell>
@@ -275,6 +306,12 @@ function ReportView() {
           </Table>
         </Card>
       </div>
+
+      <DetailDialog
+        row={detail}
+        periodLabel={`${format(from, "d MMM yyyy", { locale: sv })} – ${format(to, "d MMM yyyy", { locale: sv })}`}
+        onClose={() => setDetail(null)}
+      />
 
       <EditDialog
         product={editing}
@@ -348,7 +385,7 @@ function EditDialog({
             <Input value={owner} onChange={e => setOwner(e.target.value)} placeholder="T.ex. Fastighets AB" />
           </div>
           <div className="space-y-1.5">
-            <Label>Förädling %</Label>
+            <Label>Fördelning %</Label>
             <Input type="number" min={0} max={100} step="0.1" value={pct} onChange={e => setPct(e.target.value)} />
           </div>
           <div className="space-y-1.5">
@@ -359,6 +396,82 @@ function EditDialog({
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Avbryt</Button>
           <Button onClick={save} disabled={saving}>Spara</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DetailDialog({
+  row,
+  periodLabel,
+  onClose,
+}: {
+  row: any | null;
+  periodLabel: string;
+  onClose: () => void;
+}) {
+  const pct = Number(row?.product?.revenue_share_pct ?? 0);
+  const total = (row?.detail ?? []).reduce((s: number, d: DetailRow) => s + d.amount, 0);
+  const share = (total * pct) / 100;
+
+  return (
+    <Dialog open={!!row} onOpenChange={o => !o && onClose()}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{row?.name}</DialogTitle>
+        </DialogHeader>
+        <div className="text-xs text-muted-foreground">
+          {periodLabel} · Ägare: {row?.product?.owner_name || "—"} · Fördelning: {pct}%
+        </div>
+        <div className="max-h-[50vh] overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Kund</TableHead>
+                <TableHead>Datum</TableHead>
+                <TableHead className="text-right">Perioder</TableHead>
+                <TableHead className="text-right">Pris</TableHead>
+                <TableHead className="text-right">Belopp</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(row?.detail ?? []).length === 0 && (
+                <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground">Inga ordrar i perioden</TableCell></TableRow>
+              )}
+              {(row?.detail ?? []).map((d: DetailRow, i: number) => (
+                <TableRow key={`${d.orderId}-${i}`}>
+                  <TableCell className="font-medium">{d.company}</TableCell>
+                  <TableCell className="text-sm">{format(parseISO(d.date), "d MMM yyyy", { locale: sv })}</TableCell>
+                  <TableCell className="text-right text-sm">{d.weeks}</TableCell>
+                  <TableCell className="text-right text-sm">{SEK(d.unitPrice)}</TableCell>
+                  <TableCell className="text-right font-medium">{SEK(d.amount)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3 text-sm">
+          <div><span className="text-muted-foreground">Total intäkt:</span> <b>{SEK(total)}</b></div>
+          <div><span className="text-muted-foreground">Fördelning:</span> <b>{SEK(share)}</b></div>
+          <div><span className="text-muted-foreground">Netto:</span> <b>{SEK(total - share)}</b></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Stäng</Button>
+          <Button
+            onClick={() =>
+              generateScreenReportPdf({
+                screenName: row.name,
+                city: row?.product?.city ?? null,
+                ownerName: row?.product?.owner_name ?? null,
+                sharePct: pct,
+                periodLabel,
+                rows: row.detail ?? [],
+              })
+            }
+          >
+            <FileDown className="size-4" /> Exportera PDF
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
