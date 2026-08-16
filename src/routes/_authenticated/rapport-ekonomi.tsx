@@ -16,6 +16,7 @@ import { Pencil, FileDown } from "lucide-react";
 import { generateScreenReportPdf } from "@/lib/screen-report-pdf";
 import { format, parseISO } from "date-fns";
 import { sv } from "date-fns/locale";
+import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
 
 export const Route = createFileRoute("/_authenticated/rapport-ekonomi")({
   head: () => ({
@@ -100,7 +101,7 @@ function ReportView() {
     queryFn: async () => {
       const [{ data: products }, { data: orders }, { data: items }] = await Promise.all([
         supabase.from("products").select("id, name, city, owner_name, revenue_share_pct, live_date").order("name"),
-        supabase.from("orders").select("id, company_name, invoice_start_date, created_at, status"),
+        supabase.from("orders").select("id, company_name, invoice_start_date, created_at, status, billing_frequency, billing_duration_months"),
         supabase.from("order_items").select("order_id, product_id, product_name, unit_price, weeks"),
       ]);
       return {
@@ -115,31 +116,42 @@ function ReportView() {
 
   const rows = useMemo(() => {
     if (!data) return [];
-    const orderDate = new Map<string, Date>();
-    const orderCompany = new Map<string, string>();
-    for (const o of data.orders) {
-      const raw = (o as any).invoice_start_date || (o as any).created_at;
-      if (raw) orderDate.set((o as any).id, typeof raw === "string" ? parseISO(raw) : raw);
-      orderCompany.set((o as any).id, (o as any).company_name || "Okänd kund");
-    }
+    const orderById = new Map<string, any>();
+    for (const o of data.orders) orderById.set((o as any).id, o);
+
     const byProduct = new Map<string, { name: string; revenue: number; count: number; detail: DetailRow[] }>();
     for (const it of data.items as any[]) {
-      const d = orderDate.get(it.order_id);
-      if (!d || d < from || d > to) continue;
+      const o = orderById.get(it.order_id);
+      if (!o) continue;
+      const total = Number(it.unit_price || 0) * Number(it.weeks || 1);
+      // Månads-/kvartals-/halvårsfakturerade ordrar räknas per faktureringstillfälle
+      const schedule = buildInvoiceSchedule(
+        o.invoice_start_date || o.created_at,
+        (o.billing_frequency ?? "engang") as BillingFrequency,
+        Number(o.billing_duration_months ?? 0),
+        total,
+      );
+      const recurring = (o.billing_frequency ?? "engang") !== "engang";
+      const hits = schedule.filter(e => e.date >= from && e.date <= to);
+      if (hits.length === 0) continue;
       const key = it.product_id || `name:${it.product_name}`;
       const cur = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0, detail: [] as DetailRow[] };
-      const amount = Number(it.unit_price || 0) * Number(it.weeks || 1);
-      cur.revenue += amount;
-      cur.count += 1;
-      cur.detail.push({
-        orderId: it.order_id,
-        company: orderCompany.get(it.order_id) || "Okänd kund",
-        date: d.toISOString(),
-        weeks: Number(it.weeks || 1),
-        unitPrice: Number(it.unit_price || 0),
-        amount,
-      });
+      for (const h of hits) {
+        cur.revenue += h.amount;
+        cur.count += 1;
+        cur.detail.push({
+          orderId: it.order_id,
+          company:
+            (o.company_name || "Okänd kund") +
+            (recurring ? ` (delfaktura ${schedule.indexOf(h) + 1}/${schedule.length})` : ""),
+          date: h.date.toISOString(),
+          weeks: Number(it.weeks || 1),
+          unitPrice: recurring ? h.amount : Number(it.unit_price || 0),
+          amount: h.amount,
+        });
+      }
       byProduct.set(key, cur);
+
     }
     const list = data.products.map(p => {
       const agg = byProduct.get(p.id);
