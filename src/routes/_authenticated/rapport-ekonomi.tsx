@@ -299,8 +299,8 @@ function ReportView() {
                 <TableHead className="text-right">Ordrar</TableHead>
                 <TableHead className="text-right">Intäkt</TableHead>
                 <TableHead className="text-right">Fördelning %</TableHead>
-                <TableHead className="text-right">Fördelning</TableHead>
-                <TableHead className="text-right">Netto</TableHead>
+                <TableHead className="text-right">Till ägare</TableHead>
+                <TableHead className="text-right">Kvar till oss</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
