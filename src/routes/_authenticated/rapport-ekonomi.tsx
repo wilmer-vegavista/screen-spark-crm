@@ -127,7 +127,7 @@ function ReportView() {
       const d = orderDate.get(it.order_id);
       if (!d || d < from || d > to) continue;
       const key = it.product_id || `name:${it.product_name}`;
-      const cur = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0, detail: [] };
+      const cur = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0, detail: [] as DetailRow[] };
       const amount = Number(it.unit_price || 0) * Number(it.weeks || 1);
       cur.revenue += amount;
       cur.count += 1;
