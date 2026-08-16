@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Pencil, FileDown } from "lucide-react";
 import { generateScreenReportPdf } from "@/lib/screen-report-pdf";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addMonths, startOfISOWeek, endOfISOWeek, setISOWeek, setISOWeekYear, min as dmin, max as dmax } from "date-fns";
 import { sv } from "date-fns/locale";
 import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
 
@@ -39,6 +39,35 @@ type DetailRow = {
   weeks: number;
   unitPrice: number;
   amount: number;
+  live?: string | null;
+};
+
+/** Live-perioden för en order: valda exakta datum, annars valda veckor, annars fakturastart */
+function orderLiveRange(o: any): { start: Date; end: Date } | null {
+  if (Array.isArray(o?.exact_dates) && o.exact_dates.length) {
+    const ds = o.exact_dates.map((d: string) => parseISO(d)).filter((d: Date) => !isNaN(d.getTime()));
+    if (ds.length) return { start: dmin(ds), end: dmax(ds) };
+  }
+  const base = o?.invoice_start_date ? parseISO(o.invoice_start_date) : o?.created_at ? parseISO(o.created_at) : null;
+  if (Array.isArray(o?.selected_weeks) && o.selected_weeks.length) {
+    const year = base && !isNaN(base.getTime()) ? base.getFullYear() : new Date().getFullYear();
+    const ranges = o.selected_weeks.map((w: number) => {
+      const d = setISOWeek(setISOWeekYear(new Date(year, 5, 1), year), w);
+      return { s: startOfISOWeek(d), e: endOfISOWeek(d) };
+    });
+    return { start: dmin(ranges.map((r: any) => r.s)), end: dmax(ranges.map((r: any) => r.e)) };
+  }
+  if (base && !isNaN(base.getTime())) {
+    return { start: base, end: addMonths(base, Number(o?.billing_duration_months || 1)) };
+  }
+  return null;
+}
+
+const liveLabel = (start?: Date | null, end?: Date | null) => {
+  if (!start) return null;
+  const s = format(start, "d MMM yyyy", { locale: sv });
+  if (!end || format(end, "yyyy-MM-dd") === format(start, "yyyy-MM-dd")) return s;
+  return `${s} – ${format(end, "d MMM yyyy", { locale: sv })}`;
 };
 
 type ProductRow = {
@@ -101,7 +130,7 @@ function ReportView() {
     queryFn: async () => {
       const [{ data: products }, { data: orders }, { data: items }] = await Promise.all([
         supabase.from("products").select("id, name, city, owner_name, revenue_share_pct, live_date").order("name"),
-        supabase.from("orders").select("id, company_name, invoice_start_date, created_at, status, billing_frequency, billing_duration_months"),
+        supabase.from("orders").select("id, company_name, invoice_start_date, created_at, status, billing_frequency, billing_duration_months, selected_weeks, exact_dates"),
         supabase.from("order_items").select("order_id, product_id, product_name, unit_price, weeks"),
       ]);
       return {
@@ -119,7 +148,8 @@ function ReportView() {
     const orderById = new Map<string, any>();
     for (const o of data.orders) orderById.set((o as any).id, o);
 
-    const byProduct = new Map<string, { name: string; revenue: number; count: number; detail: DetailRow[] }>();
+    type Agg = { name: string; revenue: number; count: number; detail: DetailRow[]; liveStart: Date | null; liveEnd: Date | null };
+    const byProduct = new Map<string, Agg>();
     for (const it of data.items as any[]) {
       const o = orderById.get(it.order_id);
       if (!o) continue;
@@ -135,7 +165,12 @@ function ReportView() {
       const hits = schedule.filter(e => e.date >= from && e.date <= to);
       if (hits.length === 0) continue;
       const key = it.product_id || `name:${it.product_name}`;
-      const cur = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0, detail: [] as DetailRow[] };
+      const cur: Agg = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0, detail: [], liveStart: null, liveEnd: null };
+      const live = orderLiveRange(o);
+      if (live) {
+        cur.liveStart = cur.liveStart && cur.liveStart < live.start ? cur.liveStart : live.start;
+        cur.liveEnd = cur.liveEnd && cur.liveEnd > live.end ? cur.liveEnd : live.end;
+      }
       for (const h of hits) {
         cur.revenue += h.amount;
         cur.count += 1;
@@ -148,6 +183,7 @@ function ReportView() {
           weeks: Number(it.weeks || 1),
           unitPrice: recurring ? h.amount : Number(it.unit_price || 0),
           amount: h.amount,
+          live: live ? liveLabel(live.start, live.end) : null,
         });
       }
       byProduct.set(key, cur);
@@ -165,6 +201,8 @@ function ReportView() {
         share: (revenue * pct) / 100,
         net: revenue - (revenue * pct) / 100,
         detail: agg?.detail ?? [],
+        live: liveLabel(agg?.liveStart ?? null, agg?.liveEnd ?? null)
+          ?? (p.live_date ? format(parseISO(p.live_date), "d MMM yyyy", { locale: sv }) : null),
       };
     });
     // products no longer in list but present in items
@@ -178,6 +216,7 @@ function ReportView() {
         share: 0,
         net: agg.revenue,
         detail: agg.detail,
+        live: liveLabel(agg.liveStart, agg.liveEnd),
       });
     }
 
@@ -246,8 +285,8 @@ function ReportView() {
 
         <div className="grid gap-3 sm:grid-cols-3">
           <Stat label="Total intäkt" value={SEK(totals.revenue)} />
-          <Stat label="Fördelning" value={SEK(totals.share)} />
-          <Stat label="Netto efter fördelning" value={SEK(totals.net)} />
+          <Stat label="Fördelning till ägare" value={SEK(totals.share)} />
+          <Stat label="Kvar till oss" value={SEK(totals.net)} />
         </div>
 
         <Card>
@@ -260,8 +299,8 @@ function ReportView() {
                 <TableHead className="text-right">Ordrar</TableHead>
                 <TableHead className="text-right">Intäkt</TableHead>
                 <TableHead className="text-right">Fördelning %</TableHead>
-                <TableHead className="text-right">Fördelning</TableHead>
-                <TableHead className="text-right">Netto</TableHead>
+                <TableHead className="text-right">Till ägare</TableHead>
+                <TableHead className="text-right">Kvar till oss</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -285,10 +324,8 @@ function ReportView() {
                     {r.product?.city && <span className="text-xs text-muted-foreground"> · {r.product.city}</span>}
                   </TableCell>
                   <TableCell className="text-sm">{r.product?.owner_name || <span className="text-muted-foreground">—</span>}</TableCell>
-                  <TableCell className="text-sm">
-                    {r.product?.live_date
-                      ? format(parseISO(r.product.live_date), "d MMM yyyy", { locale: sv })
-                      : <span className="text-muted-foreground">—</span>}
+                  <TableCell className="text-sm whitespace-nowrap">
+                    {r.live || <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell className="text-right text-sm">{r.orders}</TableCell>
                   <TableCell className="text-right font-medium">{SEK(r.revenue)}</TableCell>
@@ -434,14 +471,15 @@ function DetailDialog({
           <DialogTitle>{row?.name}</DialogTitle>
         </DialogHeader>
         <div className="text-xs text-muted-foreground">
-          {periodLabel} · Ägare: {row?.product?.owner_name || "—"} · Fördelning: {pct}%
+          {periodLabel} · Ägare: {row?.product?.owner_name || "—"} · Fördelning till ägare: {pct}%
         </div>
         <div className="max-h-[50vh] overflow-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Kund</TableHead>
-                <TableHead>Datum</TableHead>
+                <TableHead>Fakturadatum</TableHead>
+                <TableHead>Går live</TableHead>
                 <TableHead className="text-right">Perioder</TableHead>
                 <TableHead className="text-right">Pris</TableHead>
                 <TableHead className="text-right">Belopp</TableHead>
@@ -449,12 +487,13 @@ function DetailDialog({
             </TableHeader>
             <TableBody>
               {(row?.detail ?? []).length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground">Inga ordrar i perioden</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-sm text-muted-foreground">Inga ordrar i perioden</TableCell></TableRow>
               )}
               {(row?.detail ?? []).map((d: DetailRow, i: number) => (
                 <TableRow key={`${d.orderId}-${i}`}>
                   <TableCell className="font-medium">{d.company}</TableCell>
                   <TableCell className="text-sm">{format(parseISO(d.date), "d MMM yyyy", { locale: sv })}</TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">{d.live || "—"}</TableCell>
                   <TableCell className="text-right text-sm">{d.weeks}</TableCell>
                   <TableCell className="text-right text-sm">{SEK(d.unitPrice)}</TableCell>
                   <TableCell className="text-right font-medium">{SEK(d.amount)}</TableCell>
@@ -465,8 +504,8 @@ function DetailDialog({
         </div>
         <div className="grid gap-2 sm:grid-cols-3 text-sm">
           <div><span className="text-muted-foreground">Total intäkt:</span> <b>{SEK(total)}</b></div>
-          <div><span className="text-muted-foreground">Fördelning:</span> <b>{SEK(share)}</b></div>
-          <div><span className="text-muted-foreground">Netto:</span> <b>{SEK(total - share)}</b></div>
+          <div><span className="text-muted-foreground">Till ägare ({pct}%):</span> <b>{SEK(share)}</b></div>
+          <div><span className="text-muted-foreground">Kvar till oss:</span> <b>{SEK(total - share)}</b></div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Stäng</Button>
