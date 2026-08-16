@@ -130,7 +130,7 @@ function ReportView() {
     queryFn: async () => {
       const [{ data: products }, { data: orders }, { data: items }] = await Promise.all([
         supabase.from("products").select("id, name, city, owner_name, revenue_share_pct, live_date").order("name"),
-        supabase.from("orders").select("id, company_name, invoice_start_date, created_at, status, billing_frequency, billing_duration_months"),
+        supabase.from("orders").select("id, company_name, invoice_start_date, created_at, status, billing_frequency, billing_duration_months, selected_weeks, exact_dates"),
         supabase.from("order_items").select("order_id, product_id, product_name, unit_price, weeks"),
       ]);
       return {
@@ -148,7 +148,8 @@ function ReportView() {
     const orderById = new Map<string, any>();
     for (const o of data.orders) orderById.set((o as any).id, o);
 
-    const byProduct = new Map<string, { name: string; revenue: number; count: number; detail: DetailRow[] }>();
+    type Agg = { name: string; revenue: number; count: number; detail: DetailRow[]; liveStart: Date | null; liveEnd: Date | null };
+    const byProduct = new Map<string, Agg>();
     for (const it of data.items as any[]) {
       const o = orderById.get(it.order_id);
       if (!o) continue;
@@ -164,7 +165,12 @@ function ReportView() {
       const hits = schedule.filter(e => e.date >= from && e.date <= to);
       if (hits.length === 0) continue;
       const key = it.product_id || `name:${it.product_name}`;
-      const cur = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0, detail: [] as DetailRow[] };
+      const cur: Agg = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0, detail: [], liveStart: null, liveEnd: null };
+      const live = orderLiveRange(o);
+      if (live) {
+        cur.liveStart = cur.liveStart && cur.liveStart < live.start ? cur.liveStart : live.start;
+        cur.liveEnd = cur.liveEnd && cur.liveEnd > live.end ? cur.liveEnd : live.end;
+      }
       for (const h of hits) {
         cur.revenue += h.amount;
         cur.count += 1;
@@ -177,6 +183,7 @@ function ReportView() {
           weeks: Number(it.weeks || 1),
           unitPrice: recurring ? h.amount : Number(it.unit_price || 0),
           amount: h.amount,
+          live: live ? liveLabel(live.start, live.end) : null,
         });
       }
       byProduct.set(key, cur);
@@ -194,6 +201,8 @@ function ReportView() {
         share: (revenue * pct) / 100,
         net: revenue - (revenue * pct) / 100,
         detail: agg?.detail ?? [],
+        live: liveLabel(agg?.liveStart ?? null, agg?.liveEnd ?? null)
+          ?? (p.live_date ? format(parseISO(p.live_date), "d MMM yyyy", { locale: sv }) : null),
       };
     });
     // products no longer in list but present in items
@@ -207,6 +216,7 @@ function ReportView() {
         share: 0,
         net: agg.revenue,
         detail: agg.detail,
+        live: liveLabel(agg.liveStart, agg.liveEnd),
       });
     }
 
