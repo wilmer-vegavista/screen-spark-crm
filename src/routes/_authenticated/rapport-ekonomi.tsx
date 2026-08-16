@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Pencil, FileDown } from "lucide-react";
 import { generateScreenReportPdf } from "@/lib/screen-report-pdf";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addMonths, startOfISOWeek, endOfISOWeek, setISOWeek, setISOWeekYear, min as dmin, max as dmax } from "date-fns";
 import { sv } from "date-fns/locale";
 import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
 
