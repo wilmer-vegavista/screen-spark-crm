@@ -10,6 +10,7 @@ export type ScreenReportRow = {
   company: string;
   date: string | null;
   weeks: number;
+  live?: string | null;
   unitPrice: number;
   amount: number;
 };
@@ -43,7 +44,7 @@ export function generateScreenReportPdf(input: ScreenReportInput) {
   y += 14;
   doc.text(`Ägare: ${input.ownerName || "—"}`, M, y);
   y += 14;
-  doc.text(`Fördelning: ${input.sharePct}%`, M, y);
+  doc.text(`Fördelning till ägare: ${input.sharePct}%`, M, y);
   y += 14;
   doc.text(`Utskriven: ${fmtDate(new Date(), "d MMMM yyyy", { locale: sv })}`, M, y);
 
@@ -53,10 +54,11 @@ export function generateScreenReportPdf(input: ScreenReportInput) {
   autoTable(doc, {
     startY: y + 20,
     margin: { left: M, right: M },
-    head: [["Kund", "Datum", "Perioder", "Pris", "Belopp"]],
+    head: [["Kund", "Fakturadatum", "Går live", "Perioder", "Pris", "Belopp"]],
     body: input.rows.map(r => [
       r.company,
       r.date ? fmtDate(new Date(r.date), "d MMM yyyy", { locale: sv }) : "—",
+      r.live || "—",
       String(r.weeks),
       SEK(r.unitPrice),
       SEK(r.amount),
@@ -64,9 +66,9 @@ export function generateScreenReportPdf(input: ScreenReportInput) {
     styles: { fontSize: 9, cellPadding: 6 },
     headStyles: { fillColor: [40, 40, 40], textColor: 255 },
     columnStyles: {
-      2: { halign: "right" },
       3: { halign: "right" },
       4: { halign: "right" },
+      5: { halign: "right" },
     },
   });
 
@@ -76,8 +78,8 @@ export function generateScreenReportPdf(input: ScreenReportInput) {
     margin: { left: M, right: M },
     body: [
       ["Total intäkt", SEK(total)],
-      [`Fördelning (${input.sharePct}%)`, SEK(share)],
-      ["Netto", SEK(total - share)],
+      [`Till ägare (${input.sharePct}%)`, SEK(share)],
+      ["Kvar till oss", SEK(total - share)],
     ],
     styles: { fontSize: 10, cellPadding: 6 },
     columnStyles: { 0: { fontStyle: "bold" }, 1: { halign: "right" } },
