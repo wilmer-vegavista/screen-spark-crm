@@ -22,6 +22,7 @@ import {
   CheckCircle,
   Receipt,
   Contact,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ const nav: NavItem[] = [
   { to: "/produkter", label: "Produkter", icon: Package, group: "admin", adminOnly: true },
   { to: "/budget", label: "Budget", icon: Target, group: "admin", adminOnly: true },
   { to: "/faktura", label: "Faktura", icon: Receipt, group: "admin", adminOnly: true },
+  { to: "/rapport-ekonomi", label: "Rapport ekonomi", icon: TrendingUp, group: "admin", adminOnly: true },
 ];
 
 

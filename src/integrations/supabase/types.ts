@@ -881,9 +881,12 @@ export type Database = {
           id: string
           image_url: string | null
           latitude: number | null
+          live_date: string | null
           longitude: number | null
           material_spec: string | null
           name: string
+          owner_name: string | null
+          revenue_share_pct: number
           screen_type: Database["public"]["Enums"]["screen_type"]
           updated_at: string
         }
@@ -904,9 +907,12 @@ export type Database = {
           id?: string
           image_url?: string | null
           latitude?: number | null
+          live_date?: string | null
           longitude?: number | null
           material_spec?: string | null
           name: string
+          owner_name?: string | null
+          revenue_share_pct?: number
           screen_type?: Database["public"]["Enums"]["screen_type"]
           updated_at?: string
         }
@@ -927,9 +933,12 @@ export type Database = {
           id?: string
           image_url?: string | null
           latitude?: number | null
+          live_date?: string | null
           longitude?: number | null
           material_spec?: string | null
           name?: string
+          owner_name?: string | null
+          revenue_share_pct?: number
           screen_type?: Database["public"]["Enums"]["screen_type"]
           updated_at?: string
         }
