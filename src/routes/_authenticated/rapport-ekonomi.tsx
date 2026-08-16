@@ -290,6 +290,36 @@ function ReportView() {
         </div>
 
         <Card>
+          <div className="px-4 pt-4 pb-2 text-sm font-semibold">Per ägare</div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ägare</TableHead>
+                <TableHead className="text-right">Skärmar</TableHead>
+                <TableHead className="text-right">Intäkt</TableHead>
+                <TableHead className="text-right">Till ägare</TableHead>
+                <TableHead className="text-right">Kvar till oss</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {ownerRows.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="text-muted-foreground">Ingen försäljning i perioden</TableCell></TableRow>
+              )}
+              {ownerRows.map(o => (
+                <TableRow key={o.owner}>
+                  <TableCell className="font-medium">{o.owner}</TableCell>
+                  <TableCell className="text-right">{o.screens}</TableCell>
+                  <TableCell className="text-right">{SEK(o.revenue)}</TableCell>
+                  <TableCell className="text-right">{SEK(o.share)}</TableCell>
+                  <TableCell className="text-right">{SEK(o.net)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+
+
+        <Card>
           <Table>
             <TableHeader>
               <TableRow>
