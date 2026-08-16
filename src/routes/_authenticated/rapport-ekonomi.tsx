@@ -228,6 +228,21 @@ function ReportView() {
     { revenue: 0, share: 0, net: 0 },
   );
 
+  const ownerRows = useMemo(() => {
+    const m = new Map<string, { owner: string; screens: number; revenue: number; share: number; net: number }>();
+    for (const r of rows) {
+      if (!r.revenue) continue;
+      const owner = r.product?.owner_name?.trim() || "Utan ägare";
+      const cur = m.get(owner) ?? { owner, screens: 0, revenue: 0, share: 0, net: 0 };
+      cur.screens += 1;
+      cur.revenue += r.revenue;
+      cur.share += r.share;
+      cur.net += r.net;
+      m.set(owner, cur);
+    }
+    return Array.from(m.values()).sort((a, b) => b.revenue - a.revenue);
+  }, [rows]);
+
   const years = Array.from({ length: 7 }, (_, i) => now.getFullYear() - 3 + i);
   const opts = periodOptions(granularity);
 
@@ -288,6 +303,36 @@ function ReportView() {
           <Stat label="Fördelning till ägare" value={SEK(totals.share)} />
           <Stat label="Kvar till oss" value={SEK(totals.net)} />
         </div>
+
+        <Card>
+          <div className="px-4 pt-4 pb-2 text-sm font-semibold">Per ägare</div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ägare</TableHead>
+                <TableHead className="text-right">Skärmar</TableHead>
+                <TableHead className="text-right">Intäkt</TableHead>
+                <TableHead className="text-right">Till ägare</TableHead>
+                <TableHead className="text-right">Kvar till oss</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {ownerRows.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="text-muted-foreground">Ingen försäljning i perioden</TableCell></TableRow>
+              )}
+              {ownerRows.map(o => (
+                <TableRow key={o.owner}>
+                  <TableCell className="font-medium">{o.owner}</TableCell>
+                  <TableCell className="text-right">{o.screens}</TableCell>
+                  <TableCell className="text-right">{SEK(o.revenue)}</TableCell>
+                  <TableCell className="text-right">{SEK(o.share)}</TableCell>
+                  <TableCell className="text-right">{SEK(o.net)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+
 
         <Card>
           <Table>
