@@ -147,9 +147,10 @@ function ReportView() {
           weeks: Number(it.weeks || 1),
           unitPrice: recurring ? h.amount : Number(it.unit_price || 0),
           amount: h.amount,
-
-      });
+        });
+      }
       byProduct.set(key, cur);
+
     }
     const list = data.products.map(p => {
       const agg = byProduct.get(p.id);
