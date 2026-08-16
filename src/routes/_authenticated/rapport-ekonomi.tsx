@@ -228,6 +228,21 @@ function ReportView() {
     { revenue: 0, share: 0, net: 0 },
   );
 
+  const ownerRows = useMemo(() => {
+    const m = new Map<string, { owner: string; screens: number; revenue: number; share: number; net: number }>();
+    for (const r of rows) {
+      if (!r.revenue) continue;
+      const owner = r.product?.owner_name?.trim() || "Utan ägare";
+      const cur = m.get(owner) ?? { owner, screens: 0, revenue: 0, share: 0, net: 0 };
+      cur.screens += 1;
+      cur.revenue += r.revenue;
+      cur.share += r.share;
+      cur.net += r.net;
+      m.set(owner, cur);
+    }
+    return Array.from(m.values()).sort((a, b) => b.revenue - a.revenue);
+  }, [rows]);
+
   const years = Array.from({ length: 7 }, (_, i) => now.getFullYear() - 3 + i);
   const opts = periodOptions(granularity);
 
