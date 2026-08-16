@@ -285,8 +285,8 @@ function ReportView() {
 
         <div className="grid gap-3 sm:grid-cols-3">
           <Stat label="Total intäkt" value={SEK(totals.revenue)} />
-          <Stat label="Fördelning" value={SEK(totals.share)} />
-          <Stat label="Netto efter fördelning" value={SEK(totals.net)} />
+          <Stat label="Fördelning till ägare" value={SEK(totals.share)} />
+          <Stat label="Kvar till oss" value={SEK(totals.net)} />
         </div>
 
         <Card>
