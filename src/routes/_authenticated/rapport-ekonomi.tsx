@@ -39,6 +39,35 @@ type DetailRow = {
   weeks: number;
   unitPrice: number;
   amount: number;
+  live?: string | null;
+};
+
+/** Live-perioden för en order: valda exakta datum, annars valda veckor, annars fakturastart */
+function orderLiveRange(o: any): { start: Date; end: Date } | null {
+  if (Array.isArray(o?.exact_dates) && o.exact_dates.length) {
+    const ds = o.exact_dates.map((d: string) => parseISO(d)).filter((d: Date) => !isNaN(d.getTime()));
+    if (ds.length) return { start: dmin(ds), end: dmax(ds) };
+  }
+  const base = o?.invoice_start_date ? parseISO(o.invoice_start_date) : o?.created_at ? parseISO(o.created_at) : null;
+  if (Array.isArray(o?.selected_weeks) && o.selected_weeks.length) {
+    const year = base && !isNaN(base.getTime()) ? base.getFullYear() : new Date().getFullYear();
+    const ranges = o.selected_weeks.map((w: number) => {
+      const d = setISOWeek(setISOWeekYear(new Date(year, 5, 1), year), w);
+      return { s: startOfISOWeek(d), e: endOfISOWeek(d) };
+    });
+    return { start: dmin(ranges.map((r: any) => r.s)), end: dmax(ranges.map((r: any) => r.e)) };
+  }
+  if (base && !isNaN(base.getTime())) {
+    return { start: base, end: addMonths(base, Number(o?.billing_duration_months || 1)) };
+  }
+  return null;
+}
+
+const liveLabel = (start?: Date | null, end?: Date | null) => {
+  if (!start) return null;
+  const s = format(start, "d MMM yyyy", { locale: sv });
+  if (!end || format(end, "yyyy-MM-dd") === format(start, "yyyy-MM-dd")) return s;
+  return `${s} – ${format(end, "d MMM yyyy", { locale: sv })}`;
 };
 
 type ProductRow = {
