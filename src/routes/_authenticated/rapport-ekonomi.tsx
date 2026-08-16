@@ -16,6 +16,7 @@ import { Pencil, FileDown } from "lucide-react";
 import { generateScreenReportPdf } from "@/lib/screen-report-pdf";
 import { format, parseISO } from "date-fns";
 import { sv } from "date-fns/locale";
+import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
 
 export const Route = createFileRoute("/_authenticated/rapport-ekonomi")({
   head: () => ({
