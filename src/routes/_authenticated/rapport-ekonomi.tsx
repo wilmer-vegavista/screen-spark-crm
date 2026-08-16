@@ -12,7 +12,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Pencil } from "lucide-react";
+import { Pencil, FileDown } from "lucide-react";
+import { generateScreenReportPdf } from "@/lib/screen-report-pdf";
 import { format, parseISO } from "date-fns";
 import { sv } from "date-fns/locale";
 
@@ -20,9 +21,9 @@ export const Route = createFileRoute("/_authenticated/rapport-ekonomi")({
   head: () => ({
     meta: [
       { title: "Rapport ekonomi — Vega Vista CRM" },
-      { name: "description", content: "Intäkter per skärm, ägare, förädling och live-datum." },
+      { name: "description", content: "Intäkter per skärm, ägare, fördelning och live-datum." },
       { property: "og:title", content: "Rapport ekonomi — Vega Vista CRM" },
-      { property: "og:description", content: "Intäkter per skärm, ägare, förädling och live-datum." },
+      { property: "og:description", content: "Intäkter per skärm, ägare, fördelning och live-datum." },
     ],
   }),
   component: RapportEkonomiPage,
@@ -89,7 +90,7 @@ function ReportView() {
     queryFn: async () => {
       const [{ data: products }, { data: orders }, { data: items }] = await Promise.all([
         supabase.from("products").select("id, name, city, owner_name, revenue_share_pct, live_date").order("name"),
-        supabase.from("orders").select("id, invoice_start_date, created_at, status"),
+        supabase.from("orders").select("id, company_name, invoice_start_date, created_at, status"),
         supabase.from("order_items").select("order_id, product_id, product_name, unit_price, weeks"),
       ]);
       return {
@@ -159,7 +160,7 @@ function ReportView() {
     <>
       <PageHeader
         title="Rapport ekonomi"
-        description="Intäkt per skärm, ägare, förädling och live-datum"
+        description="Intäkt per skärm, ägare, fördelning och live-datum"
       />
       <div className="p-6 space-y-5">
         <Card className="p-4 flex flex-wrap items-end gap-3">
@@ -209,8 +210,8 @@ function ReportView() {
 
         <div className="grid gap-3 sm:grid-cols-3">
           <Stat label="Total intäkt" value={SEK(totals.revenue)} />
-          <Stat label="Förädling" value={SEK(totals.share)} />
-          <Stat label="Netto efter förädling" value={SEK(totals.net)} />
+          <Stat label="Fördelning" value={SEK(totals.share)} />
+          <Stat label="Netto efter fördelning" value={SEK(totals.net)} />
         </div>
 
         <Card>
@@ -222,8 +223,8 @@ function ReportView() {
                 <TableHead>Live</TableHead>
                 <TableHead className="text-right">Ordrar</TableHead>
                 <TableHead className="text-right">Intäkt</TableHead>
-                <TableHead className="text-right">Förädling %</TableHead>
-                <TableHead className="text-right">Förädling</TableHead>
+                <TableHead className="text-right">Fördelning %</TableHead>
+                <TableHead className="text-right">Fördelning</TableHead>
                 <TableHead className="text-right">Netto</TableHead>
                 <TableHead />
               </TableRow>
@@ -348,7 +349,7 @@ function EditDialog({
             <Input value={owner} onChange={e => setOwner(e.target.value)} placeholder="T.ex. Fastighets AB" />
           </div>
           <div className="space-y-1.5">
-            <Label>Förädling %</Label>
+            <Label>Fördelning %</Label>
             <Input type="number" min={0} max={100} step="0.1" value={pct} onChange={e => setPct(e.target.value)} />
           </div>
           <div className="space-y-1.5">
