@@ -106,18 +106,29 @@ function ReportView() {
   const rows = useMemo(() => {
     if (!data) return [];
     const orderDate = new Map<string, Date>();
+    const orderCompany = new Map<string, string>();
     for (const o of data.orders) {
       const raw = (o as any).invoice_start_date || (o as any).created_at;
       if (raw) orderDate.set((o as any).id, typeof raw === "string" ? parseISO(raw) : raw);
+      orderCompany.set((o as any).id, (o as any).company_name || "Okänd kund");
     }
-    const byProduct = new Map<string, { name: string; revenue: number; count: number }>();
+    const byProduct = new Map<string, { name: string; revenue: number; count: number; detail: DetailRow[] }>();
     for (const it of data.items as any[]) {
       const d = orderDate.get(it.order_id);
       if (!d || d < from || d > to) continue;
       const key = it.product_id || `name:${it.product_name}`;
-      const cur = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0 };
-      cur.revenue += Number(it.unit_price || 0) * Number(it.weeks || 1);
+      const cur = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0, detail: [] };
+      const amount = Number(it.unit_price || 0) * Number(it.weeks || 1);
+      cur.revenue += amount;
       cur.count += 1;
+      cur.detail.push({
+        orderId: it.order_id,
+        company: orderCompany.get(it.order_id) || "Okänd kund",
+        date: d.toISOString(),
+        weeks: Number(it.weeks || 1),
+        unitPrice: Number(it.unit_price || 0),
+        amount,
+      });
       byProduct.set(key, cur);
     }
     const list = data.products.map(p => {
@@ -131,6 +142,7 @@ function ReportView() {
         orders: agg?.count ?? 0,
         share: (revenue * pct) / 100,
         net: revenue - (revenue * pct) / 100,
+        detail: agg?.detail ?? [],
       };
     });
     // products no longer in list but present in items
@@ -143,8 +155,10 @@ function ReportView() {
         orders: agg.count,
         share: 0,
         net: agg.revenue,
+        detail: agg.detail,
       });
     }
+
     return list.sort((a, b) => b.revenue - a.revenue);
   }, [data, from.getTime(), to.getTime()]);
 
