@@ -324,10 +324,8 @@ function ReportView() {
                     {r.product?.city && <span className="text-xs text-muted-foreground"> · {r.product.city}</span>}
                   </TableCell>
                   <TableCell className="text-sm">{r.product?.owner_name || <span className="text-muted-foreground">—</span>}</TableCell>
-                  <TableCell className="text-sm">
-                    {r.product?.live_date
-                      ? format(parseISO(r.product.live_date), "d MMM yyyy", { locale: sv })
-                      : <span className="text-muted-foreground">—</span>}
+                  <TableCell className="text-sm whitespace-nowrap">
+                    {r.live || <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell className="text-right text-sm">{r.orders}</TableCell>
                   <TableCell className="text-right font-medium">{SEK(r.revenue)}</TableCell>
