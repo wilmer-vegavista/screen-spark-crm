@@ -471,14 +471,15 @@ function DetailDialog({
           <DialogTitle>{row?.name}</DialogTitle>
         </DialogHeader>
         <div className="text-xs text-muted-foreground">
-          {periodLabel} · Ägare: {row?.product?.owner_name || "—"} · Fördelning: {pct}%
+          {periodLabel} · Ägare: {row?.product?.owner_name || "—"} · Fördelning till ägare: {pct}%
         </div>
         <div className="max-h-[50vh] overflow-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Kund</TableHead>
-                <TableHead>Datum</TableHead>
+                <TableHead>Fakturadatum</TableHead>
+                <TableHead>Går live</TableHead>
                 <TableHead className="text-right">Perioder</TableHead>
                 <TableHead className="text-right">Pris</TableHead>
                 <TableHead className="text-right">Belopp</TableHead>
@@ -486,12 +487,13 @@ function DetailDialog({
             </TableHeader>
             <TableBody>
               {(row?.detail ?? []).length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground">Inga ordrar i perioden</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-sm text-muted-foreground">Inga ordrar i perioden</TableCell></TableRow>
               )}
               {(row?.detail ?? []).map((d: DetailRow, i: number) => (
                 <TableRow key={`${d.orderId}-${i}`}>
                   <TableCell className="font-medium">{d.company}</TableCell>
                   <TableCell className="text-sm">{format(parseISO(d.date), "d MMM yyyy", { locale: sv })}</TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">{d.live || "—"}</TableCell>
                   <TableCell className="text-right text-sm">{d.weeks}</TableCell>
                   <TableCell className="text-right text-sm">{SEK(d.unitPrice)}</TableCell>
                   <TableCell className="text-right font-medium">{SEK(d.amount)}</TableCell>
@@ -502,8 +504,8 @@ function DetailDialog({
         </div>
         <div className="grid gap-2 sm:grid-cols-3 text-sm">
           <div><span className="text-muted-foreground">Total intäkt:</span> <b>{SEK(total)}</b></div>
-          <div><span className="text-muted-foreground">Fördelning:</span> <b>{SEK(share)}</b></div>
-          <div><span className="text-muted-foreground">Netto:</span> <b>{SEK(total - share)}</b></div>
+          <div><span className="text-muted-foreground">Till ägare ({pct}%):</span> <b>{SEK(share)}</b></div>
+          <div><span className="text-muted-foreground">Kvar till oss:</span> <b>{SEK(total - share)}</b></div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Stäng</Button>
