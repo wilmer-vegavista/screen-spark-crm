@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRapporterRouteImport } from './routes/_authenticated/rapporter'
+import { Route as AuthenticatedRapportEkonomiRouteImport } from './routes/_authenticated/rapport-ekonomi'
 import { Route as AuthenticatedProduktionRouteImport } from './routes/_authenticated/produktion'
 import { Route as AuthenticatedProdukterRouteImport } from './routes/_authenticated/produkter'
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
@@ -49,6 +50,12 @@ const AuthenticatedRapporterRoute = AuthenticatedRapporterRouteImport.update({
   path: '/rapporter',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedRapportEkonomiRoute =
+  AuthenticatedRapportEkonomiRouteImport.update({
+    id: '/rapport-ekonomi',
+    path: '/rapport-ekonomi',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProduktionRoute = AuthenticatedProduktionRouteImport.update({
   id: '/produktion',
   path: '/produktion',
@@ -151,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/produkter': typeof AuthenticatedProdukterRoute
   '/produktion': typeof AuthenticatedProduktionRoute
+  '/rapport-ekonomi': typeof AuthenticatedRapportEkonomiRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
 }
 export interface FileRoutesByTo {
@@ -172,6 +180,7 @@ export interface FileRoutesByTo {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/produkter': typeof AuthenticatedProdukterRoute
   '/produktion': typeof AuthenticatedProduktionRoute
+  '/rapport-ekonomi': typeof AuthenticatedRapportEkonomiRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
 }
 export interface FileRoutesById {
@@ -195,6 +204,7 @@ export interface FileRoutesById {
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/produkter': typeof AuthenticatedProdukterRoute
   '/_authenticated/produktion': typeof AuthenticatedProduktionRoute
+  '/_authenticated/rapport-ekonomi': typeof AuthenticatedRapportEkonomiRoute
   '/_authenticated/rapporter': typeof AuthenticatedRapporterRoute
 }
 export interface FileRouteTypes {
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/produkter'
     | '/produktion'
+    | '/rapport-ekonomi'
     | '/rapporter'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/produkter'
     | '/produktion'
+    | '/rapport-ekonomi'
     | '/rapporter'
   id:
     | '__root__'
@@ -261,6 +273,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pipeline'
     | '/_authenticated/produkter'
     | '/_authenticated/produktion'
+    | '/_authenticated/rapport-ekonomi'
     | '/_authenticated/rapporter'
   fileRoutesById: FileRoutesById
 }
@@ -298,6 +311,13 @@ declare module '@tanstack/react-router' {
       path: '/rapporter'
       fullPath: '/rapporter'
       preLoaderRoute: typeof AuthenticatedRapporterRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/rapport-ekonomi': {
+      id: '/_authenticated/rapport-ekonomi'
+      path: '/rapport-ekonomi'
+      fullPath: '/rapport-ekonomi'
+      preLoaderRoute: typeof AuthenticatedRapportEkonomiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/produktion': {
@@ -432,6 +452,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedProdukterRoute: typeof AuthenticatedProdukterRoute
   AuthenticatedProduktionRoute: typeof AuthenticatedProduktionRoute
+  AuthenticatedRapportEkonomiRoute: typeof AuthenticatedRapportEkonomiRoute
   AuthenticatedRapporterRoute: typeof AuthenticatedRapporterRoute
 }
 
@@ -452,6 +473,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedProdukterRoute: AuthenticatedProdukterRoute,
   AuthenticatedProduktionRoute: AuthenticatedProduktionRoute,
+  AuthenticatedRapportEkonomiRoute: AuthenticatedRapportEkonomiRoute,
   AuthenticatedRapporterRoute: AuthenticatedRapporterRoute,
 }
 
