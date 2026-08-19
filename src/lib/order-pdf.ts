@@ -57,6 +57,13 @@ async function loadLogo(): Promise<{ dataUrl: string | null; aspect: number | nu
 }
 
 function buildPeriodText(order: any, item: any): string {
+  const n = Number(item?.weeks || 0);
+  const unit: string = item?.period_unit || "veckor";
+  if (n > 0) {
+    if (unit === "manader") return `${n} ${n === 1 ? "månad" : "månader"}`;
+    if (unit === "ar") return `${n} år`;
+    return `${n} ${n === 1 ? "vecka" : "veckor"}`;
+  }
   const sw: number[] | undefined = Array.isArray(order?.selected_weeks) ? order.selected_weeks : undefined;
   if (sw && sw.length) {
     if (sw.length === 1) return `Vecka ${sw[0]}`;
@@ -67,9 +74,9 @@ function buildPeriodText(order: any, item: any): string {
   if (ed && ed.length) {
     return ed.length === 1 ? ed[0] : `${ed[0]} – ${ed[ed.length - 1]}`;
   }
-  const w = Number(item?.weeks || 0);
-  return w > 0 ? `${w} ${w === 1 ? "vecka" : "veckor"}` : "—";
+  return "—";
 }
+
 
 export async function generateOrderPdf({ order, items, products, sellerName, sellerEmail, sellerTitle, mode = "download" }: OrderPdfInput): Promise<string | void> {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
