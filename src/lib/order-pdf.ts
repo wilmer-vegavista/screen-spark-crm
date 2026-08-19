@@ -148,16 +148,28 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   y = (doc as any).lastAutoTable.finalY + 40;
 
   // ---- Product table ----
+  const hasImpr = items.some((it) => it.impressions != null && String(it.impressions) !== "");
+  const hasSov = items.some((it) => (it as any).sov_pct != null && String((it as any).sov_pct) !== "");
+  const metricHeader = hasImpr && hasSov
+    ? "SOV / visningar per dag"
+    : hasSov
+      ? "SOV"
+      : "Antal visningar/dag";
+
   const body = items.map((it) => {
     const lineTotalExcl = Number(it.unit_price || 0) * Number(it.weeks || 1);
     const lineTotalIncl = lineTotalExcl * (1 + VAT_RATE);
+    const sov = (it as any).sov_pct;
+    const metric = it.impressions != null && String(it.impressions) !== ""
+      ? Number(it.impressions).toLocaleString("sv-SE")
+      : sov != null && String(sov) !== ""
+        ? `${Number(sov).toLocaleString("sv-SE")} %`
+        : "—";
     return [
       it.product_name || "—",
       buildPeriodText(order, it),
       SEK(lineTotalExcl),
-      it.impressions != null && it.impressions !== ""
-        ? Number(it.impressions).toLocaleString("sv-SE")
-        : "—",
+      metric,
       "25 %",
       SEK(lineTotalIncl),
     ];
@@ -166,7 +178,8 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
-    head: [["Produkt", "Period", "Pris exkl. moms", "Antal visningar/dag", "Moms", "Belopp"]],
+    head: [["Produkt", "Period", "Pris exkl. moms", metricHeader, "Moms", "Belopp"]],
+
 
     body,
     styles: { font: "helvetica", fontSize: 10, cellPadding: 10, lineColor: [0, 0, 0], lineWidth: 0.5, textColor: 0 },
