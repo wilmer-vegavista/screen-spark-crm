@@ -155,7 +155,9 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
       it.product_name || "—",
       buildPeriodText(order, it),
       SEK(lineTotalExcl),
-      "1",
+      it.impressions != null && it.impressions !== ""
+        ? Number(it.impressions).toLocaleString("sv-SE")
+        : "—",
       "25 %",
       SEK(lineTotalIncl),
     ];
