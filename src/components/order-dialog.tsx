@@ -546,7 +546,7 @@ export function OrderDialog({
           seller: sellerName,
           company: form.company_name || "Okänd kund",
           amount: subtotal,
-          orderType: "Bokning",
+          screens: items.map((i) => i.product_name).filter(Boolean).join(", ") || "—",
         },
       }).catch(() => {});
     }
