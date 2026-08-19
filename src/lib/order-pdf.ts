@@ -154,7 +154,7 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
     return [
       it.product_name || "—",
       buildPeriodText(order, it),
-      SEK(Number(it.unit_price || 0)),
+      SEK(lineTotalExcl),
       "1",
       "25 %",
       SEK(lineTotalIncl),
@@ -164,7 +164,8 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
-    head: [["Produkt", "Period", "Enhetspris", "Antal", "Moms", "Belopp"]],
+    head: [["Produkt", "Period", "Pris exkl. moms", "Antal", "Moms", "Belopp"]],
+
     body,
     styles: { font: "helvetica", fontSize: 10, cellPadding: 10, lineColor: [0, 0, 0], lineWidth: 0.5, textColor: 0 },
     headStyles: { fillColor: [255, 255, 255], textColor: 0, fontStyle: "bold", halign: "left" },
