@@ -1298,6 +1298,20 @@ export function OrderDialog({
               />
               <p className="text-[10px] text-muted-foreground mt-1">Syns för admin under fliken Faktura.</p>
             </div>
+            <div className="mt-4 flex items-start gap-2 rounded-md border p-3">
+              <input
+                id="vat_exempt"
+                type="checkbox"
+                className="mt-1 size-4 accent-primary"
+                checked={form.vat_exempt}
+                onChange={e => setForm(f => ({ ...f, vat_exempt: e.target.checked }))}
+              />
+              <div>
+                <Label htmlFor="vat_exempt" className="text-xs cursor-pointer">Ingen moms</Label>
+                <p className="text-[10px] text-muted-foreground">Momsen räknas bort i orderbekräftelsen.</p>
+              </div>
+            </div>
+
           </Card>
 
 
