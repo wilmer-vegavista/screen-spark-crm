@@ -187,6 +187,7 @@ export function OrderDialog({
     invoice_peppol_id: "",
     invoice_email: "",
     invoice_info: "",
+    vat_exempt: false,
     invoice_status: null as string | null,
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
@@ -221,6 +222,7 @@ export function OrderDialog({
         invoice_peppol_id: order.invoice_peppol_id ?? "",
         invoice_email: order.invoice_email ?? "",
         invoice_info: order.invoice_info ?? "",
+        vat_exempt: (order as any).vat_exempt ?? false,
         invoice_status: order.invoice_status ?? null,
       });
       setSelectedWeeks(Array.isArray(order.selected_weeks) ? order.selected_weeks : []);
@@ -268,7 +270,7 @@ export function OrderDialog({
         billing_address: "", postal_code: "", city: "",
         contact_name: "", contact_email: "", contact_phone: "", notes: "",
         invoice_start_date: new Date(), billing_frequency: "engang", billing_duration_months: 1,
-        invoice_reference: "", invoice_peppol_id: "", invoice_email: "", invoice_info: "", invoice_status: null,
+        invoice_reference: "", invoice_peppol_id: "", invoice_email: "", invoice_info: "", vat_exempt: false, invoice_status: null,
       });
       setItems([emptyItem()]);
       setTotalPrice("0");
@@ -1298,6 +1300,20 @@ export function OrderDialog({
               />
               <p className="text-[10px] text-muted-foreground mt-1">Syns för admin under fliken Faktura.</p>
             </div>
+            <div className="mt-4 flex items-start gap-2 rounded-md border p-3">
+              <input
+                id="vat_exempt"
+                type="checkbox"
+                className="mt-1 size-4 accent-primary"
+                checked={form.vat_exempt}
+                onChange={e => setForm(f => ({ ...f, vat_exempt: e.target.checked }))}
+              />
+              <div>
+                <Label htmlFor="vat_exempt" className="text-xs cursor-pointer">Ingen moms</Label>
+                <p className="text-[10px] text-muted-foreground">Momsen räknas bort i orderbekräftelsen.</p>
+              </div>
+            </div>
+
           </Card>
 
 

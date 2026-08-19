@@ -671,6 +671,7 @@ export type Database = {
           total_commission: number
           total_excl_vat: number
           updated_at: string
+          vat_exempt: boolean
           vat_number: string | null
         }
         Insert: {
@@ -710,6 +711,7 @@ export type Database = {
           total_commission?: number
           total_excl_vat?: number
           updated_at?: string
+          vat_exempt?: boolean
           vat_number?: string | null
         }
         Update: {
@@ -749,6 +751,7 @@ export type Database = {
           total_commission?: number
           total_excl_vat?: number
           updated_at?: string
+          vat_exempt?: boolean
           vat_number?: string | null
         }
         Relationships: [

@@ -1,0 +1,1 @@
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS vat_exempt boolean NOT NULL DEFAULT false;

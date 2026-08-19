@@ -156,9 +156,12 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
       ? "SOV"
       : "Antal visningar/dag";
 
+  const vatExempt = Boolean((order as any).vat_exempt);
+  const vatRate = vatExempt ? 0 : VAT_RATE;
+
   const body = items.map((it) => {
     const lineTotalExcl = Number(it.unit_price || 0) * Number(it.weeks || 1);
-    const lineTotalIncl = lineTotalExcl * (1 + VAT_RATE);
+    const lineTotalIncl = lineTotalExcl * (1 + vatRate);
     const sov = (it as any).sov_pct;
     const metric = it.impressions != null && String(it.impressions) !== ""
       ? Number(it.impressions).toLocaleString("sv-SE")
@@ -170,7 +173,7 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
       buildPeriodText(order, it),
       SEK(lineTotalExcl),
       metric,
-      "25 %",
+      vatExempt ? "0 %" : "25 %",
       SEK(lineTotalIncl),
     ];
   });
@@ -199,7 +202,7 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
 
   // ---- Totals (right aligned, no box) ----
   const subtotal = items.reduce((sum, it) => sum + Number(it.unit_price || 0) * Number(it.weeks || 1), 0);
-  const vat = subtotal * VAT_RATE;
+  const vat = subtotal * vatRate;
   const total = subtotal + vat;
 
   doc.setFontSize(10);
@@ -216,8 +219,13 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
     y += 20;
   };
   drawTotal("Summa ex moms:", SEK(subtotal));
-  drawTotal("Summa moms:", SEK(vat));
-  drawTotal("Totalt inkl moms:", SEK(total));
+  if (vatExempt) {
+    drawTotal("Moms:", "Ingen moms");
+    drawTotal("Totalt:", SEK(total));
+  } else {
+    drawTotal("Summa moms:", SEK(vat));
+    drawTotal("Totalt inkl moms:", SEK(total));
+  }
 
   // ---- Notes (left side) ----
   if (order.notes && String(order.notes).trim()) {
