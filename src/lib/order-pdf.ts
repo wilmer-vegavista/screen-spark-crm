@@ -166,7 +166,7 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
-    head: [["Produkt", "Period", "Pris exkl. moms", "Antal", "Moms", "Belopp"]],
+    head: [["Produkt", "Period", "Pris exkl. moms", "Antal visningar/dag", "Moms", "Belopp"]],
 
     body,
     styles: { font: "helvetica", fontSize: 10, cellPadding: 10, lineColor: [0, 0, 0], lineWidth: 0.5, textColor: 0 },
