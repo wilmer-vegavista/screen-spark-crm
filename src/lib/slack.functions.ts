@@ -11,7 +11,7 @@ type SaleInput = {
   seller: string;
   company: string;
   amount: number;
-  orderType?: string;
+  screens?: string;
 };
 
 async function slackFetch(method: string, body: Record<string, unknown>) {
@@ -44,7 +44,7 @@ export const postSaleToSlack = createServerFn({ method: "POST" })
       seller: input.seller.slice(0, 120),
       company: input.company.slice(0, 200),
       amount: Number(input.amount) || 0,
-      orderType: (input.orderType ?? "bokning").slice(0, 40),
+      screens: (input.screens ?? "—").slice(0, 300),
     };
   })
   .handler(async ({ data }) => {
@@ -71,7 +71,7 @@ export const postSaleToSlack = createServerFn({ method: "POST" })
               { type: "mrkdwn", text: `*Säljare:*\n${data.seller}` },
               { type: "mrkdwn", text: `*Kund:*\n${data.company}` },
               { type: "mrkdwn", text: `*Belopp:*\n${amount}` },
-              { type: "mrkdwn", text: `*Typ:*\n${data.orderType}` },
+              { type: "mrkdwn", text: `*Skärm/Produkt:*\n${data.screens}` },
             ],
           },
         ],
