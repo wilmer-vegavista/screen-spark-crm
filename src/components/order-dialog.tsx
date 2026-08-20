@@ -58,6 +58,15 @@ const emptyItem = (): Item => ({
 const SEK = (n: number) =>
   new Intl.NumberFormat("sv-SE", { style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
 
+const PAYMENT_TERMS_PRESETS: string[] = [
+  "30 dagar netto från erlagd order",
+  "10 dagar netto från erlagd order",
+  "15 dagar netto från erlagd order",
+  "20 dagar netto från erlagd order",
+  "60 dagar netto från erlagd order",
+  "Förskottsbetalning",
+];
+
 export function OrderDialog({
   open,
   onOpenChange,
@@ -187,6 +196,7 @@ export function OrderDialog({
     invoice_peppol_id: "",
     invoice_email: "",
     invoice_info: "",
+    payment_terms: "30 dagar netto från erlagd order",
     vat_exempt: false,
     invoice_status: null as string | null,
   });
@@ -222,6 +232,7 @@ export function OrderDialog({
         invoice_peppol_id: order.invoice_peppol_id ?? "",
         invoice_email: order.invoice_email ?? "",
         invoice_info: order.invoice_info ?? "",
+        payment_terms: (order as any).payment_terms ?? "30 dagar netto från erlagd order",
         vat_exempt: (order as any).vat_exempt ?? false,
         invoice_status: order.invoice_status ?? null,
       });
@@ -270,7 +281,8 @@ export function OrderDialog({
         billing_address: "", postal_code: "", city: "",
         contact_name: "", contact_email: "", contact_phone: "", notes: "",
         invoice_start_date: new Date(), billing_frequency: "engang", billing_duration_months: 1,
-        invoice_reference: "", invoice_peppol_id: "", invoice_email: "", invoice_info: "", vat_exempt: false, invoice_status: null,
+        invoice_reference: "", invoice_peppol_id: "", invoice_email: "", invoice_info: "",
+        payment_terms: "30 dagar netto från erlagd order", vat_exempt: false, invoice_status: null,
       });
       setItems([emptyItem()]);
       setTotalPrice("0");
@@ -1299,6 +1311,30 @@ export function OrderDialog({
                 placeholder="T.ex. fakturan ska delas upp på 3 delar, särskilda betalningsvillkor, märkning m.m."
               />
               <p className="text-[10px] text-muted-foreground mt-1">Syns för admin under fliken Faktura.</p>
+            </div>
+            <div className="mt-4">
+              <Label className="text-xs">Fakturavillkor</Label>
+              <Select
+                value={PAYMENT_TERMS_PRESETS.includes(form.payment_terms) ? form.payment_terms : "__custom"}
+                onValueChange={v => setForm(f => ({ ...f, payment_terms: v === "__custom" ? "" : v }))}
+              >
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Välj villkor" /></SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_TERMS_PRESETS.map(p => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                  <SelectItem value="__custom">Eget villkor…</SelectItem>
+                </SelectContent>
+              </Select>
+              {!PAYMENT_TERMS_PRESETS.includes(form.payment_terms) && (
+                <Input
+                  className="mt-2"
+                  value={form.payment_terms}
+                  onChange={e => setForm(f => ({ ...f, payment_terms: e.target.value }))}
+                  placeholder="T.ex. 10 dagar netto"
+                />
+              )}
+              <p className="text-[10px] text-muted-foreground mt-1">Visas som fakturavillkor på orderbekräftelsen/offerten.</p>
             </div>
             <div className="mt-4 flex items-start gap-2 rounded-md border p-3">
               <input

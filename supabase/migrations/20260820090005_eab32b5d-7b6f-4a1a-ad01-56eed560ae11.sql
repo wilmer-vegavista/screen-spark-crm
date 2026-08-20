@@ -1,0 +1,1 @@
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_terms text NOT NULL DEFAULT '30 dagar netto från erlagd order';

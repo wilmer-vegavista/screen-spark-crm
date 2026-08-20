@@ -303,8 +303,13 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   doc.setFontSize(10);
   doc.text("Fakturavillkor:", margin, y);
   y += 14;
-  doc.text("30 dagar netto från erlagd order", margin, y);
-  y += 30;
+  const terms = String((order as any).payment_terms || "30 dagar netto från erlagd order");
+  doc.splitTextToSize(terms, pageW - margin * 2).forEach((ln: string) => {
+    if (y > pageH - margin - 20) { doc.addPage(); y = margin + 20; }
+    doc.text(ln, margin, y);
+    y += 14;
+  });
+  y += 16;
 
   // Signature
   doc.text("Med vänliga hälsningar,", margin, y);
