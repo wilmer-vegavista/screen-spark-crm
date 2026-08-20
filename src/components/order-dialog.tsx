@@ -58,6 +58,15 @@ const emptyItem = (): Item => ({
 const SEK = (n: number) =>
   new Intl.NumberFormat("sv-SE", { style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
 
+const PAYMENT_TERMS_PRESETS: string[] = [
+  "30 dagar netto från erlagd order",
+  "10 dagar netto från erlagd order",
+  "15 dagar netto från erlagd order",
+  "20 dagar netto från erlagd order",
+  "60 dagar netto från erlagd order",
+  "Förskottsbetalning",
+];
+
 export function OrderDialog({
   open,
   onOpenChange,
