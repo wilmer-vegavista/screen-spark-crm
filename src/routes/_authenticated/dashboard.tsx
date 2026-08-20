@@ -277,6 +277,23 @@ function Dashboard() {
     <>
       <PageHeader title="Dashboard" description="Översikt över sälj, budget och lön" />
       <div className="p-6 space-y-6">
+        {/* Today / this week */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Stat
+            label="Dagens försäljning"
+            value={fmt(todaySales)}
+            sub={`${todayCount} order${todayCount === 1 ? "" : "s"} registrerade idag`}
+            icon={CalendarDays}
+            accent
+          />
+          <Stat
+            label="Veckans försäljning"
+            value={fmt(weekSales)}
+            sub={`${weekCount} order${weekCount === 1 ? "" : "s"} sedan måndag`}
+            icon={TrendingUp}
+          />
+        </div>
+
         {/* Sellers this month */}
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-4 flex-wrap">
