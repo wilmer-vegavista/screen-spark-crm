@@ -664,6 +664,7 @@ export type Database = {
           order_type: Database["public"]["Enums"]["order_type"]
           org_number: string | null
           owner_id: string | null
+          payment_terms: string
           postal_code: string | null
           production_status: string
           selected_weeks: number[]
@@ -704,6 +705,7 @@ export type Database = {
           order_type?: Database["public"]["Enums"]["order_type"]
           org_number?: string | null
           owner_id?: string | null
+          payment_terms?: string
           postal_code?: string | null
           production_status?: string
           selected_weeks?: number[]
@@ -744,6 +746,7 @@ export type Database = {
           order_type?: Database["public"]["Enums"]["order_type"]
           org_number?: string | null
           owner_id?: string | null
+          payment_terms?: string
           postal_code?: string | null
           production_status?: string
           selected_weeks?: number[]
