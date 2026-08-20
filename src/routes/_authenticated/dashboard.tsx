@@ -306,20 +306,31 @@ function Dashboard() {
       <div className="p-6 space-y-6">
         {/* Today / this week */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Stat
+          <NavStat
             label="Dagens försäljning"
+            periodLabel={dayLabel}
             value={fmt(todaySales)}
-            sub={`${todayCount} order${todayCount === 1 ? "" : "s"} registrerade idag`}
+            sub={`${todayCount} order${todayCount === 1 ? "" : "s"} registrerade`}
             icon={CalendarDays}
             accent
+            onPrev={() => setDayOffset(o => o - 1)}
+            onNext={() => setDayOffset(o => o + 1)}
+            onReset={() => setDayOffset(0)}
+            isCurrent={dayOffset === 0}
           />
-          <Stat
+          <NavStat
             label="Veckans försäljning"
+            periodLabel={weekLabel}
             value={fmt(weekSales)}
-            sub={`${weekCount} order${weekCount === 1 ? "" : "s"} sedan måndag`}
+            sub={`${weekCount} order${weekCount === 1 ? "" : "s"} registrerade`}
             icon={TrendingUp}
+            onPrev={() => setWeekOffset(o => o - 1)}
+            onNext={() => setWeekOffset(o => o + 1)}
+            onReset={() => setWeekOffset(0)}
+            isCurrent={weekOffset === 0}
           />
         </div>
+
 
         {/* Sellers this month */}
         <Card className="p-5">
