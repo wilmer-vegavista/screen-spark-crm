@@ -267,17 +267,31 @@ function Dashboard() {
   // Company budget = sum of all sellers' individual monthly budgets for current month
   const companyBudget = sellerMonthRows.reduce((s, r) => s + r.budget, 0);
 
-  // Sales registered today / this week (based on when the order was created)
-  const dayStart = startOfDay(now);
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  // Sales registered a given day / week (based on when the order was created)
+  const dayStart = startOfDay(addDays(now, dayOffset));
+  const dayEnd = endOfDay(dayStart);
+  const weekStart = startOfWeek(addWeeks(now, weekOffset), { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
   let todaySales = 0, todayCount = 0, weekSales = 0, weekCount = 0;
   for (const o of data?.orders ?? []) {
     if (!o.created_at) continue;
     const created = new Date(o.created_at);
     const amount = Number(o.total_excl_vat ?? 0);
-    if (created >= weekStart) { weekSales += amount; weekCount++; }
-    if (created >= dayStart) { todaySales += amount; todayCount++; }
+    if (created >= weekStart && created <= weekEnd) { weekSales += amount; weekCount++; }
+    if (created >= dayStart && created <= dayEnd) { todaySales += amount; todayCount++; }
   }
+  const dayLabel = dayOffset === 0 ? "idag" : format(dayStart, "d MMM yyyy");
+  const weekLabel = weekOffset === 0
+    ? "denna vecka"
+    : `v.${format(weekStart, "I")} (${format(weekStart, "d MMM")}–${format(weekEnd, "d MMM")})`;
+
+  // Month drilldown data
+  const monthEntries = selectedMonth == null
+    ? []
+    : scheduleEntries
+        .filter(e => e.date.getFullYear() === now.getFullYear() && e.date.getMonth() === selectedMonth)
+        .sort((a, b) => b.amount - a.amount);
+  const monthEntriesTotal = monthEntries.reduce((s, e) => s + e.amount, 0);
 
   const companyRemaining = Math.max(companyBudget - monthTotal, 0);
   const companyBudgetPct = companyBudget > 0 ? Math.min(100, (monthTotal / companyBudget) * 100) : 0;
