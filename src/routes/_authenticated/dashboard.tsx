@@ -127,13 +127,22 @@ function Dashboard() {
       value: Number(it.unit_price ?? 0) * Number(it.weeks ?? 1),
     }));
     const itemsSum = itemTotals.reduce((s, x) => s + x.value, 0) || 1;
-    for (const entry of sched) {
+    sched.forEach((entry, idx) => {
       const split = new Map<string, number>();
       for (const it of itemTotals) {
         split.set(it.product_id, (split.get(it.product_id) ?? 0) + (entry.amount * it.value) / itemsSum);
       }
-      scheduleEntries.push({ date: entry.date, amount: entry.amount, owner_id: o.owner_id, productSplit: split });
-    }
+      scheduleEntries.push({
+        date: entry.date,
+        amount: entry.amount,
+        owner_id: o.owner_id,
+        productSplit: split,
+        order_id: o.id,
+        company_name: (o as any).company_name ?? "—",
+        installment: idx + 1,
+        installments: sched.length,
+      });
+    });
   }
 
   // Per-seller yearly sales (from invoice schedule, current year)
