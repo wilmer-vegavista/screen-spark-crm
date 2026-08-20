@@ -570,7 +570,93 @@ function Dashboard() {
           )}
         </Card>
       </div>
+
+      <Dialog open={selectedMonth != null} onOpenChange={(o) => !o && setSelectedMonth(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Försäljning {selectedMonth != null ? monthNames[selectedMonth] : ""} {now.getFullYear()}
+            </DialogTitle>
+          </DialogHeader>
+          {monthEntries.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-8 text-center">Ingen försäljning denna månad</div>
+          ) : (
+            <div className="space-y-2">
+              {monthEntries.map((e, i) => {
+                const p = e.owner_id ? profileMap.get(e.owner_id) : null;
+                return (
+                  <div key={`${e.order_id}-${i}`} className="flex items-center gap-3 rounded-lg border border-border p-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{e.company_name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {(p as any)?.full_name || (p as any)?.email || "Okänd säljare"}
+                        {e.installments > 1 && ` · delfaktura ${e.installment}/${e.installments}`}
+                        {` · ${format(e.date, "yyyy-MM-dd")}`}
+                      </div>
+                    </div>
+                    <div className="text-sm font-semibold whitespace-nowrap">{fmt(e.amount)}</div>
+                  </div>
+                );
+              })}
+              <div className="flex justify-between border-t border-border pt-3 text-sm">
+                <span className="text-muted-foreground">Totalt</span>
+                <span className="font-semibold">{fmt(monthEntriesTotal)}</span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
+  );
+}
+
+function NavStat({
+  label,
+  periodLabel,
+  value,
+  sub,
+  icon: Icon,
+  accent,
+  onPrev,
+  onNext,
+  onReset,
+  isCurrent,
+}: {
+  label: string;
+  periodLabel: string;
+  value: string;
+  sub?: string;
+  icon: any;
+  accent?: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+  onReset: () => void;
+  isCurrent: boolean;
+}) {
+  return (
+    <Card className={`p-4 ${accent ? "border-primary/40" : ""}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs text-muted-foreground uppercase tracking-wider">{label}</div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="size-7" onClick={onPrev}>
+            <ChevronLeft className="size-4" />
+          </Button>
+          <button
+            type="button"
+            onClick={onReset}
+            className="text-xs text-muted-foreground hover:text-foreground min-w-24 text-center"
+          >
+            {periodLabel}
+          </button>
+          <Button variant="ghost" size="icon" className="size-7" onClick={onNext} disabled={isCurrent}>
+            <ChevronRight className="size-4" />
+          </Button>
+          <Icon className="size-4 text-muted-foreground ml-1" />
+        </div>
+      </div>
+      <div className={`mt-2 text-2xl font-semibold ${accent ? "text-primary" : ""}`}>{value}</div>
+      {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
+    </Card>
   );
 }
 
