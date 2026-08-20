@@ -1303,6 +1303,30 @@ export function OrderDialog({
               />
               <p className="text-[10px] text-muted-foreground mt-1">Syns för admin under fliken Faktura.</p>
             </div>
+            <div className="mt-4">
+              <Label className="text-xs">Fakturavillkor</Label>
+              <Select
+                value={PAYMENT_TERMS_PRESETS.includes(form.payment_terms) ? form.payment_terms : "__custom"}
+                onValueChange={v => setForm(f => ({ ...f, payment_terms: v === "__custom" ? "" : v }))}
+              >
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Välj villkor" /></SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_TERMS_PRESETS.map(p => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                  <SelectItem value="__custom">Eget villkor…</SelectItem>
+                </SelectContent>
+              </Select>
+              {!PAYMENT_TERMS_PRESETS.includes(form.payment_terms) && (
+                <Input
+                  className="mt-2"
+                  value={form.payment_terms}
+                  onChange={e => setForm(f => ({ ...f, payment_terms: e.target.value }))}
+                  placeholder="T.ex. 10 dagar netto"
+                />
+              )}
+              <p className="text-[10px] text-muted-foreground mt-1">Visas som fakturavillkor på orderbekräftelsen/offerten.</p>
+            </div>
             <div className="mt-4 flex items-start gap-2 rounded-md border p-3">
               <input
                 id="vat_exempt"
