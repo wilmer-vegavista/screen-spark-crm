@@ -458,18 +458,22 @@ function Dashboard() {
           <div className="flex items-center gap-2 mb-4">
             <CalendarDays className="size-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold">Försäljning per månad ({now.getFullYear()})</h3>
+            <span className="text-xs text-muted-foreground ml-auto">Klicka på en stapel för detaljer</span>
           </div>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={monthlyTotals}>
+            <BarChart data={monthlyTotals} onClick={(s: any) => {
+              if (s && typeof s.activeTooltipIndex === "number") setSelectedMonth(s.activeTooltipIndex);
+            }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="name" className="text-xs" />
               <YAxis className="text-xs" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
-              <Bar dataKey="value" fill="hsl(var(--chart-blue))" radius={[6, 6, 0, 0]}>
+              <Bar dataKey="value" fill="hsl(var(--chart-blue))" radius={[6, 6, 0, 0]} cursor="pointer">
                 <LabelList dataKey="value" position="top" formatter={(v: number) => `${(v / 1000).toFixed(0)}k`} className="text-[10px]" />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+
           <div className="mt-3 text-xs text-muted-foreground">
             Totalt i år: <span className="font-semibold text-foreground">{fmt(yearTotal)}</span> · Snitt/månad hittills:{" "}
             <span className="font-semibold text-foreground">{fmt(yearTotal / (currentMonthIdx + 1))}</span>
