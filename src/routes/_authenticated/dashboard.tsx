@@ -74,7 +74,7 @@ function Dashboard() {
         supabase.from("company_settings").select("*").maybeSingle(),
         supabase
           .from("orders")
-          .select("id, deal_id, owner_id, total_excl_vat, invoice_start_date, billing_frequency, billing_duration_months, order_type, created_at")
+          .select("id, deal_id, owner_id, company_name, total_excl_vat, invoice_start_date, billing_frequency, billing_duration_months, order_type, created_at")
           .eq("order_type", "bokning"),
         supabase.from("seller_monthly_budgets").select("*").eq("year", now.getFullYear()),
       ]);
