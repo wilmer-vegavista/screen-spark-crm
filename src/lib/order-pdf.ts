@@ -303,12 +303,31 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   doc.setFontSize(10);
   doc.text("Fakturavillkor:", margin, y);
   y += 14;
-  const terms = String((order as any).payment_terms || "30 dagar netto från erlagd order");
+  const freq = String((order as any).billing_frequency || "engang");
+  const isMonthly = freq === "manad";
+  const terms = isMonthly
+    ? "30 dagar netto, faktureras den 1:a varje månad"
+    : String((order as any).payment_terms || "30 dagar netto från erlagd order");
   doc.splitTextToSize(terms, pageW - margin * 2).forEach((ln: string) => {
     if (y > pageH - margin - 20) { doc.addPage(); y = margin + 20; }
     doc.text(ln, margin, y);
     y += 14;
   });
+
+  if (isMonthly) {
+    const months = Math.max(1, Number((order as any).billing_duration_months || 12));
+    const perMonth = total / months;
+    const perMonthEx = subtotal / months;
+    if (y > pageH - margin - 40) { doc.addPage(); y = margin + 20; }
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      `Månadsbelopp: ${SEK(perMonthEx)} SEK ex moms (${SEK(perMonth)} SEK ink moms) i ${months} månader`,
+      margin,
+      y,
+    );
+    doc.setFont("helvetica", "normal");
+    y += 14;
+  }
   y += 16;
 
   // Signature
