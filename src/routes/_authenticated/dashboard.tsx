@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Wallet, TrendingUp, FileText, Package, Target, CalendarDays } from "lucide-react";
-import { startOfMonth, endOfMonth, startOfQuarter, startOfYear, endOfYear, subYears } from "date-fns";
+import { startOfMonth, endOfMonth, startOfQuarter, startOfYear, endOfYear, subYears, startOfDay, startOfWeek } from "date-fns";
 import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
 import { businessDaysBetween } from "@/lib/swedish-holidays";
 import { Trophy, Medal, Award } from "lucide-react";
