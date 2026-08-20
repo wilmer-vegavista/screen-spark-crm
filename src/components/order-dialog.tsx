@@ -187,6 +187,7 @@ export function OrderDialog({
     invoice_peppol_id: "",
     invoice_email: "",
     invoice_info: "",
+    payment_terms: "30 dagar netto från erlagd order",
     vat_exempt: false,
     invoice_status: null as string | null,
   });
@@ -222,6 +223,7 @@ export function OrderDialog({
         invoice_peppol_id: order.invoice_peppol_id ?? "",
         invoice_email: order.invoice_email ?? "",
         invoice_info: order.invoice_info ?? "",
+        payment_terms: (order as any).payment_terms ?? "30 dagar netto från erlagd order",
         vat_exempt: (order as any).vat_exempt ?? false,
         invoice_status: order.invoice_status ?? null,
       });
@@ -270,7 +272,8 @@ export function OrderDialog({
         billing_address: "", postal_code: "", city: "",
         contact_name: "", contact_email: "", contact_phone: "", notes: "",
         invoice_start_date: new Date(), billing_frequency: "engang", billing_duration_months: 1,
-        invoice_reference: "", invoice_peppol_id: "", invoice_email: "", invoice_info: "", vat_exempt: false, invoice_status: null,
+        invoice_reference: "", invoice_peppol_id: "", invoice_email: "", invoice_info: "",
+        payment_terms: "30 dagar netto från erlagd order", vat_exempt: false, invoice_status: null,
       });
       setItems([emptyItem()]);
       setTotalPrice("0");
