@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Wallet, TrendingUp, FileText, Package, Target, CalendarDays } from "lucide-react";
-import { startOfMonth, endOfMonth, startOfQuarter, startOfYear, endOfYear, subYears, startOfDay, startOfWeek } from "date-fns";
+import { Wallet, TrendingUp, FileText, Package, Target, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { startOfMonth, endOfMonth, startOfQuarter, startOfYear, endOfYear, subYears, startOfDay, endOfDay, startOfWeek, endOfWeek, addDays, addWeeks, format } from "date-fns";
 import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
 import { businessDaysBetween } from "@/lib/swedish-holidays";
 import { Trophy, Medal, Award } from "lucide-react";
@@ -47,6 +48,9 @@ function pickPct(deal: any, product: any, compType: string, defaultPct: number) 
 function Dashboard() {
   const { user, isAdmin } = useCurrentUser();
   const [leaderboardSeller, setLeaderboardSeller] = useState<string>("all");
+  const [dayOffset, setDayOffset] = useState(0);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const now = new Date();
   const yearStart = startOfYear(now);
   const yearEnd = endOfYear(now);
@@ -74,7 +78,7 @@ function Dashboard() {
         supabase.from("company_settings").select("*").maybeSingle(),
         supabase
           .from("orders")
-          .select("id, deal_id, owner_id, total_excl_vat, invoice_start_date, billing_frequency, billing_duration_months, order_type, created_at")
+          .select("id, deal_id, owner_id, company_name, total_excl_vat, invoice_start_date, billing_frequency, billing_duration_months, order_type, created_at")
           .eq("order_type", "bokning"),
         supabase.from("seller_monthly_budgets").select("*").eq("year", now.getFullYear()),
       ]);
@@ -103,7 +107,7 @@ function Dashboard() {
 
   // Build invoice schedule entries from orders. Each entry contributes to sales
   // on its month: { date, amount, owner_id, productSplit: Map<productId, amount> }
-  type ScheduleEntry = { date: Date; amount: number; owner_id: string | null; productSplit: Map<string, number> };
+  type ScheduleEntry = { date: Date; amount: number; owner_id: string | null; productSplit: Map<string, number>; order_id: string; company_name: string; installment: number; installments: number };
   const itemsByOrder = new Map<string, any[]>();
   for (const it of data?.items ?? []) {
     const arr = itemsByOrder.get(it.order_id) ?? [];
@@ -127,13 +131,22 @@ function Dashboard() {
       value: Number(it.unit_price ?? 0) * Number(it.weeks ?? 1),
     }));
     const itemsSum = itemTotals.reduce((s, x) => s + x.value, 0) || 1;
-    for (const entry of sched) {
+    sched.forEach((entry, idx) => {
       const split = new Map<string, number>();
       for (const it of itemTotals) {
         split.set(it.product_id, (split.get(it.product_id) ?? 0) + (entry.amount * it.value) / itemsSum);
       }
-      scheduleEntries.push({ date: entry.date, amount: entry.amount, owner_id: o.owner_id, productSplit: split });
-    }
+      scheduleEntries.push({
+        date: entry.date,
+        amount: entry.amount,
+        owner_id: o.owner_id,
+        productSplit: split,
+        order_id: o.id,
+        company_name: (o as any).company_name ?? "—",
+        installment: idx + 1,
+        installments: sched.length,
+      });
+    });
   }
 
   // Per-seller yearly sales (from invoice schedule, current year)
@@ -258,17 +271,31 @@ function Dashboard() {
   // Company budget = sum of all sellers' individual monthly budgets for current month
   const companyBudget = sellerMonthRows.reduce((s, r) => s + r.budget, 0);
 
-  // Sales registered today / this week (based on when the order was created)
-  const dayStart = startOfDay(now);
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  // Sales registered a given day / week (based on when the order was created)
+  const dayStart = startOfDay(addDays(now, dayOffset));
+  const dayEnd = endOfDay(dayStart);
+  const weekStart = startOfWeek(addWeeks(now, weekOffset), { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
   let todaySales = 0, todayCount = 0, weekSales = 0, weekCount = 0;
   for (const o of data?.orders ?? []) {
     if (!o.created_at) continue;
     const created = new Date(o.created_at);
     const amount = Number(o.total_excl_vat ?? 0);
-    if (created >= weekStart) { weekSales += amount; weekCount++; }
-    if (created >= dayStart) { todaySales += amount; todayCount++; }
+    if (created >= weekStart && created <= weekEnd) { weekSales += amount; weekCount++; }
+    if (created >= dayStart && created <= dayEnd) { todaySales += amount; todayCount++; }
   }
+  const dayLabel = dayOffset === 0 ? "idag" : format(dayStart, "d MMM yyyy");
+  const weekLabel = weekOffset === 0
+    ? "denna vecka"
+    : `v.${format(weekStart, "I")} (${format(weekStart, "d MMM")}–${format(weekEnd, "d MMM")})`;
+
+  // Month drilldown data
+  const monthEntries = selectedMonth == null
+    ? []
+    : scheduleEntries
+        .filter(e => e.date.getFullYear() === now.getFullYear() && e.date.getMonth() === selectedMonth)
+        .sort((a, b) => b.amount - a.amount);
+  const monthEntriesTotal = monthEntries.reduce((s, e) => s + e.amount, 0);
 
   const companyRemaining = Math.max(companyBudget - monthTotal, 0);
   const companyBudgetPct = companyBudget > 0 ? Math.min(100, (monthTotal / companyBudget) * 100) : 0;
@@ -279,20 +306,31 @@ function Dashboard() {
       <div className="p-6 space-y-6">
         {/* Today / this week */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Stat
+          <NavStat
             label="Dagens försäljning"
+            periodLabel={dayLabel}
             value={fmt(todaySales)}
-            sub={`${todayCount} order${todayCount === 1 ? "" : "s"} registrerade idag`}
+            sub={`${todayCount} order${todayCount === 1 ? "" : "s"} registrerade`}
             icon={CalendarDays}
             accent
+            onPrev={() => setDayOffset(o => o - 1)}
+            onNext={() => setDayOffset(o => o + 1)}
+            onReset={() => setDayOffset(0)}
+            isCurrent={dayOffset === 0}
           />
-          <Stat
+          <NavStat
             label="Veckans försäljning"
+            periodLabel={weekLabel}
             value={fmt(weekSales)}
-            sub={`${weekCount} order${weekCount === 1 ? "" : "s"} sedan måndag`}
+            sub={`${weekCount} order${weekCount === 1 ? "" : "s"} registrerade`}
             icon={TrendingUp}
+            onPrev={() => setWeekOffset(o => o - 1)}
+            onNext={() => setWeekOffset(o => o + 1)}
+            onReset={() => setWeekOffset(0)}
+            isCurrent={weekOffset === 0}
           />
         </div>
+
 
         {/* Sellers this month */}
         <Card className="p-5">
@@ -420,18 +458,22 @@ function Dashboard() {
           <div className="flex items-center gap-2 mb-4">
             <CalendarDays className="size-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold">Försäljning per månad ({now.getFullYear()})</h3>
+            <span className="text-xs text-muted-foreground ml-auto">Klicka på en stapel för detaljer</span>
           </div>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={monthlyTotals}>
+            <BarChart data={monthlyTotals} onClick={(s: any) => {
+              if (s && typeof s.activeTooltipIndex === "number") setSelectedMonth(s.activeTooltipIndex);
+            }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="name" className="text-xs" />
               <YAxis className="text-xs" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
-              <Bar dataKey="value" fill="hsl(var(--chart-blue))" radius={[6, 6, 0, 0]}>
+              <Bar dataKey="value" fill="hsl(var(--chart-blue))" radius={[6, 6, 0, 0]} cursor="pointer">
                 <LabelList dataKey="value" position="top" formatter={(v: number) => `${(v / 1000).toFixed(0)}k`} className="text-[10px]" />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+
           <div className="mt-3 text-xs text-muted-foreground">
             Totalt i år: <span className="font-semibold text-foreground">{fmt(yearTotal)}</span> · Snitt/månad hittills:{" "}
             <span className="font-semibold text-foreground">{fmt(yearTotal / (currentMonthIdx + 1))}</span>
@@ -528,7 +570,93 @@ function Dashboard() {
           )}
         </Card>
       </div>
+
+      <Dialog open={selectedMonth != null} onOpenChange={(o) => !o && setSelectedMonth(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Försäljning {selectedMonth != null ? monthNames[selectedMonth] : ""} {now.getFullYear()}
+            </DialogTitle>
+          </DialogHeader>
+          {monthEntries.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-8 text-center">Ingen försäljning denna månad</div>
+          ) : (
+            <div className="space-y-2">
+              {monthEntries.map((e, i) => {
+                const p = e.owner_id ? profileMap.get(e.owner_id) : null;
+                return (
+                  <div key={`${e.order_id}-${i}`} className="flex items-center gap-3 rounded-lg border border-border p-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{e.company_name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {(p as any)?.full_name || (p as any)?.email || "Okänd säljare"}
+                        {e.installments > 1 && ` · delfaktura ${e.installment}/${e.installments}`}
+                        {` · ${format(e.date, "yyyy-MM-dd")}`}
+                      </div>
+                    </div>
+                    <div className="text-sm font-semibold whitespace-nowrap">{fmt(e.amount)}</div>
+                  </div>
+                );
+              })}
+              <div className="flex justify-between border-t border-border pt-3 text-sm">
+                <span className="text-muted-foreground">Totalt</span>
+                <span className="font-semibold">{fmt(monthEntriesTotal)}</span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
+  );
+}
+
+function NavStat({
+  label,
+  periodLabel,
+  value,
+  sub,
+  icon: Icon,
+  accent,
+  onPrev,
+  onNext,
+  onReset,
+  isCurrent,
+}: {
+  label: string;
+  periodLabel: string;
+  value: string;
+  sub?: string;
+  icon: any;
+  accent?: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+  onReset: () => void;
+  isCurrent: boolean;
+}) {
+  return (
+    <Card className={`p-4 ${accent ? "border-primary/40" : ""}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs text-muted-foreground uppercase tracking-wider">{label}</div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="size-7" onClick={onPrev}>
+            <ChevronLeft className="size-4" />
+          </Button>
+          <button
+            type="button"
+            onClick={onReset}
+            className="text-xs text-muted-foreground hover:text-foreground min-w-24 text-center"
+          >
+            {periodLabel}
+          </button>
+          <Button variant="ghost" size="icon" className="size-7" onClick={onNext} disabled={isCurrent}>
+            <ChevronRight className="size-4" />
+          </Button>
+          <Icon className="size-4 text-muted-foreground ml-1" />
+        </div>
+      </div>
+      <div className={`mt-2 text-2xl font-semibold ${accent ? "text-primary" : ""}`}>{value}</div>
+      {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
+    </Card>
   );
 }
 
