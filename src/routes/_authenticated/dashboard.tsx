@@ -103,7 +103,7 @@ function Dashboard() {
 
   // Build invoice schedule entries from orders. Each entry contributes to sales
   // on its month: { date, amount, owner_id, productSplit: Map<productId, amount> }
-  type ScheduleEntry = { date: Date; amount: number; owner_id: string | null; productSplit: Map<string, number> };
+  type ScheduleEntry = { date: Date; amount: number; owner_id: string | null; productSplit: Map<string, number>; order_id: string; company_name: string; installment: number; installments: number };
   const itemsByOrder = new Map<string, any[]>();
   for (const it of data?.items ?? []) {
     const arr = itemsByOrder.get(it.order_id) ?? [];
