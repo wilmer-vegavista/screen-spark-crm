@@ -13,8 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Pencil, FileDown } from "lucide-react";
-import { generateScreenReportPdf } from "@/lib/screen-report-pdf";
-import { format, parseISO, addMonths, startOfISOWeek, endOfISOWeek, setISOWeek, setISOWeekYear, min as dmin, max as dmax } from "date-fns";
+import { generateScreenReportPdf, generateOwnerReportPdf } from "@/lib/screen-report-pdf";
+import { format, parseISO, addMonths, addWeeks, addQuarters, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfISOWeek, endOfISOWeek, setISOWeek, setISOWeekYear, min as dmin, max as dmax } from "date-fns";
 import { sv } from "date-fns/locale";
 import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
 
@@ -40,6 +40,8 @@ type DetailRow = {
   unitPrice: number;
   amount: number;
   live?: string | null;
+  metric?: string;
+  period?: string;
 };
 
 /** Live-perioden för en order: valda exakta datum, annars valda veckor, annars fakturastart */
@@ -101,6 +103,107 @@ function periodRange(g: Granularity, year: number, idx: number) {
   return { from, to };
 }
 
+const periodUnitLabel: Record<string, [string, string]> = {
+  veckor: ["vecka", "veckor"],
+  manader: ["månad", "månader"],
+  ar: ["år", "år"],
+};
+
+function metricLabel(it: any) {
+  if (it.sov_pct != null && Number(it.sov_pct) > 0) return `${Number(it.sov_pct)}% SOV`;
+  if (it.impressions != null && Number(it.impressions) > 0)
+    return `${new Intl.NumberFormat("sv-SE").format(Number(it.impressions))} visningar/dag`;
+  return "—";
+}
+
+function periodTextOf(it: any) {
+  const n = Number(it.weeks || 1);
+  const pair = periodUnitLabel[it.period_unit as string] ?? periodUnitLabel.veckor;
+  return `${n} ${n === 1 ? pair[0] : pair[1]}`;
+}
+
+function computeRows(data: any, from: Date, to: Date) {
+  if (!data) return [] as any[];
+  const orderById = new Map<string, any>();
+  for (const o of data.orders) orderById.set((o as any).id, o);
+
+  type Agg = { name: string; revenue: number; count: number; detail: DetailRow[]; liveStart: Date | null; liveEnd: Date | null };
+  const byProduct = new Map<string, Agg>();
+  for (const it of data.items as any[]) {
+    const o = orderById.get(it.order_id);
+    if (!o) continue;
+    const total = Number(it.unit_price || 0) * Number(it.weeks || 1);
+    // Månads-/kvartals-/halvårsfakturerade ordrar räknas per faktureringstillfälle
+    const schedule = buildInvoiceSchedule(
+      o.invoice_start_date || o.created_at,
+      (o.billing_frequency ?? "engang") as BillingFrequency,
+      Number(o.billing_duration_months ?? 0),
+      total,
+    );
+    const recurring = (o.billing_frequency ?? "engang") !== "engang";
+    const hits = schedule.filter(e => e.date >= from && e.date <= to);
+    if (hits.length === 0) continue;
+    const key = it.product_id || `name:${it.product_name}`;
+    const cur: Agg = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0, detail: [], liveStart: null, liveEnd: null };
+    const live = orderLiveRange(o);
+    if (live) {
+      cur.liveStart = cur.liveStart && cur.liveStart < live.start ? cur.liveStart : live.start;
+      cur.liveEnd = cur.liveEnd && cur.liveEnd > live.end ? cur.liveEnd : live.end;
+    }
+    for (const h of hits) {
+      cur.revenue += h.amount;
+      cur.count += 1;
+      cur.detail.push({
+        orderId: it.order_id,
+        company:
+          (o.company_name || "Okänd kund") +
+          (recurring ? ` (delfaktura ${schedule.indexOf(h) + 1}/${schedule.length})` : ""),
+        date: h.date.toISOString(),
+        weeks: Number(it.weeks || 1),
+        unitPrice: recurring ? h.amount : Number(it.unit_price || 0),
+        amount: h.amount,
+        live: live ? liveLabel(live.start, live.end) : null,
+        metric: metricLabel(it),
+        period: periodTextOf(it),
+      });
+    }
+    byProduct.set(key, cur);
+  }
+
+  const list = data.products.map((p: ProductRow) => {
+    const agg = byProduct.get(p.id);
+    const revenue = agg?.revenue ?? 0;
+    const pct = Number(p.revenue_share_pct ?? 0);
+    return {
+      product: p,
+      name: p.name,
+      revenue,
+      orders: agg?.count ?? 0,
+      share: (revenue * pct) / 100,
+      net: revenue - (revenue * pct) / 100,
+      detail: agg?.detail ?? [],
+      live: liveLabel(agg?.liveStart ?? null, agg?.liveEnd ?? null)
+        ?? (p.live_date ? format(parseISO(p.live_date), "d MMM yyyy", { locale: sv }) : null),
+    };
+  });
+  for (const [key, agg] of byProduct) {
+    if (data.products.some((p: ProductRow) => p.id === key)) continue;
+    list.push({
+      product: null as any,
+      name: agg.name,
+      revenue: agg.revenue,
+      orders: agg.count,
+      share: 0,
+      net: agg.revenue,
+      detail: agg.detail,
+      live: liveLabel(agg.liveStart, agg.liveEnd),
+    });
+  }
+
+  return list.sort((a: any, b: any) => b.revenue - a.revenue);
+}
+
+
 function RapportEkonomiPage() {
   const { isAdmin } = useCurrentUser();
   if (!isAdmin) {
@@ -124,6 +227,7 @@ function ReportView() {
   const [periodIdx, setPeriodIdx] = useState(now.getMonth());
   const [editing, setEditing] = useState<ProductRow | null>(null);
   const [detail, setDetail] = useState<any | null>(null);
+  const [ownerDetail, setOwnerDetail] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["rapport-ekonomi"],
@@ -131,7 +235,7 @@ function ReportView() {
       const [{ data: products }, { data: orders }, { data: items }] = await Promise.all([
         supabase.from("products").select("id, name, city, owner_name, revenue_share_pct, live_date").order("name"),
         supabase.from("orders").select("id, company_name, invoice_start_date, created_at, status, billing_frequency, billing_duration_months, selected_weeks, exact_dates"),
-        supabase.from("order_items").select("order_id, product_id, product_name, unit_price, weeks"),
+        supabase.from("order_items").select("order_id, product_id, product_name, unit_price, weeks, sov_pct, impressions, period_unit"),
       ]);
       return {
         products: (products ?? []) as ProductRow[],
@@ -143,88 +247,10 @@ function ReportView() {
 
   const { from, to } = periodRange(granularity, year, granularity === "ar" ? 0 : periodIdx);
 
-  const rows = useMemo(() => {
-    if (!data) return [];
-    const orderById = new Map<string, any>();
-    for (const o of data.orders) orderById.set((o as any).id, o);
-
-    type Agg = { name: string; revenue: number; count: number; detail: DetailRow[]; liveStart: Date | null; liveEnd: Date | null };
-    const byProduct = new Map<string, Agg>();
-    for (const it of data.items as any[]) {
-      const o = orderById.get(it.order_id);
-      if (!o) continue;
-      const total = Number(it.unit_price || 0) * Number(it.weeks || 1);
-      // Månads-/kvartals-/halvårsfakturerade ordrar räknas per faktureringstillfälle
-      const schedule = buildInvoiceSchedule(
-        o.invoice_start_date || o.created_at,
-        (o.billing_frequency ?? "engang") as BillingFrequency,
-        Number(o.billing_duration_months ?? 0),
-        total,
-      );
-      const recurring = (o.billing_frequency ?? "engang") !== "engang";
-      const hits = schedule.filter(e => e.date >= from && e.date <= to);
-      if (hits.length === 0) continue;
-      const key = it.product_id || `name:${it.product_name}`;
-      const cur: Agg = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0, detail: [], liveStart: null, liveEnd: null };
-      const live = orderLiveRange(o);
-      if (live) {
-        cur.liveStart = cur.liveStart && cur.liveStart < live.start ? cur.liveStart : live.start;
-        cur.liveEnd = cur.liveEnd && cur.liveEnd > live.end ? cur.liveEnd : live.end;
-      }
-      for (const h of hits) {
-        cur.revenue += h.amount;
-        cur.count += 1;
-        cur.detail.push({
-          orderId: it.order_id,
-          company:
-            (o.company_name || "Okänd kund") +
-            (recurring ? ` (delfaktura ${schedule.indexOf(h) + 1}/${schedule.length})` : ""),
-          date: h.date.toISOString(),
-          weeks: Number(it.weeks || 1),
-          unitPrice: recurring ? h.amount : Number(it.unit_price || 0),
-          amount: h.amount,
-          live: live ? liveLabel(live.start, live.end) : null,
-        });
-      }
-      byProduct.set(key, cur);
-
-    }
-    const list = data.products.map(p => {
-      const agg = byProduct.get(p.id);
-      const revenue = agg?.revenue ?? 0;
-      const pct = Number(p.revenue_share_pct ?? 0);
-      return {
-        product: p,
-        name: p.name,
-        revenue,
-        orders: agg?.count ?? 0,
-        share: (revenue * pct) / 100,
-        net: revenue - (revenue * pct) / 100,
-        detail: agg?.detail ?? [],
-        live: liveLabel(agg?.liveStart ?? null, agg?.liveEnd ?? null)
-          ?? (p.live_date ? format(parseISO(p.live_date), "d MMM yyyy", { locale: sv }) : null),
-      };
-    });
-    // products no longer in list but present in items
-    for (const [key, agg] of byProduct) {
-      if (data.products.some(p => p.id === key)) continue;
-      list.push({
-        product: null as any,
-        name: agg.name,
-        revenue: agg.revenue,
-        orders: agg.count,
-        share: 0,
-        net: agg.revenue,
-        detail: agg.detail,
-        live: liveLabel(agg.liveStart, agg.liveEnd),
-      });
-    }
-
-    return list.sort((a, b) => b.revenue - a.revenue);
-  }, [data, from.getTime(), to.getTime()]);
+  const rows = useMemo(() => computeRows(data, from, to), [data, from.getTime(), to.getTime()]);
 
   const totals = rows.reduce(
-    (s, r) => ({ revenue: s.revenue + r.revenue, share: s.share + r.share, net: s.net + r.net }),
+    (s: any, r: any) => ({ revenue: s.revenue + r.revenue, share: s.share + r.share, net: s.net + r.net }),
     { revenue: 0, share: 0, net: 0 },
   );
 
@@ -322,7 +348,11 @@ function ReportView() {
               )}
               {ownerRows.map(o => (
                 <TableRow key={o.owner}>
-                  <TableCell className="font-medium">{o.owner}</TableCell>
+                  <TableCell className="font-medium">
+                    <button type="button" className="text-left hover:underline" onClick={() => setOwnerDetail(o.owner)}>
+                      {o.owner}
+                    </button>
+                  </TableCell>
                   <TableCell className="text-right">{o.screens}</TableCell>
                   <TableCell className="text-right">{SEK(o.revenue)}</TableCell>
                   <TableCell className="text-right">{SEK(o.share)}</TableCell>
@@ -356,7 +386,7 @@ function ReportView() {
               {!isLoading && rows.length === 0 && (
                 <TableRow><TableCell colSpan={9} className="text-sm text-muted-foreground">Inga skärmar</TableCell></TableRow>
               )}
-              {rows.map((r, i) => (
+              {rows.map((r: any, i: number) => (
                 <TableRow key={r.product?.id ?? `x-${i}`}>
                   <TableCell className="font-medium">
                     <button
@@ -406,6 +436,10 @@ function ReportView() {
         periodLabel={`${format(from, "d MMM yyyy", { locale: sv })} – ${format(to, "d MMM yyyy", { locale: sv })}`}
         onClose={() => setDetail(null)}
       />
+
+      <OwnerDialog owner={ownerDetail} data={data} onClose={() => setOwnerDetail(null)} />
+
+
 
       <EditDialog
         product={editing}
@@ -563,6 +597,132 @@ function DetailDialog({
                 sharePct: pct,
                 periodLabel,
                 rows: row.detail ?? [],
+              })
+            }
+          >
+            <FileDown className="size-4" /> Exportera PDF
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type OwnerScope = "vecka" | "manad" | "kvartal";
+
+function ownerScopeRange(scope: OwnerScope, offset: number) {
+  const base = new Date();
+  if (scope === "vecka") {
+    const d = addWeeks(base, offset);
+    return { from: startOfWeek(d, { locale: sv }), to: endOfWeek(d, { locale: sv }) };
+  }
+  if (scope === "manad") {
+    const d = addMonths(base, offset);
+    return { from: startOfMonth(d), to: endOfMonth(d) };
+  }
+  const d = addQuarters(base, offset);
+  return { from: startOfQuarter(d), to: endOfQuarter(d) };
+}
+
+function OwnerDialog({ owner, data, onClose }: { owner: string | null; data: any; onClose: () => void }) {
+  const [scope, setScope] = useState<OwnerScope>("manad");
+  const [offset, setOffset] = useState(0);
+
+  const { from, to } = ownerScopeRange(scope, offset);
+  const periodLabel = `${format(from, "d MMM yyyy", { locale: sv })} – ${format(to, "d MMM yyyy", { locale: sv })}`;
+
+  const { rows, total, sharePct, share } = useMemo(() => {
+    if (!owner || !data) return { rows: [] as any[], total: 0, sharePct: null as number | null, share: 0 };
+    const all = computeRows(data, from, to);
+    const mine = all.filter((r: any) => (r.product?.owner_name?.trim() || "Utan ägare") === owner);
+    const list: any[] = [];
+    let sum = 0;
+    let shareSum = 0;
+    for (const r of mine) {
+      const pct = Number(r.product?.revenue_share_pct ?? 0);
+      for (const d of r.detail as DetailRow[]) {
+        list.push({
+          company: d.company,
+          screen: r.name,
+          date: d.date,
+          metric: d.metric ?? "—",
+          period: d.period ?? `${d.weeks}`,
+          amount: d.amount,
+        });
+        sum += d.amount;
+        shareSum += (d.amount * pct) / 100;
+      }
+    }
+    list.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const pctAvg = sum > 0 ? Math.round((shareSum / sum) * 1000) / 10 : null;
+    return { rows: list, total: sum, sharePct: pctAvg, share: shareSum };
+  }, [owner, data, from.getTime(), to.getTime()]);
+
+  return (
+    <Dialog open={!!owner} onOpenChange={o => !o && onClose()}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader><DialogTitle>Bokningar – {owner}</DialogTitle></DialogHeader>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={scope} onValueChange={v => { setScope(v as OwnerScope); setOffset(0); }}>
+            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="vecka">Veckan</SelectItem>
+              <SelectItem value="manad">Månaden</SelectItem>
+              <SelectItem value="kvartal">Kvartalet</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={() => setOffset(o => o - 1)}>Föregående</Button>
+          <Button variant="outline" size="sm" onClick={() => setOffset(0)}>Nu</Button>
+          <Button variant="outline" size="sm" onClick={() => setOffset(o => o + 1)}>Nästa</Button>
+          <span className="text-xs text-muted-foreground ml-auto">{periodLabel}</span>
+        </div>
+
+        <div className="max-h-[50vh] overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Kund</TableHead>
+                <TableHead>Skärm</TableHead>
+                <TableHead>Fakturadatum</TableHead>
+                <TableHead>SOV / visningar</TableHead>
+                <TableHead>Period</TableHead>
+                <TableHead className="text-right">Pris</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.length === 0 && (
+                <TableRow><TableCell colSpan={6} className="text-sm text-muted-foreground">Inga bokningar i perioden</TableCell></TableRow>
+              )}
+              {rows.map((r, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-medium">{r.company}</TableCell>
+                  <TableCell className="text-sm">{r.screen}</TableCell>
+                  <TableCell className="text-sm">{format(parseISO(r.date), "d MMM yyyy", { locale: sv })}</TableCell>
+                  <TableCell className="text-sm">{r.metric}</TableCell>
+                  <TableCell className="text-sm">{r.period}</TableCell>
+                  <TableCell className="text-right font-medium">{SEK(r.amount)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-3 text-sm">
+          <div><span className="text-muted-foreground">Total intäkt:</span> <b>{SEK(total)}</b></div>
+          <div><span className="text-muted-foreground">Till ägare:</span> <b>{SEK(share)}</b></div>
+          <div><span className="text-muted-foreground">Kvar till oss:</span> <b>{SEK(total - share)}</b></div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Stäng</Button>
+          <Button
+            onClick={() =>
+              generateOwnerReportPdf({
+                ownerName: owner || "",
+                periodLabel,
+                sharePct,
+                rows,
               })
             }
           >

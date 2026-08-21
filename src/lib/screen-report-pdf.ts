@@ -89,3 +89,79 @@ export function generateScreenReportPdf(input: ScreenReportInput) {
   const safe = input.screenName.replace(/[^\w\d-]+/g, "_");
   doc.save(`redovisning-${safe}.pdf`);
 }
+
+export type OwnerReportRow = {
+  company: string;
+  screen: string;
+  date: string | null;
+  metric: string;
+  period: string;
+  amount: number;
+};
+
+export type OwnerReportInput = {
+  ownerName: string;
+  periodLabel: string;
+  sharePct?: number | null;
+  rows: OwnerReportRow[];
+};
+
+export function generateOwnerReportPdf(input: OwnerReportInput) {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const M = 48;
+  let y = 56;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("Bokningar – ägare", M, y);
+
+  y += 22;
+  doc.setFontSize(13);
+  doc.text(input.ownerName || "—", M, y);
+
+  y += 18;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Period: ${input.periodLabel}`, M, y);
+  y += 14;
+  doc.text(`Utskriven: ${fmtDate(new Date(), "d MMMM yyyy", { locale: sv })}`, M, y);
+
+  const total = input.rows.reduce((s, r) => s + r.amount, 0);
+
+  autoTable(doc, {
+    startY: y + 20,
+    margin: { left: M, right: M },
+    head: [["Kund", "Skärm", "Fakturadatum", "SOV / visningar", "Period", "Pris"]],
+    body: input.rows.map(r => [
+      r.company,
+      r.screen,
+      r.date ? fmtDate(new Date(r.date), "d MMM yyyy", { locale: sv }) : "—",
+      r.metric,
+      r.period,
+      SEK(r.amount),
+    ]),
+    styles: { fontSize: 9, cellPadding: 6 },
+    headStyles: { fillColor: [40, 40, 40], textColor: 255 },
+    columnStyles: { 5: { halign: "right" } },
+  });
+
+  const endY = (doc as any).lastAutoTable?.finalY ?? y + 40;
+  const body: string[][] = [["Total intäkt", SEK(total)]];
+  if (input.sharePct != null) {
+    const share = (total * input.sharePct) / 100;
+    body.push([`Till ägare (${input.sharePct}%)`, SEK(share)]);
+    body.push(["Kvar till oss", SEK(total - share)]);
+  }
+
+  autoTable(doc, {
+    startY: endY + 14,
+    margin: { left: M, right: M },
+    body,
+    styles: { fontSize: 10, cellPadding: 6 },
+    columnStyles: { 0: { fontStyle: "bold" }, 1: { halign: "right" } },
+    theme: "grid",
+  });
+
+  const safe = (input.ownerName || "agare").replace(/[^\w\d-]+/g, "_");
+  doc.save(`bokningar-${safe}.pdf`);
+}
