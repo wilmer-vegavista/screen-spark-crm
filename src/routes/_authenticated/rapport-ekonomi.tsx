@@ -557,7 +557,7 @@ function DetailDialog({
             <TableHeader>
               <TableRow>
                 <TableHead>Kund</TableHead>
-                <TableHead>Fakturadatum</TableHead>
+                <TableHead>Orderdatum</TableHead>
                 <TableHead>Går live</TableHead>
                 <TableHead className="text-right">Perioder</TableHead>
                 <TableHead className="text-right">Pris</TableHead>
@@ -684,7 +684,7 @@ function OwnerDialog({ owner, data, onClose }: { owner: string | null; data: any
               <TableRow>
                 <TableHead>Kund</TableHead>
                 <TableHead>Skärm</TableHead>
-                <TableHead>Fakturadatum</TableHead>
+                <TableHead>Orderdatum</TableHead>
                 <TableHead>SOV / visningar</TableHead>
                 <TableHead>Period</TableHead>
                 <TableHead className="text-right">Pris</TableHead>

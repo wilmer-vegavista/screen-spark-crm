@@ -54,7 +54,7 @@ export function generateScreenReportPdf(input: ScreenReportInput) {
   autoTable(doc, {
     startY: y + 20,
     margin: { left: M, right: M },
-    head: [["Kund", "Fakturadatum", "Går live", "Perioder", "Pris", "Belopp"]],
+    head: [["Kund", "Orderdatum", "Går live", "Perioder", "Pris", "Belopp"]],
     body: input.rows.map(r => [
       r.company,
       r.date ? fmtDate(new Date(r.date), "d MMM yyyy", { locale: sv }) : "—",
@@ -131,7 +131,7 @@ export function generateOwnerReportPdf(input: OwnerReportInput) {
   autoTable(doc, {
     startY: y + 20,
     margin: { left: M, right: M },
-    head: [["Kund", "Skärm", "Fakturadatum", "SOV / visningar", "Period", "Pris"]],
+    head: [["Kund", "Skärm", "Orderdatum", "SOV / visningar", "Period", "Pris"]],
     body: input.rows.map(r => [
       r.company,
       r.screen,
