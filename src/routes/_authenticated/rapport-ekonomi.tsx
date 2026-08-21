@@ -103,6 +103,107 @@ function periodRange(g: Granularity, year: number, idx: number) {
   return { from, to };
 }
 
+const periodUnitLabel: Record<string, [string, string]> = {
+  veckor: ["vecka", "veckor"],
+  manader: ["månad", "månader"],
+  ar: ["år", "år"],
+};
+
+function metricLabel(it: any) {
+  if (it.sov_pct != null && Number(it.sov_pct) > 0) return `${Number(it.sov_pct)}% SOV`;
+  if (it.impressions != null && Number(it.impressions) > 0)
+    return `${new Intl.NumberFormat("sv-SE").format(Number(it.impressions))} visningar/dag`;
+  return "—";
+}
+
+function periodTextOf(it: any) {
+  const n = Number(it.weeks || 1);
+  const pair = periodUnitLabel[it.period_unit as string] ?? periodUnitLabel.veckor;
+  return `${n} ${n === 1 ? pair[0] : pair[1]}`;
+}
+
+function computeRows(data: any, from: Date, to: Date) {
+  if (!data) return [] as any[];
+  const orderById = new Map<string, any>();
+  for (const o of data.orders) orderById.set((o as any).id, o);
+
+  type Agg = { name: string; revenue: number; count: number; detail: DetailRow[]; liveStart: Date | null; liveEnd: Date | null };
+  const byProduct = new Map<string, Agg>();
+  for (const it of data.items as any[]) {
+    const o = orderById.get(it.order_id);
+    if (!o) continue;
+    const total = Number(it.unit_price || 0) * Number(it.weeks || 1);
+    // Månads-/kvartals-/halvårsfakturerade ordrar räknas per faktureringstillfälle
+    const schedule = buildInvoiceSchedule(
+      o.invoice_start_date || o.created_at,
+      (o.billing_frequency ?? "engang") as BillingFrequency,
+      Number(o.billing_duration_months ?? 0),
+      total,
+    );
+    const recurring = (o.billing_frequency ?? "engang") !== "engang";
+    const hits = schedule.filter(e => e.date >= from && e.date <= to);
+    if (hits.length === 0) continue;
+    const key = it.product_id || `name:${it.product_name}`;
+    const cur: Agg = byProduct.get(key) ?? { name: it.product_name || "Okänd", revenue: 0, count: 0, detail: [], liveStart: null, liveEnd: null };
+    const live = orderLiveRange(o);
+    if (live) {
+      cur.liveStart = cur.liveStart && cur.liveStart < live.start ? cur.liveStart : live.start;
+      cur.liveEnd = cur.liveEnd && cur.liveEnd > live.end ? cur.liveEnd : live.end;
+    }
+    for (const h of hits) {
+      cur.revenue += h.amount;
+      cur.count += 1;
+      cur.detail.push({
+        orderId: it.order_id,
+        company:
+          (o.company_name || "Okänd kund") +
+          (recurring ? ` (delfaktura ${schedule.indexOf(h) + 1}/${schedule.length})` : ""),
+        date: h.date.toISOString(),
+        weeks: Number(it.weeks || 1),
+        unitPrice: recurring ? h.amount : Number(it.unit_price || 0),
+        amount: h.amount,
+        live: live ? liveLabel(live.start, live.end) : null,
+        metric: metricLabel(it),
+        period: periodTextOf(it),
+      });
+    }
+    byProduct.set(key, cur);
+  }
+
+  const list = data.products.map((p: ProductRow) => {
+    const agg = byProduct.get(p.id);
+    const revenue = agg?.revenue ?? 0;
+    const pct = Number(p.revenue_share_pct ?? 0);
+    return {
+      product: p,
+      name: p.name,
+      revenue,
+      orders: agg?.count ?? 0,
+      share: (revenue * pct) / 100,
+      net: revenue - (revenue * pct) / 100,
+      detail: agg?.detail ?? [],
+      live: liveLabel(agg?.liveStart ?? null, agg?.liveEnd ?? null)
+        ?? (p.live_date ? format(parseISO(p.live_date), "d MMM yyyy", { locale: sv }) : null),
+    };
+  });
+  for (const [key, agg] of byProduct) {
+    if (data.products.some((p: ProductRow) => p.id === key)) continue;
+    list.push({
+      product: null as any,
+      name: agg.name,
+      revenue: agg.revenue,
+      orders: agg.count,
+      share: 0,
+      net: agg.revenue,
+      detail: agg.detail,
+      live: liveLabel(agg.liveStart, agg.liveEnd),
+    });
+  }
+
+  return list.sort((a: any, b: any) => b.revenue - a.revenue);
+}
+
+
 function RapportEkonomiPage() {
   const { isAdmin } = useCurrentUser();
   if (!isAdmin) {
