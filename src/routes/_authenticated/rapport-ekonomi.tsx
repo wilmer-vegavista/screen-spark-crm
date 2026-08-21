@@ -348,7 +348,11 @@ function ReportView() {
               )}
               {ownerRows.map(o => (
                 <TableRow key={o.owner}>
-                  <TableCell className="font-medium">{o.owner}</TableCell>
+                  <TableCell className="font-medium">
+                    <button type="button" className="text-left hover:underline" onClick={() => setOwnerDetail(o.owner)}>
+                      {o.owner}
+                    </button>
+                  </TableCell>
                   <TableCell className="text-right">{o.screens}</TableCell>
                   <TableCell className="text-right">{SEK(o.revenue)}</TableCell>
                   <TableCell className="text-right">{SEK(o.share)}</TableCell>
