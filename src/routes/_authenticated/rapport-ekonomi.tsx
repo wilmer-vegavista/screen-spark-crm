@@ -437,6 +437,10 @@ function ReportView() {
         onClose={() => setDetail(null)}
       />
 
+      <OwnerDialog owner={ownerDetail} data={data} onClose={() => setOwnerDetail(null)} />
+
+
+
       <EditDialog
         product={editing}
         onClose={() => setEditing(null)}
