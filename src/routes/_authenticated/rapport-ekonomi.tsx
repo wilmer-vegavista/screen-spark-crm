@@ -13,8 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Pencil, FileDown } from "lucide-react";
-import { generateScreenReportPdf } from "@/lib/screen-report-pdf";
-import { format, parseISO, addMonths, startOfISOWeek, endOfISOWeek, setISOWeek, setISOWeekYear, min as dmin, max as dmax } from "date-fns";
+import { generateScreenReportPdf, generateOwnerReportPdf } from "@/lib/screen-report-pdf";
+import { format, parseISO, addMonths, addWeeks, addQuarters, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfISOWeek, endOfISOWeek, setISOWeek, setISOWeekYear, min as dmin, max as dmax } from "date-fns";
 import { sv } from "date-fns/locale";
 import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
 
@@ -597,6 +597,132 @@ function DetailDialog({
                 sharePct: pct,
                 periodLabel,
                 rows: row.detail ?? [],
+              })
+            }
+          >
+            <FileDown className="size-4" /> Exportera PDF
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type OwnerScope = "vecka" | "manad" | "kvartal";
+
+function ownerScopeRange(scope: OwnerScope, offset: number) {
+  const base = new Date();
+  if (scope === "vecka") {
+    const d = addWeeks(base, offset);
+    return { from: startOfWeek(d, { locale: sv }), to: endOfWeek(d, { locale: sv }) };
+  }
+  if (scope === "manad") {
+    const d = addMonths(base, offset);
+    return { from: startOfMonth(d), to: endOfMonth(d) };
+  }
+  const d = addQuarters(base, offset);
+  return { from: startOfQuarter(d), to: endOfQuarter(d) };
+}
+
+function OwnerDialog({ owner, data, onClose }: { owner: string | null; data: any; onClose: () => void }) {
+  const [scope, setScope] = useState<OwnerScope>("manad");
+  const [offset, setOffset] = useState(0);
+
+  const { from, to } = ownerScopeRange(scope, offset);
+  const periodLabel = `${format(from, "d MMM yyyy", { locale: sv })} – ${format(to, "d MMM yyyy", { locale: sv })}`;
+
+  const { rows, total, sharePct, share } = useMemo(() => {
+    if (!owner || !data) return { rows: [] as any[], total: 0, sharePct: null as number | null, share: 0 };
+    const all = computeRows(data, from, to);
+    const mine = all.filter((r: any) => (r.product?.owner_name?.trim() || "Utan ägare") === owner);
+    const list: any[] = [];
+    let sum = 0;
+    let shareSum = 0;
+    for (const r of mine) {
+      const pct = Number(r.product?.revenue_share_pct ?? 0);
+      for (const d of r.detail as DetailRow[]) {
+        list.push({
+          company: d.company,
+          screen: r.name,
+          date: d.date,
+          metric: d.metric ?? "—",
+          period: d.period ?? `${d.weeks}`,
+          amount: d.amount,
+        });
+        sum += d.amount;
+        shareSum += (d.amount * pct) / 100;
+      }
+    }
+    list.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const pctAvg = sum > 0 ? Math.round((shareSum / sum) * 1000) / 10 : null;
+    return { rows: list, total: sum, sharePct: pctAvg, share: shareSum };
+  }, [owner, data, from.getTime(), to.getTime()]);
+
+  return (
+    <Dialog open={!!owner} onOpenChange={o => !o && onClose()}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader><DialogTitle>Bokningar – {owner}</DialogTitle></DialogHeader>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={scope} onValueChange={v => { setScope(v as OwnerScope); setOffset(0); }}>
+            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="vecka">Veckan</SelectItem>
+              <SelectItem value="manad">Månaden</SelectItem>
+              <SelectItem value="kvartal">Kvartalet</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={() => setOffset(o => o - 1)}>Föregående</Button>
+          <Button variant="outline" size="sm" onClick={() => setOffset(0)}>Nu</Button>
+          <Button variant="outline" size="sm" onClick={() => setOffset(o => o + 1)}>Nästa</Button>
+          <span className="text-xs text-muted-foreground ml-auto">{periodLabel}</span>
+        </div>
+
+        <div className="max-h-[50vh] overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Kund</TableHead>
+                <TableHead>Skärm</TableHead>
+                <TableHead>Fakturadatum</TableHead>
+                <TableHead>SOV / visningar</TableHead>
+                <TableHead>Period</TableHead>
+                <TableHead className="text-right">Pris</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.length === 0 && (
+                <TableRow><TableCell colSpan={6} className="text-sm text-muted-foreground">Inga bokningar i perioden</TableCell></TableRow>
+              )}
+              {rows.map((r, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-medium">{r.company}</TableCell>
+                  <TableCell className="text-sm">{r.screen}</TableCell>
+                  <TableCell className="text-sm">{format(parseISO(r.date), "d MMM yyyy", { locale: sv })}</TableCell>
+                  <TableCell className="text-sm">{r.metric}</TableCell>
+                  <TableCell className="text-sm">{r.period}</TableCell>
+                  <TableCell className="text-right font-medium">{SEK(r.amount)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-3 text-sm">
+          <div><span className="text-muted-foreground">Total intäkt:</span> <b>{SEK(total)}</b></div>
+          <div><span className="text-muted-foreground">Till ägare:</span> <b>{SEK(share)}</b></div>
+          <div><span className="text-muted-foreground">Kvar till oss:</span> <b>{SEK(total - share)}</b></div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Stäng</Button>
+          <Button
+            onClick={() =>
+              generateOwnerReportPdf({
+                ownerName: owner || "",
+                periodLabel,
+                sharePct,
+                rows,
               })
             }
           >
