@@ -151,7 +151,14 @@ function OrderPage() {
     try {
       await deleteOrders({ data: { ids: Array.from(selectedIds) } });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      queryClient.invalidateQueries({ queryKey: ["my-order-commissions"] });
+      queryClient.invalidateQueries({ predicate: (q) => {
+        const k = q.queryKey[0];
+        return k === "salary" || k === "all-sellers-salary";
+      } });
       toast.success(`${selectedIds.size} order${selectedIds.size === 1 ? "" : "r"} borttagna`);
+
       exitSelectMode();
     } catch (err: any) {
       toast.error("Kunde inte ta bort ordrar: " + (err?.message || "Okänt fel"));
