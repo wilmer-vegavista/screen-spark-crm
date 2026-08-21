@@ -227,6 +227,7 @@ function ReportView() {
   const [periodIdx, setPeriodIdx] = useState(now.getMonth());
   const [editing, setEditing] = useState<ProductRow | null>(null);
   const [detail, setDetail] = useState<any | null>(null);
+  const [ownerDetail, setOwnerDetail] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["rapport-ekonomi"],
