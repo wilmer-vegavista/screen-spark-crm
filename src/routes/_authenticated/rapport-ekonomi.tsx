@@ -40,6 +40,8 @@ type DetailRow = {
   unitPrice: number;
   amount: number;
   live?: string | null;
+  metric?: string;
+  period?: string;
 };
 
 /** Live-perioden för en order: valda exakta datum, annars valda veckor, annars fakturastart */
