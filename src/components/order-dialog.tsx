@@ -560,7 +560,11 @@ export function OrderDialog({
           amount: subtotal,
           screens: items.map((i) => i.product_name).filter(Boolean).join(", ") || "—",
         },
-      }).catch(() => {});
+      })
+        .then((r: any) => {
+          if (r && r.ok === false) toast.error("Slack: " + (r.error || "kunde inte posta"));
+        })
+        .catch((e: any) => toast.error("Slack-notis misslyckades: " + (e?.message || "okänt fel")));
     }
 
     setSaving(false);
