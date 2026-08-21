@@ -553,18 +553,19 @@ export function OrderDialog({
         (sellerProfile?.full_name && String(sellerProfile.full_name).trim()) ||
         sellerProfile?.email ||
         "Okänd säljare";
-      postSaleToSlack({
-        data: {
-          seller: sellerName,
-          company: form.company_name || "Okänd kund",
-          amount: subtotal,
-          screens: items.map((i) => i.product_name).filter(Boolean).join(", ") || "—",
-        },
-      })
-        .then((r: any) => {
-          if (r && r.ok === false) toast.error("Slack: " + (r.error || "kunde inte posta"));
-        })
-        .catch((e: any) => toast.error("Slack-notis misslyckades: " + (e?.message || "okänt fel")));
+      try {
+        const r: any = await postSaleToSlack({
+          data: {
+            seller: sellerName,
+            company: form.company_name || "Okänd kund",
+            amount: subtotal,
+            screens: items.map((i) => i.product_name).filter(Boolean).join(", ") || "—",
+          },
+        });
+        if (r && r.ok === false) toast.error("Slack: " + (r.error || "kunde inte posta"));
+      } catch (e: any) {
+        toast.error("Slack-notis misslyckades: " + (e?.message || "okänt fel"));
+      }
     }
 
     setSaving(false);
