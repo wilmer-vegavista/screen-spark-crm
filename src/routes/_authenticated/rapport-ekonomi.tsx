@@ -250,7 +250,7 @@ function ReportView() {
   const rows = useMemo(() => computeRows(data, from, to), [data, from.getTime(), to.getTime()]);
 
   const totals = rows.reduce(
-    (s, r) => ({ revenue: s.revenue + r.revenue, share: s.share + r.share, net: s.net + r.net }),
+    (s: any, r: any) => ({ revenue: s.revenue + r.revenue, share: s.share + r.share, net: s.net + r.net }),
     { revenue: 0, share: 0, net: 0 },
   );
 
@@ -386,7 +386,7 @@ function ReportView() {
               {!isLoading && rows.length === 0 && (
                 <TableRow><TableCell colSpan={9} className="text-sm text-muted-foreground">Inga skärmar</TableCell></TableRow>
               )}
-              {rows.map((r, i) => (
+              {rows.map((r: any, i: number) => (
                 <TableRow key={r.product?.id ?? `x-${i}`}>
                   <TableCell className="font-medium">
                     <button
