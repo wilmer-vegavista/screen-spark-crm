@@ -1260,21 +1260,26 @@ export function OrderDialog({
               <div>
                 <Label className="text-xs">Faktureringsfrekvens</Label>
                 <Select
-                  value={form.billing_frequency}
-                  onValueChange={(v: BillingFrequency) => setForm(f => ({
-                    ...f,
-                    billing_frequency: v,
-                    billing_duration_months: v === "engang" ? 1 : (f.billing_duration_months > 1 ? f.billing_duration_months : 12),
-                  }))}
+                  value={form.billing_frequency === "manad" && form.billing_duration_months === 3 ? "delat3" : form.billing_frequency}
+                  onValueChange={(v: BillingFrequency | "delat3") => setForm(f => {
+                    if (v === "delat3") return { ...f, billing_frequency: "manad" as BillingFrequency, billing_duration_months: 3 };
+                    return {
+                      ...f,
+                      billing_frequency: v,
+                      billing_duration_months: v === "engang" ? 1 : (f.billing_duration_months > 1 ? f.billing_duration_months : 12),
+                    };
+                  })}
                 >
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="engang">Engångsfaktura</SelectItem>
+                    <SelectItem value="delat3">Delas på 3 (3 månader)</SelectItem>
                     <SelectItem value="manad">Månadsvis</SelectItem>
                     <SelectItem value="kvartal">Kvartalsvis</SelectItem>
                     <SelectItem value="halvar">Halvårsvis</SelectItem>
                   </SelectContent>
                 </Select>
+
               </div>
               {form.billing_frequency !== "engang" && (
                 <div>
