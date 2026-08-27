@@ -11,12 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
 import { toast } from "sonner";
 import { Pencil, FileDown } from "lucide-react";
 import { generateScreenReportPdf, generateOwnerReportPdf } from "@/lib/screen-report-pdf";
 import { format, parseISO, addMonths, addWeeks, addQuarters, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfISOWeek, endOfISOWeek, setISOWeek, setISOWeekYear, min as dmin, max as dmax } from "date-fns";
 import { sv } from "date-fns/locale";
-import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
+import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/lib/billing";
 
 export const Route = createFileRoute("/_authenticated/rapport-ekonomi")({
   head: () => ({
@@ -279,7 +281,17 @@ function ReportView() {
         description="Intäkt per skärm, ägare, fördelning och live-datum"
       />
       <div className="p-6 space-y-5">
+        <Tabs defaultValue="skarmar" className="space-y-5">
+          <TabsList>
+            <TabsTrigger value="skarmar">Skärmar</TabsTrigger>
+            <TabsTrigger value="abonnemang">Abonnemang</TabsTrigger>
+          </TabsList>
+          <TabsContent value="abonnemang" className="space-y-5">
+            <SubscriptionTab data={data} year={year} setYear={setYear} years={years} />
+          </TabsContent>
+          <TabsContent value="skarmar" className="space-y-5">
         <Card className="p-4 flex flex-wrap items-end gap-3">
+
           <div className="space-y-1">
             <Label className="text-xs">Period</Label>
             <Select
@@ -428,8 +440,11 @@ function ReportView() {
               )}
             </TableBody>
           </Table>
-        </Card>
+          </Card>
+          </TabsContent>
+        </Tabs>
       </div>
+
 
       <DetailDialog
         row={detail}
@@ -731,5 +746,170 @@ function OwnerDialog({ owner, data, onClose }: { owner: string | null; data: any
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function SubscriptionTab({
+  data,
+  year,
+  setYear,
+  years,
+}: {
+  data: any;
+  year: number;
+  setYear: (y: number) => void;
+  years: number[];
+}) {
+  const { months, orders, total } = useMemo(() => {
+    const months = Array.from({ length: 12 }, (_, i) => ({ month: i, amount: 0, count: 0 }));
+    const list: any[] = [];
+    if (!data) return { months, orders: list, total: 0 };
+
+    const totalByOrder = new Map<string, number>();
+    for (const it of data.items as any[]) {
+      const t = Number(it.unit_price || 0) * Number(it.weeks || 1);
+      totalByOrder.set(it.order_id, (totalByOrder.get(it.order_id) ?? 0) + t);
+    }
+
+    let sum = 0;
+    for (const o of data.orders as any[]) {
+      const freq = (o.billing_frequency ?? "engang") as BillingFrequency;
+      if (freq === "engang") continue;
+      const orderTotal = totalByOrder.get(o.id) ?? 0;
+      if (!orderTotal) continue;
+      const schedule = buildInvoiceSchedule(
+        o.invoice_start_date || o.created_at,
+        freq,
+        Number(o.billing_duration_months ?? 0),
+        orderTotal,
+      );
+      const hits = schedule.filter(e => e.date.getFullYear() === year);
+      if (hits.length === 0) continue;
+      let orderYearSum = 0;
+      for (const h of hits) {
+        months[h.date.getMonth()].amount += h.amount;
+        months[h.date.getMonth()].count += 1;
+        orderYearSum += h.amount;
+        sum += h.amount;
+      }
+      list.push({
+        id: o.id,
+        company: o.company_name || "Okänd kund",
+        frequency: freq,
+        installment: hits[0].amount,
+        installments: schedule.length,
+        inYear: hits.length,
+        start: schedule[0].date,
+        end: schedule[schedule.length - 1].date,
+        yearSum: orderYearSum,
+        total: orderTotal,
+      });
+    }
+    list.sort((a, b) => b.yearSum - a.yearSum);
+    return { months, orders: list, total: sum };
+  }, [data, year]);
+
+  const activeMonths = months.filter(m => m.amount > 0).length;
+  const maxAmount = Math.max(1, ...months.map(m => m.amount));
+
+  return (
+    <>
+      <Card className="p-4 flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <Label className="text-xs">År</Label>
+          <Select value={String(year)} onValueChange={v => setYear(Number(v))}>
+            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="ml-auto text-xs text-muted-foreground">
+          Ordrar med uppdelad fakturering (månad, kvartal, halvår)
+        </div>
+      </Card>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Stat label={`Återkommande ${year}`} value={SEK(total)} />
+        <Stat label="Snitt per månad" value={SEK(activeMonths ? total / activeMonths : 0)} />
+        <Stat label="Aktiva abonnemang" value={String(orders.length)} />
+      </div>
+
+      <Card>
+        <div className="px-4 pt-4 pb-2 text-sm font-semibold">Per månad</div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Månad</TableHead>
+              <TableHead>Fördelning</TableHead>
+              <TableHead className="text-right">Fakturor</TableHead>
+              <TableHead className="text-right">Belopp</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {months.map(m => (
+              <TableRow key={m.month}>
+                <TableCell className="font-medium capitalize">
+                  {format(new Date(year, m.month, 1), "MMMM", { locale: sv })}
+                </TableCell>
+                <TableCell>
+                  <div className="h-2 w-full max-w-56 rounded-full bg-muted">
+                    <div
+                      className="h-2 rounded-full bg-primary"
+                      style={{ width: `${(m.amount / maxAmount) * 100}%` }}
+                    />
+                  </div>
+                </TableCell>
+                <TableCell className="text-right text-sm">{m.count}</TableCell>
+                <TableCell className="text-right font-medium">{SEK(m.amount)}</TableCell>
+              </TableRow>
+            ))}
+            <TableRow className="bg-muted/40 font-semibold">
+              <TableCell colSpan={3}>Totalt {year}</TableCell>
+              <TableCell className="text-right">{SEK(total)}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </Card>
+
+      <Card>
+        <div className="px-4 pt-4 pb-2 text-sm font-semibold">Abonnemang</div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Kund</TableHead>
+              <TableHead>Fakturering</TableHead>
+              <TableHead>Period</TableHead>
+              <TableHead className="text-right">Per faktura</TableHead>
+              <TableHead className="text-right">Fakturor {year}</TableHead>
+              <TableHead className="text-right">Belopp {year}</TableHead>
+              <TableHead className="text-right">Ordervärde</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {orders.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="text-sm text-muted-foreground">
+                  Inga abonnemang detta år
+                </TableCell>
+              </TableRow>
+            )}
+            {orders.map(o => (
+              <TableRow key={o.id}>
+                <TableCell className="font-medium">{o.company}</TableCell>
+                <TableCell className="text-sm">{frequencyLabels[o.frequency as BillingFrequency]}</TableCell>
+                <TableCell className="text-sm whitespace-nowrap">
+                  {format(o.start, "MMM yyyy", { locale: sv })} – {format(o.end, "MMM yyyy", { locale: sv })}
+                </TableCell>
+                <TableCell className="text-right text-sm">{SEK(o.installment)}</TableCell>
+                <TableCell className="text-right text-sm">{o.inYear} / {o.installments}</TableCell>
+                <TableCell className="text-right font-medium">{SEK(o.yearSum)}</TableCell>
+                <TableCell className="text-right text-sm">{SEK(o.total)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+    </>
   );
 }
