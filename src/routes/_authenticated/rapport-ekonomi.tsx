@@ -279,7 +279,17 @@ function ReportView() {
         description="Intäkt per skärm, ägare, fördelning och live-datum"
       />
       <div className="p-6 space-y-5">
+        <Tabs defaultValue="skarmar" className="space-y-5">
+          <TabsList>
+            <TabsTrigger value="skarmar">Skärmar</TabsTrigger>
+            <TabsTrigger value="abonnemang">Abonnemang</TabsTrigger>
+          </TabsList>
+          <TabsContent value="abonnemang" className="space-y-5">
+            <SubscriptionTab data={data} year={year} setYear={setYear} years={years} />
+          </TabsContent>
+          <TabsContent value="skarmar" className="space-y-5">
         <Card className="p-4 flex flex-wrap items-end gap-3">
+
           <div className="space-y-1">
             <Label className="text-xs">Period</Label>
             <Select
