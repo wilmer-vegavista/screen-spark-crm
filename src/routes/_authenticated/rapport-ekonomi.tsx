@@ -438,8 +438,11 @@ function ReportView() {
               )}
             </TableBody>
           </Table>
-        </Card>
+          </Card>
+          </TabsContent>
+        </Tabs>
       </div>
+
 
       <DetailDialog
         row={detail}
