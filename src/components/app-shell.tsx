@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
 import { RecentSalesPanel } from "@/components/recent-sales";
+import { CelebrationSongDialog } from "@/components/celebration-song-dialog";
 import { GlobalSearch } from "@/components/global-search";
 import vegaVistaLogo from "@/assets/vega-vista-logo-mark.png";
 
@@ -139,7 +140,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div />
           <GlobalSearch />
           <div className="flex items-center justify-end gap-4">
-            <RecentSalesPanel />
+            <div className="flex justify-end gap-2"><CelebrationSongDialog /><RecentSalesPanel /></div>
             <img
               src={vegaVistaLogo}
               alt="Vega Vista"
