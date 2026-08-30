@@ -137,7 +137,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 py-3 border-b border-border/70 bg-background/70 backdrop-blur-xl sticky top-0 z-40">
           <div />
           <GlobalSearch />
-          <div className="flex justify-end"><RecentSalesPanel /></div>
+          <div className="flex items-center justify-end gap-4">
+            <RecentSalesPanel />
+            <img
+              src="/__l5e/assets-v1/e7f7e2a8-7f9d-4e0d-a296-adeeed75e2d1/vega-vista-logo.png"
+              alt="Vega Vista"
+              className="h-6 w-auto object-contain shrink-0"
+            />
+          </div>
         </div>
         {children}
       </main>
