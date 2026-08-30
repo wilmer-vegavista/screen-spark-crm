@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SlackDebugRouteImport } from './routes/slack-debug'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -31,6 +32,11 @@ import { Route as AuthenticatedAvslutadRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAnvandareRouteImport } from './routes/_authenticated/anvandare'
 import { Route as AuthenticatedAktiviteterRouteImport } from './routes/_authenticated/aktiviteter'
 
+const SlackDebugRoute = SlackDebugRouteImport.update({
+  id: '/slack-debug',
+  path: '/slack-debug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -142,6 +148,7 @@ const AuthenticatedAktiviteterRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/slack-debug': typeof SlackDebugRoute
   '/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/anvandare': typeof AuthenticatedAnvandareRoute
   '/avslutad': typeof AuthenticatedAvslutadRoute
@@ -164,6 +171,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/slack-debug': typeof SlackDebugRoute
   '/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/anvandare': typeof AuthenticatedAnvandareRoute
   '/avslutad': typeof AuthenticatedAvslutadRoute
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/slack-debug': typeof SlackDebugRoute
   '/_authenticated/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/_authenticated/anvandare': typeof AuthenticatedAnvandareRoute
   '/_authenticated/avslutad': typeof AuthenticatedAvslutadRoute
@@ -212,6 +221,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/slack-debug'
     | '/aktiviteter'
     | '/anvandare'
     | '/avslutad'
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/slack-debug'
     | '/aktiviteter'
     | '/anvandare'
     | '/avslutad'
@@ -257,6 +268,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/slack-debug'
     | '/_authenticated/aktiviteter'
     | '/_authenticated/anvandare'
     | '/_authenticated/avslutad'
@@ -281,10 +293,18 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  SlackDebugRoute: typeof SlackDebugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/slack-debug': {
+      id: '/slack-debug'
+      path: '/slack-debug'
+      fullPath: '/slack-debug'
+      preLoaderRoute: typeof SlackDebugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -484,6 +504,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  SlackDebugRoute: SlackDebugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
