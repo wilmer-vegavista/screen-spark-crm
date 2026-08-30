@@ -79,7 +79,7 @@ function Kunder() {
     (orders ?? []).forEach((o: any) => {
       if (!o.customer_id) return;
       const cur = m.get(o.customer_id) ?? { total: 0, quoteTotal: 0, orders: 0, quotes: 0, screens: new Set<string>() };
-      if (o.order_type === "order") {
+      if (o.order_type === "bokning") {
         cur.total += Number(o.total_excl_vat || 0);
         cur.orders += 1;
       } else {

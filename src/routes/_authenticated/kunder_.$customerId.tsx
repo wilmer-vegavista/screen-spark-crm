@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Building2, Mail, Phone, MapPin, Pencil, Plus, Loader2,
   FileText, Receipt, MonitorPlay, CalendarClock, Briefcase, Hash,
+  MessageSquare, Trash2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/kunder_/$customerId")({
@@ -70,8 +71,9 @@ function KundSida() {
 
   const stats = useMemo(() => {
     const all = orders ?? [];
-    const confirmed = all.filter((o: any) => o.order_type === "order");
-    const quotes = all.filter((o: any) => o.order_type !== "order");
+    // "bokning" är detsamma som en order; "offert" är ännu inte bekräftad
+    const confirmed = all.filter((o: any) => o.order_type === "bokning");
+    const quotes = all.filter((o: any) => o.order_type === "offert");
     return {
       orderCount: confirmed.length,
       quoteCount: quotes.length,
@@ -195,12 +197,13 @@ function KundSida() {
               </TabsList>
 
               <TabsContent value="ordrar" className="mt-3">
-                <OrderList orders={(orders ?? []).filter((o: any) => o.order_type === "order")} empty="Inga ordrar ännu" />
+                <OrderList orders={(orders ?? []).filter((o: any) => o.order_type === "bokning")} empty="Inga ordrar ännu" />
               </TabsContent>
               <TabsContent value="offerter" className="mt-3">
-                <OrderList orders={(orders ?? []).filter((o: any) => o.order_type !== "order")} empty="Inga offerter ännu" />
+                <OrderList orders={(orders ?? []).filter((o: any) => o.order_type === "offert")} empty="Inga offerter ännu" />
               </TabsContent>
-              <TabsContent value="aktiviteter" className="mt-3">
+              <TabsContent value="aktiviteter" className="mt-3 space-y-4">
+                <CommentsSection customerId={customerId} />
                 <ActivityList activities={activities ?? []} customerId={customerId} onAdd={() => setActivityOpen(true)} />
               </TabsContent>
               <TabsContent value="skarmar" className="mt-3">
@@ -244,7 +247,7 @@ function OrderList({ orders, empty }: { orders: any[]; empty: string }) {
         <Card key={o.id} className="p-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
-              <div className="font-medium text-sm">{o.order_type === "order" ? "Order" : "Offert"} • {new Date(o.created_at).toLocaleDateString("sv-SE")}</div>
+              <div className="font-medium text-sm">{o.order_type === "offert" ? "Offert" : "Bokning"} • {new Date(o.created_at).toLocaleDateString("sv-SE")}</div>
               <div className="text-xs text-muted-foreground">
                 {(o.order_items?.length ?? 0)} rader
                 {o.invoice_reference ? ` • Ref: ${o.invoice_reference}` : ""}
@@ -268,6 +271,101 @@ function OrderList({ orders, empty }: { orders: any[]; empty: string }) {
           )}
         </Card>
       ))}
+    </div>
+  );
+}
+
+function CommentsSection({ customerId }: { customerId: string }) {
+  const qc = useQueryClient();
+  const [body, setBody] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const { data: me } = useQuery({
+    queryKey: ["me"],
+    queryFn: async () => (await supabase.auth.getUser()).data.user,
+  });
+
+  const { data: comments } = useQuery({
+    queryKey: ["customer-comments", customerId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("customer_comments")
+        .select("*")
+        .eq("customer_id", customerId)
+        .order("created_at", { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  const { data: profiles } = useQuery({
+    queryKey: ["profiles-names"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("id, full_name");
+      return data ?? [];
+    },
+  });
+  const nameOf = (id: string | null) => profiles?.find((p: any) => p.id === id)?.full_name || "Okänd";
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!body.trim() || !me) return;
+    setSaving(true);
+    const { error } = await supabase.from("customer_comments").insert({
+      customer_id: customerId, body: body.trim(), created_by: me.id,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    setBody("");
+    qc.invalidateQueries({ queryKey: ["customer-comments", customerId] });
+  };
+
+  const remove = async (c: any) => {
+    if (!confirm("Ta bort kommentaren?")) return;
+    const { error } = await supabase.from("customer_comments").delete().eq("id", c.id);
+    if (error) return toast.error(error.message);
+    qc.invalidateQueries({ queryKey: ["customer-comments", customerId] });
+  };
+
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold flex items-center gap-1.5">
+        <MessageSquare className="size-4" /> Kommentarer {comments?.length ? `(${comments.length})` : ""}
+      </h3>
+      <form onSubmit={submit} className="space-y-2">
+        <Textarea
+          placeholder="Skriv en kommentar..."
+          value={body}
+          onChange={e => setBody(e.target.value)}
+          rows={2}
+        />
+        <div className="flex justify-end">
+          <Button type="submit" size="sm" disabled={saving || !body.trim()}>
+            {saving ? <Loader2 className="size-4 animate-spin mr-1" /> : <Plus className="size-4 mr-1" />}
+            Lägg till kommentar
+          </Button>
+        </div>
+      </form>
+      {(comments ?? []).length > 0 && (
+        <Card className="divide-y">
+          {(comments ?? []).map((c: any) => (
+            <div key={c.id} className="p-3 flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">{nameOf(c.created_by)}</span>
+                  {" • "}
+                  {format(new Date(c.created_at), "d MMM yyyy HH:mm", { locale: sv })}
+                </div>
+                <p className="text-sm mt-1 whitespace-pre-wrap break-words">{c.body}</p>
+              </div>
+              {c.created_by === me?.id && (
+                <Button size="icon" variant="ghost" className="shrink-0 text-destructive size-7" onClick={() => remove(c)}>
+                  <Trash2 className="size-3.5" />
+                </Button>
+              )}
+            </div>
+          ))}
+        </Card>
+      )}
     </div>
   );
 }
