@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,12 +45,23 @@ function pickPct(deal: any, product: any, compType: string, defaultPct: number) 
   return defaultPct;
 }
 
+type OrderLite = {
+  id: string;
+  company_name: string | null;
+  total_excl_vat: number | null;
+  owner_id: string | null;
+  order_type: string | null;
+  created_at: string | null;
+};
+
 function Dashboard() {
   const { user, isAdmin } = useCurrentUser();
   const [leaderboardSeller, setLeaderboardSeller] = useState<string>("all");
   const [dayOffset, setDayOffset] = useState(0);
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [orderDrill, setOrderDrill] = useState<{ title: string; orders: OrderLite[] } | null>(null);
+  const navigate = useNavigate();
   const now = new Date();
   const yearStart = startOfYear(now);
   const yearEnd = endOfYear(now);
@@ -276,14 +287,20 @@ function Dashboard() {
   const dayEnd = endOfDay(dayStart);
   const weekStart = startOfWeek(addWeeks(now, weekOffset), { weekStartsOn: 1 });
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-  let todaySales = 0, todayCount = 0, weekSales = 0, weekCount = 0;
+  let todaySales = 0, weekSales = 0;
+  const todayOrders: OrderLite[] = [];
+  const weekOrders: OrderLite[] = [];
   for (const o of data?.orders ?? []) {
     if (!o.created_at) continue;
     const created = new Date(o.created_at);
     const amount = Number(o.total_excl_vat ?? 0);
-    if (created >= weekStart && created <= weekEnd) { weekSales += amount; weekCount++; }
-    if (created >= dayStart && created <= dayEnd) { todaySales += amount; todayCount++; }
+    if (created >= weekStart && created <= weekEnd) { weekSales += amount; weekOrders.push(o); }
+    if (created >= dayStart && created <= dayEnd) { todaySales += amount; todayOrders.push(o); }
   }
+  todayOrders.sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime());
+  weekOrders.sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime());
+  const todayCount = todayOrders.length;
+  const weekCount = weekOrders.length;
   const dayLabel = dayOffset === 0 ? "idag" : format(dayStart, "d MMM yyyy");
   const weekLabel = weekOffset === 0
     ? "denna vecka"
@@ -317,6 +334,7 @@ function Dashboard() {
             onNext={() => setDayOffset(o => o + 1)}
             onReset={() => setDayOffset(0)}
             isCurrent={dayOffset === 0}
+            onShowOrders={() => setOrderDrill({ title: `Dagens försäljning (${dayLabel})`, orders: todayOrders })}
           />
           <NavStat
             label="Veckans försäljning"
@@ -328,6 +346,7 @@ function Dashboard() {
             onNext={() => setWeekOffset(o => o + 1)}
             onReset={() => setWeekOffset(0)}
             isCurrent={weekOffset === 0}
+            onShowOrders={() => setOrderDrill({ title: `Veckans försäljning (${weekLabel})`, orders: weekOrders })}
           />
         </div>
 
@@ -606,6 +625,50 @@ function Dashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={orderDrill != null} onOpenChange={(o) => !o && setOrderDrill(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{orderDrill?.title}</DialogTitle>
+          </DialogHeader>
+          {(orderDrill?.orders.length ?? 0) === 0 ? (
+            <div className="text-sm text-muted-foreground py-8 text-center">Inga ordrar registrerade i perioden</div>
+          ) : (
+            <div className="space-y-2">
+              {orderDrill!.orders.map((o) => {
+                const p = o.owner_id ? profileMap.get(o.owner_id) : null;
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => {
+                      setOrderDrill(null);
+                      void navigate({ to: "/order", search: { order: o.id, product: undefined } });
+                    }}
+                    className="w-full text-left flex items-center gap-3 rounded-lg border border-border p-3 hover:bg-accent/40 hover:border-primary/50 transition-colors cursor-pointer"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{o.company_name || "Okänd kund"}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {(p as any)?.full_name || (p as any)?.email || "Okänd säljare"}
+                        {o.created_at && ` · ${format(new Date(o.created_at), "d MMM HH:mm")}`}
+                        {o.order_type && ` · ${o.order_type}`}
+                      </div>
+                    </div>
+                    <div className="text-sm font-semibold whitespace-nowrap">{fmt(Number(o.total_excl_vat ?? 0))}</div>
+                  </button>
+                );
+              })}
+              <div className="flex justify-between border-t border-border pt-3 text-sm">
+                <span className="text-muted-foreground">Totalt</span>
+                <span className="font-semibold">
+                  {fmt(orderDrill!.orders.reduce((s, o) => s + Number(o.total_excl_vat ?? 0), 0))}
+                </span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -621,6 +684,7 @@ function NavStat({
   onNext,
   onReset,
   isCurrent,
+  onShowOrders,
 }: {
   label: string;
   periodLabel: string;
@@ -632,6 +696,7 @@ function NavStat({
   onNext: () => void;
   onReset: () => void;
   isCurrent: boolean;
+  onShowOrders?: () => void;
 }) {
   return (
     <Card className={`p-4 ${accent ? "border-primary/40" : ""}`}>
@@ -654,8 +719,22 @@ function NavStat({
           <Icon className="size-4 text-muted-foreground ml-1" />
         </div>
       </div>
-      <div className={`mt-2 text-2xl font-semibold ${accent ? "text-primary" : ""}`}>{value}</div>
-      {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
+      {onShowOrders ? (
+        <button
+          type="button"
+          onClick={onShowOrders}
+          className="block w-full text-left rounded-md -mx-1 px-1 hover:bg-accent/50 transition-colors cursor-pointer"
+          title="Visa ordrarna"
+        >
+          <div className={`mt-2 text-2xl font-semibold ${accent ? "text-primary" : ""}`}>{value}</div>
+          {sub && <div className="mt-1 text-xs text-muted-foreground underline decoration-dotted underline-offset-2">{sub}</div>}
+        </button>
+      ) : (
+        <>
+          <div className={`mt-2 text-2xl font-semibold ${accent ? "text-primary" : ""}`}>{value}</div>
+          {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
+        </>
+      )}
     </Card>
   );
 }
