@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Music4, Play, Search, Square, Trash2, Upload } from "lucide-react";
+import { Music4, Play, Search, Square, Trash2, Upload, Youtube } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { searchSongs, type SongSearchResult } from "@/lib/songs.functions";
+import { parseYouTubeId, isYouTubeUrl, loadYouTubeApi } from "@/lib/youtube";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,9 +30,13 @@ export function CelebrationSongDialog() {
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<SongSearchResult[]>([]);
+  const [ytUrl, setYtUrl] = useState("");
+  const [ytLoadedId, setYtLoadedId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInput = useRef<HTMLInputElement | null>(null);
+  const ytContainer = useRef<HTMLDivElement | null>(null);
+  const ytPlayer = useRef<any>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -45,25 +50,41 @@ export function CelebrationSongDialog() {
         .select("celebration_song_url, celebration_song_start")
         .eq("id", userId)
         .maybeSingle();
-      setSongUrl(p?.celebration_song_url ?? null);
+      const url = p?.celebration_song_url ?? null;
+      setSongUrl(url);
       setStart(Number(p?.celebration_song_start) || 0);
-      setSongLabel(null);
+      setSongLabel(url && isYouTubeUrl(url) ? "YouTube-video" : null);
       setDuration(null);
       setResults([]);
       setQuery("");
+      setYtUrl(url && isYouTubeUrl(url) ? url : "");
+      setYtLoadedId(null);
     })();
-    return () => stopPreview();
+    return () => {
+      stopPreview();
+      destroyYtPlayer();
+    };
   }, [open]);
+
+  const destroyYtPlayer = () => {
+    try {
+      ytPlayer.current?.destroy?.();
+    } catch { /* ignore */ }
+    ytPlayer.current = null;
+  };
 
   const stopPreview = () => {
     if (stopTimer.current) clearTimeout(stopTimer.current);
     stopTimer.current = null;
     audioRef.current?.pause();
     audioRef.current = null;
+    try {
+      ytPlayer.current?.pauseVideo?.();
+    } catch { /* ignore */ }
     setPlaying(false);
   };
 
-  const previewFrom = (url: string, from: number) => {
+  const previewAudioFrom = (url: string, from: number) => {
     stopPreview();
     const audio = new Audio(url);
     audioRef.current = audio;
@@ -75,7 +96,43 @@ export function CelebrationSongDialog() {
     }).catch(() => toast.error("Kunde inte spela upp låten"));
   };
 
-  const saveSong = async (url: string | null, startAt: number, label?: string) => {
+  const previewSaved = () => {
+    if (!songUrl) return;
+    if (isYouTubeUrl(songUrl)) {
+      if (!ytPlayer.current) {
+        toast.info("Ladda videon ovan först för att förhandslyssna");
+        return;
+      }
+      stopPreview();
+      ytPlayer.current.seekTo(start, true);
+      ytPlayer.current.playVideo();
+      setPlaying(true);
+      stopTimer.current = setTimeout(stopPreview, CELEBRATION_SONG_SECONDS * 1000);
+    } else {
+      previewAudioFrom(songUrl, start);
+    }
+  };
+
+  const handleLoadYt = async () => {
+    const id = parseYouTubeId(ytUrl);
+    if (!id) return toast.error("Ogiltig YouTube-länk");
+    stopPreview();
+    destroyYtPlayer();
+    setYtLoadedId(id);
+    const YT = await loadYouTubeApi();
+    if (!ytContainer.current) return;
+    ytContainer.current.innerHTML = "";
+    const el = document.createElement("div");
+    ytContainer.current.appendChild(el);
+    ytPlayer.current = new YT.Player(el, {
+      width: "100%",
+      height: "220",
+      videoId: id,
+      playerVars: { rel: 0, playsinline: 1 },
+    });
+  };
+
+  const saveSong = async (url: string | null, startAt: number, label?: string | null) => {
     if (!uid) return false;
     setSaving(true);
     const { error } = await supabase
@@ -91,6 +148,30 @@ export function CelebrationSongDialog() {
     setStart(startAt);
     setSongLabel(label ?? null);
     return true;
+  };
+
+  const handleSaveYt = async () => {
+    const id = parseYouTubeId(ytUrl);
+    if (!id) return toast.error("Ogiltig YouTube-länk");
+    let title: string | null = "YouTube-video";
+    try {
+      const t = ytPlayer.current?.getVideoData?.()?.title;
+      if (t) title = String(t);
+    } catch { /* ignore */ }
+    const ok = await saveSong(`https://www.youtube.com/watch?v=${id}`, start, title);
+    if (ok) toast.success(`Sparat! ${title} spelas från ${start} sek.`);
+  };
+
+  const handleYtGrabTime = () => {
+    try {
+      const t = ytPlayer.current?.getCurrentTime?.();
+      if (typeof t === "number") {
+        setStart(Math.max(0, Math.floor(t)));
+        toast.success(`Starttid satt till ${Math.floor(t)} sek — klicka Spara för att spara`);
+      }
+    } catch {
+      toast.error("Kunde inte läsa tiden från videon");
+    }
   };
 
   const handlePickSearchResult = async (r: SongSearchResult) => {
@@ -144,29 +225,31 @@ export function CelebrationSongDialog() {
     if (ok) toast.success("Låt borttagen");
   };
 
+  const savedIsYouTube = !!songUrl && isYouTubeUrl(songUrl);
+
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) stopPreview(); }}>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { stopPreview(); destroyYtPlayer(); } }}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2" title="Min målgest-låt">
           <Music4 className="size-4 text-primary" />
           Min låt
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Music4 className="size-5 text-primary" /> Min målgest-låt
           </DialogTitle>
           <DialogDescription>
             Din låt spelas i {CELEBRATION_SONG_SECONDS} sekunder hos alla när du stänger en affär.
-            Sök efter en låt (30-sekunders klipp) eller ladda upp en egen fil, och välj vilka{" "}
-            {CELEBRATION_SONG_SECONDS} sekunder som spelas.
+            Sök efter en låt, klistra in en YouTube-länk eller ladda upp en egen fil — och välj
+            vilka {CELEBRATION_SONG_SECONDS} sekunder som spelas.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
           <div className="space-y-2">
-            <Label>Sök efter låt</Label>
+            <Label>Sök efter låt (30-sekunders klipp)</Label>
             <div className="flex items-center gap-2">
               <Input
                 placeholder="t.ex. Eye of the Tiger"
@@ -196,7 +279,7 @@ export function CelebrationSongDialog() {
                       size="sm"
                       className="shrink-0"
                       title="Förhandslyssna"
-                      onClick={() => (playing ? stopPreview() : previewFrom(r.previewUrl, 0))}
+                      onClick={() => (playing ? stopPreview() : previewAudioFrom(r.previewUrl, 0))}
                     >
                       {playing ? <Square className="size-4" /> : <Play className="size-4" />}
                     </Button>
@@ -210,7 +293,39 @@ export function CelebrationSongDialog() {
           </div>
 
           <div className="space-y-2">
-            <Label>… eller ladda upp egen fil (mp3, m4a, wav …)</Label>
+            <Label className="flex items-center gap-1.5"><Youtube className="size-4 text-red-600" /> Eller använd en YouTube-video</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Klistra in YouTube-länk"
+                value={ytUrl}
+                onChange={(e) => setYtUrl(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void handleLoadYt(); }}
+              />
+              <Button variant="secondary" size="sm" className="shrink-0" onClick={() => void handleLoadYt()}>
+                Ladda video
+              </Button>
+            </div>
+            <div ref={ytContainer} className={ytLoadedId ? "rounded-lg overflow-hidden border" : "hidden"} />
+            {ytLoadedId && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleYtGrabTime}>
+                  Använd videons aktuella tid som start
+                </Button>
+                <Button size="sm" disabled={saving} onClick={() => void handleSaveYt()}>
+                  Spara YouTube-låt
+                </Button>
+              </div>
+            )}
+            {ytLoadedId && (
+              <div className="text-xs text-muted-foreground">
+                Spola i videon till stället du vill ha, pausa gärna, och klicka "Använd videons aktuella tid".
+                Vid firandet visas videon i en liten ruta och spelar ljudet i {CELEBRATION_SONG_SECONDS} sekunder.
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Eller ladda upp egen fil (mp3, m4a, wav …)</Label>
             <input
               ref={fileInput}
               type="file"
@@ -241,7 +356,7 @@ export function CelebrationSongDialog() {
                 Starta vid sekund
                 {duration ? ` (klippets längd: ${Math.floor(duration)} sek)` : ""}
               </Label>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Input
                   type="number"
                   min={0}
@@ -254,15 +369,26 @@ export function CelebrationSongDialog() {
                   variant="outline"
                   size="sm"
                   className="gap-2"
-                  onClick={() => (playing ? stopPreview() : previewFrom(songUrl, start))}
+                  onClick={() => (playing ? stopPreview() : previewSaved())}
                 >
                   {playing ? <Square className="size-4" /> : <Play className="size-4" />}
                   {playing ? "Stoppa" : `Lyssna (${CELEBRATION_SONG_SECONDS} sek)`}
                 </Button>
-                <Button size="sm" disabled={saving} onClick={() => void saveSong(songUrl, start, songLabel ?? undefined).then(ok => { if (ok) toast.success(`Sparat! Spelas från ${start} sek.`); })}>
+                <Button
+                  size="sm"
+                  disabled={saving}
+                  onClick={() => void saveSong(songUrl, start, songLabel).then((ok) => {
+                    if (ok) toast.success(`Sparat! Spelas från ${start} sek.`);
+                  })}
+                >
                   Spara starttid
                 </Button>
               </div>
+              {savedIsYouTube && (
+                <div className="text-xs text-muted-foreground">
+                  YouTube-låt: ladda videon ovan om du vill förhandslyssna eller ändra tidpunkt med spolning.
+                </div>
+              )}
             </div>
           )}
         </div>
