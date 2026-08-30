@@ -196,7 +196,7 @@ function OrdersTab({ customerId }: { customerId: string }) {
             <Card key={o.id} className="p-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div>
-                  <div className="font-medium text-sm">{o.order_type === "order" ? "Order" : "Offert"} • {new Date(o.created_at).toLocaleDateString("sv-SE")}</div>
+                  <div className="font-medium text-sm">{o.order_type === "offert" ? "Offert" : "Bokning"} • {new Date(o.created_at).toLocaleDateString("sv-SE")}</div>
                   <div className="text-xs text-muted-foreground">{(o.order_items?.length ?? 0)} rader</div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -349,7 +349,7 @@ function MaterialTab({ customerId }: { customerId: string }) {
           <Card key={o.id} className="p-3">
             <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
               <div>
-                <div className="font-medium text-sm">{o.order_type === "order" ? "Order" : "Offert"} • {new Date(o.created_at).toLocaleDateString("sv-SE")}</div>
+                <div className="font-medium text-sm">{o.order_type === "offert" ? "Offert" : "Bokning"} • {new Date(o.created_at).toLocaleDateString("sv-SE")}</div>
                 <div className="text-xs text-muted-foreground">{files.length} fil(er) • {fmt(Number(o.total_excl_vat))}</div>
               </div>
               <div>
