@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/slack/api";
+const SLACK_API_URL = "https://slack.com/api";
 const CHANNEL = "done-deal";
 const BOT_NAME = "NY AFFÄR";
 const BOT_ICON_URL =
@@ -15,14 +15,12 @@ type SaleInput = {
 };
 
 async function slackFetch(method: string, body: Record<string, unknown>) {
-  const lovableKey = process.env["LOVABLE_API_KEY"];
-  const slackKey = process.env["SLACK_API_KEY"];
-  if (!lovableKey || !slackKey) throw new Error("Slack-koppling saknas");
-  const res = await fetch(`${GATEWAY_URL}/${method}`, {
+  const botToken = process.env["SLACK_BOT_TOKEN"];
+  if (!botToken) throw new Error("Slack-koppling saknas");
+  const res = await fetch(`${SLACK_API_URL}/${method}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${lovableKey}`,
-      "X-Connection-Api-Key": slackKey,
+      Authorization: `Bearer ${botToken}`,
       "Content-Type": "application/json; charset=utf-8",
     },
     body: JSON.stringify(body),
