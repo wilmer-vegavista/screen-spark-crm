@@ -70,7 +70,7 @@ function AuthPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
       <div className="absolute inset-0 -z-10 opacity-40"
-           style={{ background: "radial-gradient(60% 50% at 50% 20%, oklch(0.68 0.18 275 / 0.25), transparent 70%)" }} />
+           style={{ background: "radial-gradient(60% 50% at 50% 20%, oklch(0.56 0.19 258 / 0.22), transparent 70%)" }} />
       <div className="w-full max-w-md">
         <div className="flex items-center gap-2 justify-center mb-8">
           <div className="size-9 rounded-lg flex items-center justify-center" style={{ background: "var(--gradient-primary)" }}>
