@@ -23,6 +23,7 @@ import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/
 import { cn } from "@/lib/utils";
 import { ORDER_ITEM_SELECT } from "@/lib/order-columns";
 import { postSaleToSlack } from "@/lib/slack.functions";
+import { deleteOrders } from "@/lib/orders.functions";
 
 
 
@@ -612,10 +613,19 @@ export function OrderDialog({
 
   const handleRemove = async () => {
     if (!order || !confirm("Ta bort ordern?")) return;
-    const { error } = await supabase.from("orders").delete().eq("id", order.id);
-    if (error) return toast.error(error.message);
+    try {
+      await deleteOrders({ data: { ids: [order.id] } });
+    } catch (err: any) {
+      return toast.error(err?.message ?? "Kunde inte ta bort ordern");
+    }
     toast.success("Order borttagen");
     qc.invalidateQueries({ queryKey: ["orders"] });
+    qc.invalidateQueries({ queryKey: ["deals"] });
+    qc.invalidateQueries({ queryKey: ["my-order-commissions"] });
+    qc.invalidateQueries({ predicate: (q) => {
+      const k = q.queryKey[0];
+      return k === "salary" || k === "all-sellers-salary";
+    } });
     onOpenChange(false);
   };
 
