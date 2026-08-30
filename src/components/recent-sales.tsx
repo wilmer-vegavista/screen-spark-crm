@@ -39,12 +39,40 @@ async function fetchRecentSales(): Promise<RecentOrder[]> {
   return (orders ?? []).map(o => ({ ...o, seller_name: o.owner_id ? nameMap.get(o.owner_id) ?? null : null }));
 }
 
+const CELEBRATION_MS = 5000;
+
 function fireConfetti() {
-  const end = Date.now() + 1200;
+  const end = Date.now() + CELEBRATION_MS;
   const colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#A78BFA", "#34D399"];
   (function frame() {
-    confetti({ particleCount: 4, angle: 60, spread: 70, origin: { x: 0, y: 0.7 }, colors });
-    confetti({ particleCount: 4, angle: 120, spread: 70, origin: { x: 1, y: 0.7 }, colors });
+    confetti({ particleCount: 6, angle: 60, spread: 100, startVelocity: 65, scalar: 1.6, ticks: 220, zIndex: 110, origin: { x: 0, y: 0.8 }, colors });
+    confetti({ particleCount: 6, angle: 120, spread: 100, startVelocity: 65, scalar: 1.6, ticks: 220, zIndex: 110, origin: { x: 1, y: 0.8 }, colors });
+    confetti({ particleCount: 4, spread: 140, startVelocity: 45, scalar: 1.6, ticks: 220, zIndex: 110, origin: { x: Math.random(), y: Math.random() * 0.4 }, colors });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
+}
+
+function fireMoneyRain() {
+  const scalar = 3.2;
+  const shapes = [
+    confetti.shapeFromText({ text: "💵", scalar }),
+    confetti.shapeFromText({ text: "💰", scalar }),
+  ];
+  const end = Date.now() + CELEBRATION_MS;
+  (function frame() {
+    confetti({
+      particleCount: 3,
+      angle: 270,
+      spread: 60,
+      startVelocity: 12,
+      gravity: 0.9,
+      drift: Math.random() * 2 - 1,
+      ticks: 350,
+      zIndex: 110,
+      scalar,
+      shapes,
+      origin: { x: Math.random(), y: -0.1 },
+    });
     if (Date.now() < end) requestAnimationFrame(frame);
   })();
 }
@@ -105,9 +133,10 @@ export function RecentSalesPanel() {
     const item: RecentOrder = { ...o, seller_name };
     setBanner(item);
     fireConfetti();
+    fireMoneyRain();
     playCelebrationSound();
     queryClient.invalidateQueries({ queryKey: ["recent-sales"] });
-    setTimeout(() => setBanner(b => (b?.id === item.id ? null : b)), 7000);
+    setTimeout(() => setBanner(b => (b?.id === item.id ? null : b)), CELEBRATION_MS);
   }, [queryClient]);
 
   useEffect(() => {
@@ -192,25 +221,34 @@ export function RecentSalesPanel() {
       </Sheet>
 
       {banner && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
-          <div
-            className="flex items-center gap-3 px-5 py-3 rounded-xl shadow-2xl border border-primary/40 backdrop-blur-md"
-            style={{ background: "var(--gradient-primary)", color: "var(--primary-foreground)" }}
-          >
-            <PartyPopper className="size-6 animate-bounce" />
-            <div className="min-w-0">
-              <div className="text-xs uppercase tracking-wider opacity-90 font-semibold">Nytt sälj! 🎉</div>
-              <div className="text-sm font-bold truncate">
-                {banner.seller_name || "Okänd"} stängde {banner.company_name}
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center animate-fade-in cursor-pointer"
+          onClick={() => setBanner(null)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+          <div className="relative text-center px-6 select-none">
+            <div className="flex items-center justify-center gap-4">
+              <PartyPopper className="size-12 md:size-16 text-yellow-400 animate-bounce" />
+              <div
+                className="text-5xl md:text-8xl font-black uppercase tracking-tight text-white"
+                style={{ textShadow: "0 4px 30px rgba(0,0,0,0.6), 0 0 60px rgba(255,215,0,0.5)" }}
+              >
+                Done deal! 🎉
               </div>
-              <div className="text-xs opacity-95">{formatSEK(Number(banner.total_excl_vat))}</div>
+              <PartyPopper className="size-12 md:size-16 text-yellow-400 animate-bounce" />
             </div>
-            <button
-              onClick={() => setBanner(null)}
-              className="ml-2 text-xs opacity-80 hover:opacity-100 underline"
+            <div
+              className="mt-6 text-2xl md:text-4xl font-bold text-white"
+              style={{ textShadow: "0 2px 20px rgba(0,0,0,0.6)" }}
             >
-              Stäng
-            </button>
+              {banner.seller_name || "Okänd"} stängde {banner.company_name}
+            </div>
+            <div
+              className="mt-3 text-4xl md:text-6xl font-black text-yellow-400"
+              style={{ textShadow: "0 2px 20px rgba(0,0,0,0.7)" }}
+            >
+              {formatSEK(Number(banner.total_excl_vat))}
+            </div>
           </div>
         </div>
       )}
