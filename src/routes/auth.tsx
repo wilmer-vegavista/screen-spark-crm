@@ -20,6 +20,8 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSent, setResetSent] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -54,6 +56,17 @@ function AuthPage() {
     navigate({ to: "/dashboard" });
   };
 
+  const onForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/aterstall-losenord`,
+    });
+    setLoading(false);
+    if (error) return toast.error(error.message);
+    setResetSent(true);
+  };
+
   const onGoogle = async () => {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", {
@@ -80,9 +93,10 @@ function AuthPage() {
         </div>
         <div className="rounded-xl border bg-card p-6 shadow-[var(--shadow-card)]">
           <Tabs defaultValue="signin">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="signin">Logga in</TabsTrigger>
               <TabsTrigger value="signup">Skapa konto</TabsTrigger>
+              <TabsTrigger value="forgot">Glömt lösenord</TabsTrigger>
             </TabsList>
 
             <TabsContent value="signin" className="mt-4 space-y-4">
@@ -119,6 +133,30 @@ function AuthPage() {
                   {loading && <Loader2 className="size-4 animate-spin mr-2" />} Skapa konto
                 </Button>
               </form>
+            </TabsContent>
+
+            <TabsContent value="forgot" className="mt-4 space-y-4">
+              {resetSent ? (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  Om {resetEmail} finns registrerad har ett mejl med en återställningslänk skickats dit.
+                </p>
+              ) : (
+                <form onSubmit={onForgotPassword} className="space-y-3">
+                  <div>
+                    <Label htmlFor="reset-email">E-post</Label>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading && <Loader2 className="size-4 animate-spin mr-2" />} Skicka återställningslänk
+                  </Button>
+                </form>
+              )}
             </TabsContent>
           </Tabs>
 
