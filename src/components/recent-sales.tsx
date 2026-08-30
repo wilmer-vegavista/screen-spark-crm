@@ -77,6 +77,20 @@ function fireMoneyRain() {
   })();
 }
 
+function playSellerSong(url: string, startAt: number) {
+  try {
+    const audio = new Audio(url);
+    audio.currentTime = Math.max(0, startAt || 0);
+    void audio.play().catch(() => {
+      // autoplay blocked or bad file — ignore silently
+    });
+    setTimeout(() => audio.pause(), CELEBRATION_MS);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function playCelebrationSound() {
   try {
     const ctx = new AudioContext();
@@ -126,15 +140,24 @@ export function RecentSalesPanel() {
       .maybeSingle();
     if (!o || o.order_type === "offert") return;
     let seller_name: string | null = null;
+    let song_url: string | null = null;
+    let song_start = 0;
     if (o.owner_id) {
-      const { data: p } = await supabase.from("profiles").select("full_name, email").eq("id", o.owner_id).maybeSingle();
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("full_name, email, celebration_song_url, celebration_song_start")
+        .eq("id", o.owner_id)
+        .maybeSingle();
       seller_name = (p?.full_name && p.full_name.trim()) || p?.email || null;
+      song_url = p?.celebration_song_url ?? null;
+      song_start = Number(p?.celebration_song_start) || 0;
     }
     const item: RecentOrder = { ...o, seller_name };
     setBanner(item);
     fireConfetti();
     fireMoneyRain();
-    playCelebrationSound();
+    const songPlayed = song_url ? playSellerSong(song_url, song_start) : false;
+    if (!songPlayed) playCelebrationSound();
     queryClient.invalidateQueries({ queryKey: ["recent-sales"] });
     setTimeout(() => setBanner(b => (b?.id === item.id ? null : b)), CELEBRATION_MS);
   }, [queryClient]);
@@ -225,28 +248,22 @@ export function RecentSalesPanel() {
           className="fixed inset-0 z-[100] flex items-center justify-center animate-fade-in cursor-pointer"
           onClick={() => setBanner(null)}
         >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+          <div className="absolute inset-0 bg-white/70 backdrop-blur-[3px]" />
           <div className="relative text-center px-6 select-none">
             <div className="flex items-center justify-center gap-4">
-              <PartyPopper className="size-12 md:size-16 text-yellow-400 animate-bounce" />
+              <PartyPopper className="size-12 md:size-16 text-black animate-bounce" />
               <div
-                className="text-5xl md:text-8xl font-black uppercase tracking-tight text-white"
-                style={{ textShadow: "0 4px 30px rgba(0,0,0,0.6), 0 0 60px rgba(255,215,0,0.5)" }}
+                className="text-5xl md:text-8xl font-black uppercase tracking-tight text-black"
+                style={{ textShadow: "0 2px 20px rgba(255,255,255,0.8)" }}
               >
                 Done deal! 🎉
               </div>
-              <PartyPopper className="size-12 md:size-16 text-yellow-400 animate-bounce" />
+              <PartyPopper className="size-12 md:size-16 text-black animate-bounce" />
             </div>
-            <div
-              className="mt-6 text-2xl md:text-4xl font-bold text-white"
-              style={{ textShadow: "0 2px 20px rgba(0,0,0,0.6)" }}
-            >
+            <div className="mt-6 text-2xl md:text-4xl font-bold text-black">
               {banner.seller_name || "Okänd"} stängde {banner.company_name}
             </div>
-            <div
-              className="mt-3 text-4xl md:text-6xl font-black text-yellow-400"
-              style={{ textShadow: "0 2px 20px rgba(0,0,0,0.7)" }}
-            >
+            <div className="mt-3 text-4xl md:text-6xl font-black text-black">
               {formatSEK(Number(banner.total_excl_vat))}
             </div>
           </div>

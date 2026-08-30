@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
 import { RecentSalesPanel } from "@/components/recent-sales";
+import { CelebrationSongDialog } from "@/components/celebration-song-dialog";
 import { GlobalSearch } from "@/components/global-search";
 
 interface NavItem {
@@ -137,7 +138,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 py-3 border-b border-border/70 bg-background/70 backdrop-blur-xl sticky top-0 z-40">
           <div />
           <GlobalSearch />
-          <div className="flex justify-end"><RecentSalesPanel /></div>
+          <div className="flex justify-end gap-2"><CelebrationSongDialog /><RecentSalesPanel /></div>
         </div>
         {children}
       </main>
