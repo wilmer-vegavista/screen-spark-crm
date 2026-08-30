@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Trophy, PartyPopper, Building2, User2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { useNavigate } from "@tanstack/react-router";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { parseYouTubeId, isYouTubeUrl, loadYouTubeApi } from "@/lib/youtube";
 
 type RecentOrder = {
   id: string;
@@ -115,11 +116,56 @@ function playCelebrationSound() {
   }
 }
 
+function YouTubeCelebration({ videoId, start }: { videoId: string; start: number }) {
+  const holder = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    let player: any = null;
+    let cancelled = false;
+    void loadYouTubeApi().then((YT) => {
+      if (cancelled || !holder.current) return;
+      holder.current.innerHTML = "";
+      const el = document.createElement("div");
+      holder.current.appendChild(el);
+      player = new YT.Player(el, {
+        width: 320,
+        height: 180,
+        videoId,
+        playerVars: { autoplay: 1, start: Math.floor(start), rel: 0, playsinline: 1, controls: 0 },
+        events: {
+          onReady: (e: any) => {
+            try {
+              e.target.seekTo(start, true);
+              e.target.playVideo();
+            } catch { /* ignore */ }
+          },
+        },
+      });
+    });
+    const t = setTimeout(() => {
+      try { player?.pauseVideo?.(); } catch { /* ignore */ }
+    }, CELEBRATION_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      try { player?.destroy?.(); } catch { /* ignore */ }
+    };
+  }, [videoId, start]);
+  return (
+    <div
+      className="absolute bottom-6 right-6 rounded-xl overflow-hidden shadow-2xl border border-black/20"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div ref={holder} />
+    </div>
+  );
+}
+
 export function RecentSalesPanel() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [banner, setBanner] = useState<RecentOrder | null>(null);
+  const [ytCelebration, setYtCelebration] = useState<{ videoId: string; start: number } | null>(null);
 
   const goToOrder = (orderId: string) => {
     setOpen(false);
@@ -156,10 +202,18 @@ export function RecentSalesPanel() {
     setBanner(item);
     fireConfetti();
     fireMoneyRain();
-    const songPlayed = song_url ? playSellerSong(song_url, song_start) : false;
-    if (!songPlayed) playCelebrationSound();
+    if (song_url && isYouTubeUrl(song_url)) {
+      const vid = parseYouTubeId(song_url);
+      if (vid) setYtCelebration({ videoId: vid, start: song_start });
+    } else {
+      const songPlayed = song_url ? playSellerSong(song_url, song_start) : false;
+      if (!songPlayed) playCelebrationSound();
+    }
     queryClient.invalidateQueries({ queryKey: ["recent-sales"] });
-    setTimeout(() => setBanner(b => (b?.id === item.id ? null : b)), CELEBRATION_MS);
+    setTimeout(() => {
+      setBanner(b => (b?.id === item.id ? null : b));
+      setYtCelebration(null);
+    }, CELEBRATION_MS);
   }, [queryClient]);
 
   useEffect(() => {
@@ -246,7 +300,7 @@ export function RecentSalesPanel() {
       {banner && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center animate-fade-in cursor-pointer"
-          onClick={() => setBanner(null)}
+          onClick={() => { setBanner(null); setYtCelebration(null); }}
         >
           <div className="absolute inset-0 bg-white/70 backdrop-blur-[3px]" />
           <div className="relative text-center px-6 select-none">
@@ -267,6 +321,9 @@ export function RecentSalesPanel() {
               {formatSEK(Number(banner.total_excl_vat))}
             </div>
           </div>
+          {ytCelebration && (
+            <YouTubeCelebration videoId={ytCelebration.videoId} start={ytCelebration.start} />
+          )}
         </div>
       )}
     </>
