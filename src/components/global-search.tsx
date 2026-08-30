@@ -115,7 +115,7 @@ export function GlobalSearch() {
     setOpen(false);
     setQ("");
     if (h.kind === "customer") {
-      navigate({ to: "/kunder", search: { customer: h.id } as any });
+      navigate({ to: "/kunder/$customerId", params: { customerId: h.id } });
     } else if (h.kind === "order") {
       navigate({ to: "/order", search: { order: h.id } as any });
     } else {
