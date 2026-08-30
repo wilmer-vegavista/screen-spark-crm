@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Trophy, PartyPopper, Building2, User2 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -73,9 +74,15 @@ function playCelebrationSound() {
 }
 
 export function RecentSalesPanel() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [banner, setBanner] = useState<RecentOrder | null>(null);
+
+  const goToOrder = (orderId: string) => {
+    setOpen(false);
+    navigate({ to: "/order", search: { order: orderId, product: undefined } });
+  };
 
   const { data: sales = [] } = useQuery({
     queryKey: ["recent-sales"],
@@ -152,7 +159,12 @@ export function RecentSalesPanel() {
                 <div className="text-sm text-muted-foreground p-4 text-center">Inga sälj än.</div>
               )}
               {sales.map((s) => (
-                <div key={s.id} className="rounded-lg border p-3 hover:bg-accent/40 transition-colors">
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => goToOrder(s.id)}
+                  className="w-full text-left rounded-lg border p-3 hover:bg-accent/40 hover:border-primary/50 transition-colors cursor-pointer"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 text-sm font-semibold truncate">
@@ -172,7 +184,7 @@ export function RecentSalesPanel() {
                       <Badge variant="secondary" className="mt-1 text-[10px]">{s.order_type}</Badge>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </ScrollArea>

@@ -83,18 +83,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-background">
-      <aside className="w-64 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col">
-        <div className="px-5 py-5 border-b border-sidebar-border">
-          <Link to="/dashboard" className="inline-flex bg-white rounded-md p-2 group">
+      <aside className="w-64 shrink-0 border-r border-sidebar-border bg-sidebar/85 backdrop-blur-xl flex flex-col">
+        <div className="px-5 py-5">
+          <Link to="/dashboard" className="inline-flex bg-white rounded-xl p-2 shadow-[0_1px_2px_0_rgba(0,0,0,0.04),0_1px_1px_0_rgba(0,0,0,0.03)] group">
             <img
               src="/__l5e/assets-v1/e7f7e2a8-7f9d-4e0d-a296-adeeed75e2d1/vega-vista-logo.png"
               alt="Vega Vista"
-              className="h-9 w-auto object-contain transition-opacity group-hover:opacity-90"
+              className="h-9 w-auto object-contain transition-opacity group-hover:opacity-80"
             />
           </Link>
         </div>
 
-        <nav className="flex-1 px-3 py-5 space-y-6 overflow-y-auto">
+        <nav className="flex-1 px-3 py-2 space-y-6 overflow-y-auto">
           <NavGroup label="Sälj">
             {visibleNav.filter(n => n.group === "saljare").map(n => (
               <NavLink key={n.to} to={n.to} label={n.label} icon={n.icon} active={pathname.startsWith(n.to)} />
@@ -115,7 +115,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="border-t border-sidebar-border p-3 space-y-2">
-          <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-sidebar-accent/40">
+          <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-sidebar-accent/50">
             <div
               className="size-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
               style={{ background: "var(--gradient-primary)", color: "var(--primary-foreground)" }}
@@ -134,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="flex-1 min-w-0 flex flex-col">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 py-3 border-b border-border bg-background/60 backdrop-blur sticky top-0 z-40">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 py-3 border-b border-border/70 bg-background/70 backdrop-blur-xl sticky top-0 z-40">
           <div />
           <GlobalSearch />
           <div className="flex justify-end"><RecentSalesPanel /></div>
@@ -161,19 +161,13 @@ function NavLink({ to, label, icon: Icon, active }: { to: string; label: string;
     <Link
       to={to}
       className={cn(
-        "relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all",
+        "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all",
         active
-          ? "bg-sidebar-accent text-foreground shadow-sm"
-          : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-foreground"
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-foreground"
       )}
     >
-      {active && (
-        <span
-          className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full"
-          style={{ background: "var(--gradient-primary)" }}
-        />
-      )}
-      <Icon className={cn("size-4 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
+      <Icon className={cn("size-4 shrink-0", active ? "text-primary-foreground" : "text-muted-foreground")} />
       {label}
     </Link>
   );
