@@ -30,6 +30,7 @@ import { useCurrentUser } from "@/lib/hooks/use-current-user";
 import { RecentSalesPanel } from "@/components/recent-sales";
 import { CelebrationSongDialog } from "@/components/celebration-song-dialog";
 import { GlobalSearch } from "@/components/global-search";
+import vegaVistaLogo from "@/assets/vega-vista-logo-mark.png";
 
 interface NavItem {
   to: string;
@@ -88,7 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="px-5 py-5">
           <Link to="/dashboard" className="inline-flex bg-white rounded-xl p-2 shadow-[0_1px_2px_0_rgba(0,0,0,0.04),0_1px_1px_0_rgba(0,0,0,0.03)] group">
             <img
-              src="/__l5e/assets-v1/e7f7e2a8-7f9d-4e0d-a296-adeeed75e2d1/vega-vista-logo.png"
+              src={vegaVistaLogo}
               alt="Vega Vista"
               className="h-9 w-auto object-contain transition-opacity group-hover:opacity-80"
             />
@@ -138,7 +139,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 py-3 border-b border-border/70 bg-background/70 backdrop-blur-xl sticky top-0 z-40">
           <div />
           <GlobalSearch />
-          <div className="flex justify-end gap-2"><CelebrationSongDialog /><RecentSalesPanel /></div>
+          <div className="flex items-center justify-end gap-4">
+            <div className="flex justify-end gap-2"><CelebrationSongDialog /><RecentSalesPanel /></div>
+            <img
+              src={vegaVistaLogo}
+              alt="Vega Vista"
+              className="h-6 w-auto object-contain shrink-0"
+            />
+          </div>
         </div>
         {children}
       </main>
