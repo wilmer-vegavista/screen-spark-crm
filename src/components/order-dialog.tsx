@@ -546,8 +546,9 @@ export function OrderDialog({
       }).eq("id", form.customer_id);
     }
 
-    // Notify Slack on new bookings
-    if (!order && form.order_type === "bokning") {
+    // Notify Slack on new bookings, or when an offert is converted to a booking
+    const isConversion = !!order && order.order_type === "offert" && form.order_type === "bokning";
+    if ((!order || isConversion) && form.order_type === "bokning") {
       const sellerProfile: any = (sellers as any[]).find(s => s.id === effectiveOwner);
       const sellerName =
         (sellerProfile?.full_name && String(sellerProfile.full_name).trim()) ||
