@@ -15,7 +15,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 import { toast } from "sonner";
 import { Pencil, FileDown } from "lucide-react";
-import { generateScreenReportPdf, generateOwnerReportPdf } from "@/lib/screen-report-pdf";
+import { generateScreenReportPdf, generateOwnerReportPdf, generateScreenMonthlyReportPdf, type ScreenMonthlyRow } from "@/lib/screen-report-pdf";
 import { format, parseISO, addMonths, addWeeks, addQuarters, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfISOWeek, endOfISOWeek, setISOWeek, setISOWeekYear, min as dmin, max as dmax } from "date-fns";
 import { sv } from "date-fns/locale";
 import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/lib/billing";
@@ -206,6 +206,61 @@ function computeRows(data: any, from: Date, to: Date) {
 }
 
 
+/** Omsättning per skärm och månad för valt år + totalt ordervärde per skärm hittills (alla år) */
+function computeMonthlyPerScreen(data: any, year: number): ScreenMonthlyRow[] {
+  if (!data) return [];
+  const orderById = new Map<string, any>();
+  for (const o of data.orders) orderById.set((o as any).id, o);
+
+  type Agg = { name: string; city: string | null; months: number[]; yearTotal: number; totalOrderValue: number };
+  const byProduct = new Map<string, Agg>();
+  const ensure = (key: string, name: string): Agg => {
+    let cur = byProduct.get(key);
+    if (!cur) {
+      cur = { name, city: null, months: Array(12).fill(0), yearTotal: 0, totalOrderValue: 0 };
+      byProduct.set(key, cur);
+    }
+    return cur;
+  };
+
+  for (const it of data.items as any[]) {
+    const o = orderById.get(it.order_id);
+    if (!o) continue;
+    const total = Number(it.unit_price || 0) * Number(it.weeks || 1);
+    const key = it.product_id || `name:${it.product_name}`;
+    const cur = ensure(key, it.product_name || "Okänd");
+    cur.totalOrderValue += total;
+    const schedule = buildInvoiceSchedule(
+      o.invoice_start_date || o.created_at,
+      (o.billing_frequency ?? "engang") as BillingFrequency,
+      Number(o.billing_duration_months ?? 0),
+      total,
+    );
+    for (const e of schedule) {
+      if (e.date.getFullYear() !== year) continue;
+      cur.months[e.date.getMonth()] += e.amount;
+      cur.yearTotal += e.amount;
+    }
+  }
+
+  const list: ScreenMonthlyRow[] = data.products.map((p: ProductRow) => {
+    const agg = byProduct.get(p.id);
+    return {
+      name: p.name,
+      city: p.city,
+      months: agg?.months ?? Array(12).fill(0),
+      yearTotal: agg?.yearTotal ?? 0,
+      totalOrderValue: agg?.totalOrderValue ?? 0,
+    };
+  });
+  for (const [key, agg] of byProduct) {
+    if (data.products.some((p: ProductRow) => p.id === key)) continue;
+    list.push({ name: agg.name, city: null, months: agg.months, yearTotal: agg.yearTotal, totalOrderValue: agg.totalOrderValue });
+  }
+
+  return list.sort((a, b) => b.yearTotal - a.yearTotal || b.totalOrderValue - a.totalOrderValue);
+}
+
 function RapportEkonomiPage() {
   const { isAdmin } = useCurrentUser();
   if (!isAdmin) {
@@ -331,8 +386,17 @@ function ReportView() {
               </SelectContent>
             </Select>
           </div>
-          <div className="ml-auto text-xs text-muted-foreground">
-            {format(from, "d MMM yyyy", { locale: sv })} – {format(to, "d MMM yyyy", { locale: sv })}
+          <div className="ml-auto flex items-end gap-3">
+            <div className="text-xs text-muted-foreground pb-2">
+              {format(from, "d MMM yyyy", { locale: sv })} – {format(to, "d MMM yyyy", { locale: sv })}
+            </div>
+            <Button
+              variant="outline"
+              disabled={!data}
+              onClick={() => generateScreenMonthlyReportPdf({ year, rows: computeMonthlyPerScreen(data, year) })}
+            >
+              <FileDown className="size-4" /> Exportera PDF
+            </Button>
           </div>
         </Card>
 
