@@ -710,10 +710,43 @@ function OwnerDialog({ owner, data, onClose }: { owner: string | null; data: any
   const { from, to } = ownerScopeRange(scope, offset);
   const periodLabel = `${format(from, "d MMM yyyy", { locale: sv })} – ${format(to, "d MMM yyyy", { locale: sv })}`;
 
-  const { rows, total, sharePct, share } = useMemo(() => {
-    if (!owner || !data) return { rows: [] as any[], total: 0, sharePct: null as number | null, share: 0 };
+  const { rows, total, sharePct, share, screenPeriodSums, screenTotalSums } = useMemo(() => {
+    if (!owner || !data)
+      return {
+        rows: [] as any[],
+        total: 0,
+        sharePct: null as number | null,
+        share: 0,
+        screenPeriodSums: [] as { screen: string; amount: number }[],
+        screenTotalSums: [] as { screen: string; amount: number }[],
+      };
     const all = computeRows(data, from, to);
     const mine = all.filter((r: any) => (r.product?.owner_name?.trim() || "Utan ägare") === owner);
+
+    // Fakturerat per skärm under den valda perioden
+    const screenPeriodSums = mine
+      .filter((r: any) => r.revenue > 0)
+      .map((r: any) => ({ screen: r.name, amount: r.revenue }))
+      .sort((a: any, b: any) => b.amount - a.amount);
+
+    // Total ordersumma per skärm – alla ordrar på skärmen oavsett period
+    const totalsByKey = new Map<string, { name: string; amount: number }>();
+    for (const it of data.items as any[]) {
+      const key = it.product_id || `name:${it.product_name}`;
+      const cur = totalsByKey.get(key) ?? { name: it.product_name || "Okänd", amount: 0 };
+      cur.amount += Number(it.unit_price || 0) * Number(it.weeks || 1);
+      totalsByKey.set(key, cur);
+    }
+    const productById = new Map<string, ProductRow>((data.products as ProductRow[]).map(p => [p.id, p]));
+    const screenTotalSums: { screen: string; amount: number }[] = [];
+    for (const [key, v] of totalsByKey) {
+      const p = productById.get(key);
+      const screenOwner = p?.owner_name?.trim() || "Utan ägare";
+      if (screenOwner !== owner) continue;
+      if (!v.amount) continue;
+      screenTotalSums.push({ screen: p?.name ?? v.name, amount: v.amount });
+    }
+    screenTotalSums.sort((a, b) => b.amount - a.amount);
     const list: any[] = [];
     let sum = 0;
     let shareSum = 0;
@@ -734,7 +767,7 @@ function OwnerDialog({ owner, data, onClose }: { owner: string | null; data: any
     }
     list.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const pctAvg = sum > 0 ? Math.round((shareSum / sum) * 1000) / 10 : null;
-    return { rows: list, total: sum, sharePct: pctAvg, share: shareSum };
+    return { rows: list, total: sum, sharePct: pctAvg, share: shareSum, screenPeriodSums, screenTotalSums };
   }, [owner, data, from.getTime(), to.getTime()]);
 
   return (
@@ -802,6 +835,8 @@ function OwnerDialog({ owner, data, onClose }: { owner: string | null; data: any
                 periodLabel,
                 sharePct,
                 rows,
+                screenPeriodSums,
+                screenTotalSums,
               })
             }
           >

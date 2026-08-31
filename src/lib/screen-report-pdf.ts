@@ -165,11 +165,20 @@ export type OwnerReportRow = {
   amount: number;
 };
 
+export type OwnerScreenSum = {
+  screen: string;
+  amount: number;
+};
+
 export type OwnerReportInput = {
   ownerName: string;
   periodLabel: string;
   sharePct?: number | null;
   rows: OwnerReportRow[];
+  /** Fakturerat per skärm under rapportens period */
+  screenPeriodSums?: OwnerScreenSum[];
+  /** Total ordersumma per skärm, alla ordrar oavsett period */
+  screenTotalSums?: OwnerScreenSum[];
 };
 
 export function generateOwnerReportPdf(input: OwnerReportInput) {
@@ -227,6 +236,37 @@ export function generateOwnerReportPdf(input: OwnerReportInput) {
     columnStyles: { 0: { fontStyle: "bold" }, 1: { halign: "right" } },
     theme: "grid",
   });
+
+  // Sektion med rubrik + tabell "Skärm | Belopp", med sidbrytning vid behov
+  const screenSection = (title: string, sums: OwnerScreenSum[]) => {
+    let startY = ((doc as any).lastAutoTable?.finalY ?? y) + 28;
+    const pageH = doc.internal.pageSize.getHeight();
+    if (startY > pageH - 120) {
+      doc.addPage();
+      startY = 56;
+    }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(title, M, startY);
+    autoTable(doc, {
+      startY: startY + 8,
+      margin: { left: M, right: M },
+      head: [["Skärm", "Belopp"]],
+      body: sums.map(s => [s.screen, SEK(s.amount)]),
+      foot: [["Totalt", SEK(sums.reduce((t, s) => t + s.amount, 0))]],
+      styles: { fontSize: 9, cellPadding: 6 },
+      headStyles: { fillColor: [40, 40, 40], textColor: 255 },
+      footStyles: { fillColor: [230, 230, 230], textColor: 20, fontStyle: "bold" },
+      columnStyles: { 1: { halign: "right" } },
+    });
+  };
+
+  if (input.screenPeriodSums?.length) {
+    screenSection(`Omsättning per skärm – ${input.periodLabel}`, input.screenPeriodSums);
+  }
+  if (input.screenTotalSums?.length) {
+    screenSection("Total omsättning per skärm (alla ordrar)", input.screenTotalSums);
+  }
 
   const safe = (input.ownerName || "agare").replace(/[^\w\d-]+/g, "_");
   doc.save(`bokningar-${safe}.pdf`);
