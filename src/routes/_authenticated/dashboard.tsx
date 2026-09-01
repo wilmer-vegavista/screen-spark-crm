@@ -16,6 +16,7 @@ import { startOfMonth, endOfMonth, startOfQuarter, startOfYear, endOfYear, subYe
 import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
 import { businessDaysBetween } from "@/lib/swedish-holidays";
 import { Trophy, Medal, Award } from "lucide-react";
+import confetti from "canvas-confetti";
 import {
   BarChart,
   Bar,
@@ -45,6 +46,48 @@ function pickPct(deal: any, product: any, compType: string, defaultPct: number) 
   return defaultPct;
 }
 
+// Helskärmsexplosion av konfetti när ett delmål i säljtävlingen uppnås.
+const CONTEST_CELEBRATION_MS = 6000;
+function fireContestConfetti() {
+  const end = Date.now() + CONTEST_CELEBRATION_MS;
+  const colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#A78BFA", "#34D399", "#F97316"];
+  (function frame() {
+    confetti({
+      particleCount: 8,
+      angle: 60,
+      spread: 120,
+      startVelocity: 70,
+      scalar: 1.5,
+      ticks: 240,
+      zIndex: 120,
+      origin: { x: 0, y: 0.9 },
+      colors,
+    });
+    confetti({
+      particleCount: 8,
+      angle: 120,
+      spread: 120,
+      startVelocity: 70,
+      scalar: 1.5,
+      ticks: 240,
+      zIndex: 120,
+      origin: { x: 1, y: 0.9 },
+      colors,
+    });
+    confetti({
+      particleCount: 10,
+      spread: 360,
+      startVelocity: 50,
+      scalar: 1.7,
+      ticks: 240,
+      zIndex: 120,
+      origin: { x: Math.random(), y: Math.random() * 0.5 },
+      colors,
+    });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
+}
+
 type OrderLite = {
   id: string;
   company_name: string | null;
@@ -71,6 +114,7 @@ function Dashboard() {
 
   const { data } = useQuery({
     queryKey: ["dashboard-stats", yearStart.toISOString()],
+    refetchInterval: 60_000,
     queryFn: async () => {
       
       const [
@@ -335,6 +379,36 @@ function Dashboard() {
   const contestPerDay = contestDaysLeft > 0 ? contestRemaining / contestDaysLeft : 0;
   const contestPerWeek = contestWeeksLeft > 0 ? contestRemaining / contestWeeksLeft : 0;
 
+  // Delmål var 500 000 kr på vägen mot tävlingsmålet
+  const contestMilestoneStep = 500_000;
+  const contestMilestoneCount = contestGoal / contestMilestoneStep;
+  const contestMilestonesReached = Math.min(
+    Math.floor(contestTotal / contestMilestoneStep),
+    contestMilestoneCount,
+  );
+  const contestNextMilestone = (contestMilestonesReached + 1) * contestMilestoneStep;
+
+  // Helskärmskonfetti varje gång ett nytt delmål uppnås. Senast firade delmål
+  // sparas per webbläsare så att det inte smäller om vid varje sidladdning.
+  const dataLoaded = !!data;
+  useEffect(() => {
+    if (!dataLoaded) return;
+    const key = `salj-tavling-delmal-${contestYear}`;
+    let stored: number | null = null;
+    try {
+      const raw = localStorage.getItem(key);
+      stored = raw == null ? null : Number(raw);
+    } catch {
+      return;
+    }
+    if (stored != null && contestMilestonesReached > stored) fireContestConfetti();
+    try {
+      localStorage.setItem(key, String(contestMilestonesReached));
+    } catch {
+      /* ignore */
+    }
+  }, [dataLoaded, contestMilestonesReached, contestYear]);
+
   return (
     <>
       <PageHeader title="Dashboard" description="Översikt över sälj, budget och lön" />
@@ -390,6 +464,32 @@ function Dashboard() {
             </div>
           </div>
           <Progress value={contestPct} />
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {Array.from({ length: contestMilestoneCount }, (_, i) => {
+              const amount = (i + 1) * contestMilestoneStep;
+              const reached = contestTotal >= amount;
+              return (
+                <div
+                  key={amount}
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${
+                    reached
+                      ? "bg-amber-500/20 text-amber-700 dark:text-amber-400 ring-amber-500/50"
+                      : "bg-muted text-muted-foreground ring-border"
+                  }`}
+                >
+                  {reached ? "✓ " : ""}
+                  {(amount / 1_000_000).toLocaleString("sv-SE", { maximumFractionDigits: 1 })} M
+                </div>
+              );
+            })}
+          </div>
+          {!contestReached && !contestOver && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              Nästa delmål:{" "}
+              <span className="font-semibold text-foreground">{fmt(contestNextMilestone)}</span> –{" "}
+              {fmt(contestNextMilestone - contestTotal)} kvar, sen exploderar skärmen i konfetti 🎊
+            </div>
+          )}
           {contestReached ? (
             <div className="mt-4 pt-3 border-t text-sm font-semibold text-amber-700 dark:text-amber-400">
               🎉 Målet är nått – packa väskorna, vi ses i solen i november!
