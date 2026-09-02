@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Loader2, Search, Trash2 } from "lucide-react";
+import { lookupCompanyAddress } from "@/lib/company-lookup.functions";
+import { normalizeOrgNumber, isValidOrgNumber } from "@/lib/orgnr";
 
 export function CustomerDialog({ open, onOpenChange, customer }: { open: boolean; onOpenChange: (v: boolean) => void; customer: any | null }) {
   const qc = useQueryClient();
@@ -25,6 +27,39 @@ export function CustomerDialog({ open, onOpenChange, customer }: { open: boolean
     });
     else setForm(empty);
   }, [customer, open]);
+
+  const [orgLookupLoading, setOrgLookupLoading] = useState(false);
+  const lastOrgLookup = useRef("");
+
+  const runOrgLookup = async (raw: string, force = false) => {
+    const digits = normalizeOrgNumber(raw);
+    if (digits.length !== 10) {
+      if (force) toast.error("Ange ett organisationsnummer med 10 siffror");
+      return;
+    }
+    if (!force && (!isValidOrgNumber(digits) || lastOrgLookup.current === digits)) return;
+    lastOrgLookup.current = digits;
+    setOrgLookupLoading(true);
+    try {
+      const r = await lookupCompanyAddress({ data: { orgNumber: digits } });
+      if (r.ok) {
+        setForm(f => ({
+          ...f,
+          company_name: f.company_name.trim() ? f.company_name : (r.name ?? f.company_name),
+          billing_address: r.street ?? f.billing_address,
+          postal_code: r.postalCode ?? f.postal_code,
+          city: r.city ?? f.city,
+        }));
+        toast.success("Adressuppgifter hämtade från allabolag.se");
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err: any) {
+      toast.error("Kunde inte hämta adress: " + (err?.message ?? "okänt fel"));
+    } finally {
+      setOrgLookupLoading(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +100,32 @@ export function CustomerDialog({ open, onOpenChange, customer }: { open: boolean
             <div><Label>Telefon</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Org.nr</Label><Input value={form.org_number} onChange={e => setForm({ ...form, org_number: e.target.value })} /></div>
+            <div>
+              <Label>Org.nr</Label>
+              <div className="flex gap-1">
+                <Input
+                  value={form.org_number}
+                  onChange={e => {
+                    const v = e.target.value;
+                    setForm(f => ({ ...f, org_number: v }));
+                    runOrgLookup(v);
+                  }}
+                  onBlur={e => runOrgLookup(e.target.value)}
+                  placeholder="XXXXXX-XXXX"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => runOrgLookup(form.org_number, true)}
+                  disabled={orgLookupLoading}
+                  title="Hämta adress från allabolag.se"
+                >
+                  {orgLookupLoading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">Adress hämtas automatiskt från allabolag.se.</p>
+            </div>
             <div><Label>Momsregistreringsnr</Label><Input value={form.vat_number} onChange={e => setForm({ ...form, vat_number: e.target.value })} placeholder="SE..." /></div>
           </div>
           <div><Label>Fakturaadress</Label><Input value={form.billing_address} onChange={e => setForm({ ...form, billing_address: e.target.value })} /></div>

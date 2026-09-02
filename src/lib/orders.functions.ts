@@ -27,7 +27,8 @@ export const deleteOrders = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     if (dealIds.length) {
-      await context.supabase.from("deals").delete().in("id", dealIds);
+      const { error: dealError } = await context.supabase.from("deals").delete().in("id", dealIds);
+      if (dealError) throw new Error(dealError.message);
     }
 
     return { deleted: data.ids.length };

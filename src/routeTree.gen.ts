@@ -30,6 +30,7 @@ import { Route as AuthenticatedAvslutasSnartRouteImport } from './routes/_authen
 import { Route as AuthenticatedAvslutadRouteImport } from './routes/_authenticated/avslutad'
 import { Route as AuthenticatedAnvandareRouteImport } from './routes/_authenticated/anvandare'
 import { Route as AuthenticatedAktiviteterRouteImport } from './routes/_authenticated/aktiviteter'
+import { Route as AuthenticatedKunderCustomerIdRouteImport } from './routes/_authenticated/kunder_.$customerId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -138,6 +139,12 @@ const AuthenticatedAktiviteterRoute =
     path: '/aktiviteter',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedKunderCustomerIdRoute =
+  AuthenticatedKunderCustomerIdRouteImport.update({
+    id: '/kunder_/$customerId',
+    path: '/kunder/$customerId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -160,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/produktion': typeof AuthenticatedProduktionRoute
   '/rapport-ekonomi': typeof AuthenticatedRapportEkonomiRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
+  '/kunder/$customerId': typeof AuthenticatedKunderCustomerIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -182,6 +190,7 @@ export interface FileRoutesByTo {
   '/produktion': typeof AuthenticatedProduktionRoute
   '/rapport-ekonomi': typeof AuthenticatedRapportEkonomiRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
+  '/kunder/$customerId': typeof AuthenticatedKunderCustomerIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -206,6 +215,7 @@ export interface FileRoutesById {
   '/_authenticated/produktion': typeof AuthenticatedProduktionRoute
   '/_authenticated/rapport-ekonomi': typeof AuthenticatedRapportEkonomiRoute
   '/_authenticated/rapporter': typeof AuthenticatedRapporterRoute
+  '/_authenticated/kunder_/$customerId': typeof AuthenticatedKunderCustomerIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/produktion'
     | '/rapport-ekonomi'
     | '/rapporter'
+    | '/kunder/$customerId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/produktion'
     | '/rapport-ekonomi'
     | '/rapporter'
+    | '/kunder/$customerId'
   id:
     | '__root__'
     | '/'
@@ -275,6 +287,7 @@ export interface FileRouteTypes {
     | '/_authenticated/produktion'
     | '/_authenticated/rapport-ekonomi'
     | '/_authenticated/rapporter'
+    | '/_authenticated/kunder_/$customerId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -432,6 +445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAktiviteterRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/kunder_/$customerId': {
+      id: '/_authenticated/kunder_/$customerId'
+      path: '/kunder/$customerId'
+      fullPath: '/kunder/$customerId'
+      preLoaderRoute: typeof AuthenticatedKunderCustomerIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -454,6 +474,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProduktionRoute: typeof AuthenticatedProduktionRoute
   AuthenticatedRapportEkonomiRoute: typeof AuthenticatedRapportEkonomiRoute
   AuthenticatedRapporterRoute: typeof AuthenticatedRapporterRoute
+  AuthenticatedKunderCustomerIdRoute: typeof AuthenticatedKunderCustomerIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -475,6 +496,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProduktionRoute: AuthenticatedProduktionRoute,
   AuthenticatedRapportEkonomiRoute: AuthenticatedRapportEkonomiRoute,
   AuthenticatedRapporterRoute: AuthenticatedRapporterRoute,
+  AuthenticatedKunderCustomerIdRoute: AuthenticatedKunderCustomerIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

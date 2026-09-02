@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Loader2, ChevronDown, CalendarIcon, X, Eye, CheckCircle2, ArrowUp, ArrowDown, Package as PackageIcon } from "lucide-react";
+import { Plus, Trash2, FileDown, Loader2, ChevronDown, CalendarIcon, X, Eye, CheckCircle2, ArrowUp, ArrowDown, Package as PackageIcon, Search } from "lucide-react";
 import { generateOrderPdf, type OrderPdfInput } from "@/lib/order-pdf";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
@@ -23,6 +23,9 @@ import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/
 import { cn } from "@/lib/utils";
 import { ORDER_ITEM_SELECT } from "@/lib/order-columns";
 import { postSaleToSlack } from "@/lib/slack.functions";
+import { deleteOrders } from "@/lib/orders.functions";
+import { lookupCompanyAddress } from "@/lib/company-lookup.functions";
+import { normalizeOrgNumber, isValidOrgNumber } from "@/lib/orgnr";
 
 
 
@@ -294,6 +297,39 @@ export function OrderDialog({
 
 
   }, [order, open, currentUserId]);
+
+  const [orgLookupLoading, setOrgLookupLoading] = useState(false);
+  const lastOrgLookup = useRef("");
+
+  const runOrgLookup = async (raw: string, force = false) => {
+    const digits = normalizeOrgNumber(raw);
+    if (digits.length !== 10) {
+      if (force) toast.error("Ange ett organisationsnummer med 10 siffror");
+      return;
+    }
+    if (!force && (!isValidOrgNumber(digits) || lastOrgLookup.current === digits)) return;
+    lastOrgLookup.current = digits;
+    setOrgLookupLoading(true);
+    try {
+      const r = await lookupCompanyAddress({ data: { orgNumber: digits } });
+      if (r.ok) {
+        setForm(f => ({
+          ...f,
+          company_name: f.company_name.trim() ? f.company_name : (r.name ?? f.company_name),
+          billing_address: r.street ?? f.billing_address,
+          postal_code: r.postalCode ?? f.postal_code,
+          city: r.city ?? f.city,
+        }));
+        toast.success("Adressuppgifter hämtade från allabolag.se");
+      } else {
+        toast.error(r.error);
+      }
+    } catch (e: any) {
+      toast.error("Kunde inte hämta adress: " + (e?.message ?? "okänt fel"));
+    } finally {
+      setOrgLookupLoading(false);
+    }
+  };
 
   const pickCustomer = (id: string) => {
     const c = customers.find((x: any) => x.id === id);
@@ -612,10 +648,19 @@ export function OrderDialog({
 
   const handleRemove = async () => {
     if (!order || !confirm("Ta bort ordern?")) return;
-    const { error } = await supabase.from("orders").delete().eq("id", order.id);
-    if (error) return toast.error(error.message);
+    try {
+      await deleteOrders({ data: { ids: [order.id] } });
+    } catch (err: any) {
+      return toast.error(err?.message ?? "Kunde inte ta bort ordern");
+    }
     toast.success("Order borttagen");
     qc.invalidateQueries({ queryKey: ["orders"] });
+    qc.invalidateQueries({ queryKey: ["deals"] });
+    qc.invalidateQueries({ queryKey: ["my-order-commissions"] });
+    qc.invalidateQueries({ predicate: (q) => {
+      const k = q.queryKey[0];
+      return k === "salary" || k === "all-sellers-salary";
+    } });
     onOpenChange(false);
   };
 
@@ -825,7 +870,32 @@ export function OrderDialog({
             <div className="space-y-3">
               <div><Label>Företag *</Label><Input value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} required /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Org.nr</Label><Input value={form.org_number} onChange={e => setForm({ ...form, org_number: e.target.value })} /></div>
+                <div>
+                  <Label>Org.nr</Label>
+                  <div className="flex gap-1">
+                    <Input
+                      value={form.org_number}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setForm(f => ({ ...f, org_number: v }));
+                        runOrgLookup(v);
+                      }}
+                      onBlur={e => runOrgLookup(e.target.value)}
+                      placeholder="XXXXXX-XXXX"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => runOrgLookup(form.org_number, true)}
+                      disabled={orgLookupLoading}
+                      title="Hämta adress från allabolag.se"
+                    >
+                      {orgLookupLoading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">Adress, postnr och ort hämtas automatiskt från allabolag.se.</p>
+                </div>
                 <div><Label>Momsregistreringsnr</Label><Input value={form.vat_number} onChange={e => setForm({ ...form, vat_number: e.target.value })} placeholder="SE..." /></div>
               </div>
               <div><Label>Fakturaadress</Label><Input value={form.billing_address} onChange={e => setForm({ ...form, billing_address: e.target.value })} /></div>
