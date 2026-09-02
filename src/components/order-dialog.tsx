@@ -585,6 +585,10 @@ export function OrderDialog({
     // Notify Slack on new bookings, or when an offert is converted to a booking
     const isConversion = !!order && order.order_type === "offert" && form.order_type === "bokning";
     if ((!order || isConversion) && form.order_type === "bokning") {
+      // Fire the celebration immediately in the seller's own browser: this runs
+      // inside the click gesture, so browsers allow the song to play with sound.
+      // The realtime event handles everyone else's screens (deduped by order id).
+      window.dispatchEvent(new CustomEvent("celebrate-order", { detail: { orderId } }));
       const sellerProfile: any = (sellers as any[]).find(s => s.id === effectiveOwner);
       const sellerName =
         (sellerProfile?.full_name && String(sellerProfile.full_name).trim()) ||
