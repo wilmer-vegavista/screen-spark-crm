@@ -144,9 +144,20 @@ function YouTubeCelebration({ videoId, start }: { videoId: string; start: number
     const t = setTimeout(() => {
       try { player?.pauseVideo?.(); } catch { /* ignore */ }
     }, CELEBRATION_MS);
+    // If the browser blocked audible autoplay the player stays unstarted —
+    // fall back to muted playback so the video still shows.
+    const fallback = setTimeout(() => {
+      try {
+        if (player?.getPlayerState?.() !== 1) {
+          player?.mute?.();
+          player?.playVideo?.();
+        }
+      } catch { /* ignore */ }
+    }, 1500);
     return () => {
       cancelled = true;
       clearTimeout(t);
+      clearTimeout(fallback);
       try { player?.destroy?.(); } catch { /* ignore */ }
     };
   }, [videoId, start]);
@@ -166,6 +177,7 @@ export function RecentSalesPanel() {
   const [open, setOpen] = useState(false);
   const [banner, setBanner] = useState<RecentOrder | null>(null);
   const [ytCelebration, setYtCelebration] = useState<{ videoId: string; start: number } | null>(null);
+  const celebrated = useRef<Set<string>>(new Set());
 
   const goToOrder = (orderId: string) => {
     setOpen(false);
@@ -179,6 +191,11 @@ export function RecentSalesPanel() {
   });
 
   const handleNewOrder = useCallback(async (orderId: string) => {
+    // The seller's own browser fires instantly via the celebrate-order event;
+    // the realtime event arrives moments later — celebrate each order only once.
+    if (celebrated.current.has(orderId)) return;
+    celebrated.current.add(orderId);
+    setTimeout(() => celebrated.current.delete(orderId), 30_000);
     const { data: o } = await supabase
       .from("orders")
       .select("id, company_name, total_excl_vat, owner_id, order_type, created_at")
@@ -217,6 +234,11 @@ export function RecentSalesPanel() {
   }, [queryClient]);
 
   useEffect(() => {
+    const onLocalCelebration = (e: Event) => {
+      const orderId = (e as CustomEvent<{ orderId?: string }>).detail?.orderId;
+      if (orderId) void handleNewOrder(orderId);
+    };
+    window.addEventListener("celebrate-order", onLocalCelebration);
     const channel = supabase
       .channel("orders-new-sales")
       .on(
@@ -240,6 +262,7 @@ export function RecentSalesPanel() {
       )
       .subscribe();
     return () => {
+      window.removeEventListener("celebrate-order", onLocalCelebration);
       void supabase.removeChannel(channel);
     };
   }, [handleNewOrder]);
