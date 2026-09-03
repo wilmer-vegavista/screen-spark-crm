@@ -8,6 +8,105 @@ const SEK = (n: number) =>
 
 const VAT_RATE = 0.25;
 
+type PdfLang = "sv" | "en";
+
+const STRINGS = {
+  sv: {
+    offert: "Offert",
+    orderConfirmation: "Orderbekräftelse",
+    orderDate: "Orderdatum:",
+    printDate: "Utskriftsdatum:",
+    contact: "Kontakt",
+    email: "E-post",
+    phone: "Telefonnummer",
+    product: "Produkt",
+    period: "Period",
+    priceExVat: "Pris exkl. moms",
+    metricBoth: "SOV / visningar per dag",
+    metricSov: "SOV",
+    metricImpr: "Antal visningar/dag",
+    vat: "Moms",
+    amount: "Belopp",
+    subtotal: "Summa ex moms:",
+    noVat: "Ingen moms",
+    total: "Totalt:",
+    vatSum: "Summa moms:",
+    totalInclVat: "Totalt inkl moms:",
+    orderNotes: "Order Anteckningar:",
+    materialSpecShared: (n: number, names: string) => `Material spec (gemensam för ${n} skärmar): ${names}`,
+    materialSpec: (name: string) => `Material spec: ${name}`,
+    format: "Format:",
+    dimensions: "Mått:",
+    duration: "Längd:",
+    seconds: (n: number | string) => `${n} sekunder`,
+    defaultDuration: "5-10 sekunder",
+    fileFormat: "Filformat:",
+    other: "Övrigt:",
+    invoiceTerms: "Fakturavillkor:",
+    monthlyTerms: "30 dagar netto, faktureras den 1:a varje månad",
+    defaultTerms: "30 dagar netto från erlagd order",
+    monthlyAmount: (ex: string, inc: string, months: number) =>
+      `Månadsbelopp: ${ex} ex moms (${inc} ink moms) i ${months} månader`,
+    regards: "Med vänliga hälsningar,",
+    filePrefixOffert: "Offert",
+    filePrefixOrder: "Orderbekraftelse",
+    month: (n: number) => `${n} ${n === 1 ? "månad" : "månader"}`,
+    year: (n: number) => `${n} år`,
+    week: (n: number) => `${n} ${n === 1 ? "vecka" : "veckor"}`,
+    weekNo: (w: number) => `Vecka ${w}`,
+    weekNos: (ws: string) => `Vecka ${ws}`,
+  },
+  en: {
+    offert: "Quotation",
+    orderConfirmation: "Order Confirmation",
+    orderDate: "Order date:",
+    printDate: "Print date:",
+    contact: "Contact",
+    email: "Email",
+    phone: "Phone",
+    product: "Product",
+    period: "Period",
+    priceExVat: "Price excl. VAT",
+    metricBoth: "SOV / impressions per day",
+    metricSov: "SOV",
+    metricImpr: "Impressions per day",
+    vat: "VAT",
+    amount: "Amount",
+    subtotal: "Subtotal excl. VAT:",
+    noVat: "No VAT",
+    total: "Total:",
+    vatSum: "Total VAT:",
+    totalInclVat: "Total incl. VAT:",
+    orderNotes: "Order notes:",
+    materialSpecShared: (n: number, names: string) => `Material spec (shared for ${n} screens): ${names}`,
+    materialSpec: (name: string) => `Material spec: ${name}`,
+    format: "Format:",
+    dimensions: "Dimensions:",
+    duration: "Duration:",
+    seconds: (n: number | string) => `${n} seconds`,
+    defaultDuration: "5-10 seconds",
+    fileFormat: "File format:",
+    other: "Other:",
+    invoiceTerms: "Invoice terms:",
+    monthlyTerms: "Net 30 days, invoiced on the 1st of each month",
+    defaultTerms: "Net 30 days from placed order",
+    monthlyAmount: (ex: string, inc: string, months: number) =>
+      `Monthly amount: ${ex} excl. VAT (${inc} incl. VAT) for ${months} months`,
+    regards: "Best regards,",
+    filePrefixOffert: "Quotation",
+    filePrefixOrder: "Order_confirmation",
+    month: (n: number) => `${n} ${n === 1 ? "month" : "months"}`,
+    year: (n: number) => `${n} ${n === 1 ? "year" : "years"}`,
+    week: (n: number) => `${n} ${n === 1 ? "week" : "weeks"}`,
+    weekNo: (w: number) => `Week ${w}`,
+    weekNos: (ws: string) => `Week ${ws}`,
+  },
+} as const;
+
+// The Swedish default payment terms are translated when the document is in
+// English; any custom free-text terms are printed as written.
+const SWEDISH_DEFAULT_TERMS = "30 dagar netto från erlagd order";
+
 export type OrderPdfInput = {
   order: any;
   items: any[];
@@ -56,19 +155,19 @@ async function loadLogo(): Promise<{ dataUrl: string | null; aspect: number | nu
   }
 }
 
-function buildPeriodText(order: any, item: any): string {
+function buildPeriodText(order: any, item: any, L: (typeof STRINGS)[PdfLang]): string {
   const n = Number(item?.weeks || 0);
   const unit: string = item?.period_unit || "veckor";
   if (n > 0) {
-    if (unit === "manader") return `${n} ${n === 1 ? "månad" : "månader"}`;
-    if (unit === "ar") return `${n} år`;
-    return `${n} ${n === 1 ? "vecka" : "veckor"}`;
+    if (unit === "manader") return L.month(n);
+    if (unit === "ar") return L.year(n);
+    return L.week(n);
   }
   const sw: number[] | undefined = Array.isArray(order?.selected_weeks) ? order.selected_weeks : undefined;
   if (sw && sw.length) {
-    if (sw.length === 1) return `Vecka ${sw[0]}`;
-    if (sw.length === 2) return `Vecka ${sw[0]} & ${sw[1]}`;
-    return `Vecka ${sw.join(", ")}`;
+    if (sw.length === 1) return L.weekNo(sw[0]);
+    if (sw.length === 2) return L.weekNos(`${sw[0]} & ${sw[1]}`);
+    return L.weekNos(sw.join(", "));
   }
   const ed: string[] | undefined = Array.isArray(order?.exact_dates) ? order.exact_dates : undefined;
   if (ed && ed.length) {
@@ -84,7 +183,9 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 56;
   const isOffert = order.order_type === "offert";
-  const docTitle = isOffert ? "Offert" : "Orderbekräftelse";
+  const lang: PdfLang = (order as any).pdf_language === "en" ? "en" : "sv";
+  const L = STRINGS[lang];
+  const docTitle = isOffert ? L.offert : L.orderConfirmation;
 
   // ---- Header: logo left, big light title right ----
   const { dataUrl: logo, aspect } = await loadLogo();
@@ -114,8 +215,8 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
     doc.setFont("helvetica", "bold");
     doc.text(label, pageW - margin - valueW - 10, rowY, { align: "right" });
   };
-  drawDateRow("Orderdatum:", orderDate, 110);
-  drawDateRow("Utskriftsdatum:", today, 126);
+  drawDateRow(L.orderDate, orderDate, 110);
+  drawDateRow(L.printDate, today, 126);
 
   // Company address (right aligned)
   let addrY = 155;
@@ -137,7 +238,7 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
-    head: [["Kontakt", "E-post", "Telefonnummer"]],
+    head: [[L.contact, L.email, L.phone]],
     body: [[order.contact_name || "", order.contact_email || "", order.contact_phone || ""]],
     styles: { font: "helvetica", fontSize: 10, cellPadding: 12, lineColor: [0, 0, 0], lineWidth: 0.5, textColor: 0 },
     headStyles: { fillColor: [255, 255, 255], textColor: 0, fontStyle: "bold", halign: "left" },
@@ -150,11 +251,7 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   // ---- Product table ----
   const hasImpr = items.some((it) => it.impressions != null && String(it.impressions) !== "");
   const hasSov = items.some((it) => (it as any).sov_pct != null && String((it as any).sov_pct) !== "");
-  const metricHeader = hasImpr && hasSov
-    ? "SOV / visningar per dag"
-    : hasSov
-      ? "SOV"
-      : "Antal visningar/dag";
+  const metricHeader = hasImpr && hasSov ? L.metricBoth : hasSov ? L.metricSov : L.metricImpr;
 
   const vatExempt = Boolean((order as any).vat_exempt);
   const vatRate = vatExempt ? 0 : VAT_RATE;
@@ -170,7 +267,7 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
         : "—";
     return [
       it.product_name || "—",
-      buildPeriodText(order, it),
+      buildPeriodText(order, it, L),
       SEK(lineTotalExcl),
       metric,
       vatExempt ? "0 %" : "25 %",
@@ -181,7 +278,7 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
-    head: [["Produkt", "Period", "Pris exkl. moms", metricHeader, "Moms", "Belopp"]],
+    head: [[L.product, L.period, L.priceExVat, metricHeader, L.vat, L.amount]],
 
 
     body,
@@ -218,13 +315,13 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
     doc.text(label, totalsRight - valueW - 8, y, { align: "right" });
     y += 20;
   };
-  drawTotal("Summa ex moms:", SEK(subtotal));
+  drawTotal(L.subtotal, SEK(subtotal));
   if (vatExempt) {
-    drawTotal("Moms:", "Ingen moms");
-    drawTotal("Totalt:", SEK(total));
+    drawTotal(L.vat + ":", L.noVat);
+    drawTotal(L.total, SEK(total));
   } else {
-    drawTotal("Summa moms:", SEK(vat));
-    drawTotal("Totalt inkl moms:", SEK(total));
+    drawTotal(L.vatSum, SEK(vat));
+    drawTotal(L.totalInclVat, SEK(total));
   }
 
   // ---- Notes (left side) ----
@@ -232,7 +329,7 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
     y += 10;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("Order Anteckningar:", margin, y);
+    doc.text(L.orderNotes, margin, y);
     y += 18;
     doc.setFont("helvetica", "normal");
     const lines = doc.splitTextToSize(String(order.notes), pageW - margin * 2);
@@ -257,12 +354,12 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   items.forEach((it) => {
     const p = products[it.product_id] || {};
     const specs: Array<[string, string]> = [];
-    if (p.format) specs.push(["Format:", p.format]);
-    if (p.dimensions) specs.push(["Mått:", p.dimensions]);
-    if (p.ad_duration_seconds) specs.push(["Längd:", `${p.ad_duration_seconds} sekunder`]);
-    else specs.push(["Längd:", "5-10 sekunder"]);
-    specs.push(["Filformat:", p.file_format || "MP4, JPG, PNG"]);
-    if (p.material_spec) specs.push(["Övrigt:", p.material_spec]);
+    if (p.format) specs.push([L.format, p.format]);
+    if (p.dimensions) specs.push([L.dimensions, p.dimensions]);
+    if (p.ad_duration_seconds) specs.push([L.duration, L.seconds(p.ad_duration_seconds)]);
+    else specs.push([L.duration, L.defaultDuration]);
+    specs.push([L.fileFormat, p.file_format || "MP4, JPG, PNG"]);
+    if (p.material_spec) specs.push([L.other, p.material_spec]);
 
     const key = JSON.stringify(specs);
     const name = it.product_name || p.name || "—";
@@ -280,8 +377,8 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     const title = g.names.length > 1
-      ? `Material spec (gemensam för ${g.names.length} skärmar): ${g.names.join(", ")}`
-      : `Material spec: ${g.names[0]}`;
+      ? L.materialSpecShared(g.names.length, g.names.join(", "))
+      : L.materialSpec(g.names[0]);
     const titleLines = doc.splitTextToSize(title, pageW - margin * 2);
     titleLines.forEach((ln: string) => {
       doc.text(ln, margin, y);
@@ -301,13 +398,16 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
   if (y > pageH - margin - 140) { doc.addPage(); y = margin + 20; }
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text("Fakturavillkor:", margin, y);
+  doc.text(L.invoiceTerms, margin, y);
   y += 14;
   const freq = String((order as any).billing_frequency || "engang");
   const isMonthly = freq === "manad";
+  const rawTerms = String((order as any).payment_terms || SWEDISH_DEFAULT_TERMS);
   const terms = isMonthly
-    ? "30 dagar netto, faktureras den 1:a varje månad"
-    : String((order as any).payment_terms || "30 dagar netto från erlagd order");
+    ? L.monthlyTerms
+    : rawTerms.trim() === SWEDISH_DEFAULT_TERMS
+      ? L.defaultTerms
+      : rawTerms;
   doc.splitTextToSize(terms, pageW - margin * 2).forEach((ln: string) => {
     if (y > pageH - margin - 20) { doc.addPage(); y = margin + 20; }
     doc.text(ln, margin, y);
@@ -320,18 +420,14 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
     const perMonthEx = subtotal / months;
     if (y > pageH - margin - 40) { doc.addPage(); y = margin + 20; }
     doc.setFont("helvetica", "bold");
-    doc.text(
-      `Månadsbelopp: ${SEK(perMonthEx)} SEK ex moms (${SEK(perMonth)} SEK ink moms) i ${months} månader`,
-      margin,
-      y,
-    );
+    doc.text(L.monthlyAmount(SEK(perMonthEx), SEK(perMonth), months), margin, y);
     doc.setFont("helvetica", "normal");
     y += 14;
   }
   y += 16;
 
   // Signature
-  doc.text("Med vänliga hälsningar,", margin, y);
+  doc.text(L.regards, margin, y);
   y += 22;
   doc.setFont("helvetica", "bold");
   doc.text(sellerName || "", margin, y);
@@ -341,7 +437,7 @@ export async function generateOrderPdf({ order, items, products, sellerName, sel
     doc.text(sellerEmail, margin, y);
   }
 
-  const prefix = isOffert ? "Offert" : "Orderbekraftelse";
+  const prefix = isOffert ? L.filePrefixOffert : L.filePrefixOrder;
   const filename = `${prefix}_${(order.company_name || "kund").replace(/[^a-z0-9]+/gi, "_")}_${(order.id || "").slice(0, 8)}.pdf`;
 
   if (mode === "blob") {

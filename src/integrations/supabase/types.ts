@@ -700,6 +700,7 @@ export type Database = {
           org_number: string | null
           owner_id: string | null
           payment_terms: string
+          pdf_language: string
           postal_code: string | null
           production_status: string
           selected_weeks: number[]
@@ -741,6 +742,7 @@ export type Database = {
           org_number?: string | null
           owner_id?: string | null
           payment_terms?: string
+          pdf_language?: string
           postal_code?: string | null
           production_status?: string
           selected_weeks?: number[]
@@ -782,6 +784,7 @@ export type Database = {
           org_number?: string | null
           owner_id?: string | null
           payment_terms?: string
+          pdf_language?: string
           postal_code?: string | null
           production_status?: string
           selected_weeks?: number[]

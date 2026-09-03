@@ -225,6 +225,7 @@ export function OrderDialog({
     payment_terms: "30 dagar netto från erlagd order",
     vat_exempt: false,
     invoice_status: null as string | null,
+    pdf_language: "sv" as "sv" | "en",
   });
   const [items, setItems] = useState<Item[]>([emptyItem()]);
   const [totalPrice, setTotalPrice] = useState<string>("0");
@@ -262,6 +263,7 @@ export function OrderDialog({
         payment_terms: (order as any).payment_terms ?? "30 dagar netto från erlagd order",
         vat_exempt: (order as any).vat_exempt ?? false,
         invoice_status: order.invoice_status ?? null,
+        pdf_language: ((order as any).pdf_language === "en" ? "en" : "sv") as "sv" | "en",
       });
       setSelectedWeeks(Array.isArray(order.selected_weeks) ? order.selected_weeks : []);
       setCampaignPeriods(periodsFromExactDates(order.exact_dates));
@@ -310,7 +312,7 @@ export function OrderDialog({
         contact_name: "", contact_email: "", contact_phone: "", notes: "",
         invoice_start_date: new Date(), billing_frequency: "engang", billing_duration_months: 1,
         invoice_reference: "", invoice_peppol_id: "", invoice_email: "", invoice_info: "",
-        payment_terms: "30 dagar netto från erlagd order", vat_exempt: false, invoice_status: null,
+        payment_terms: "30 dagar netto från erlagd order", vat_exempt: false, invoice_status: null, pdf_language: "sv" as "sv" | "en",
       });
       setItems([emptyItem()]);
       setTotalPrice("0");
@@ -770,7 +772,7 @@ export function OrderDialog({
         </DialogHeader>
         <form onSubmit={handleSave} className="space-y-5">
           {/* Typ */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div>
               <Label>Typ</Label>
               <Select value={form.order_type} onValueChange={(v: "offert" | "bokning") => setForm(f => ({ ...f, order_type: v }))}>
@@ -778,6 +780,16 @@ export function OrderDialog({
                 <SelectContent>
                   <SelectItem value="offert">Offert</SelectItem>
                   <SelectItem value="bokning">Bokning</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Dokumentspråk (PDF)</Label>
+              <Select value={form.pdf_language} onValueChange={(v: "sv" | "en") => setForm(f => ({ ...f, pdf_language: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sv">Svenska</SelectItem>
+                  <SelectItem value="en">Engelska</SelectItem>
                 </SelectContent>
               </Select>
             </div>
