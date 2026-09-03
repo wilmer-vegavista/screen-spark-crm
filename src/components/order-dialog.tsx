@@ -17,7 +17,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2, FileDown, Loader2, ChevronDown, CalendarIcon, X, Eye, CheckCircle2, ArrowUp, ArrowDown, Package as PackageIcon, Search } from "lucide-react";
 import { generateOrderPdf, type OrderPdfInput } from "@/lib/order-pdf";
-import { format } from "date-fns";
+import { format, parseISO, isBefore } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { sv } from "date-fns/locale";
 import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/lib/billing";
 import { cn } from "@/lib/utils";
@@ -69,6 +70,28 @@ const PAYMENT_TERMS_PRESETS: string[] = [
   "60 dagar netto från erlagd order",
   "Förskottsbetalning",
 ];
+
+type CampaignPeriod = { start: Date; end: Date };
+
+// exact_dates stores flattened [start, end] pairs — same convention as
+// order-schedule-dialog and the reports that read min/max of the array.
+function periodsFromExactDates(dates: unknown): CampaignPeriod[] {
+  if (!Array.isArray(dates)) return [];
+  const list = [...(dates as string[])].sort();
+  const out: CampaignPeriod[] = [];
+  for (let i = 0; i < list.length; i += 2) {
+    const start = parseISO(list[i]);
+    if (isNaN(start.getTime())) continue;
+    const rawEnd = list[i + 1] ? parseISO(list[i + 1]) : start;
+    out.push({ start, end: isNaN(rawEnd.getTime()) ? start : rawEnd });
+  }
+  return out;
+}
+
+const periodLabel = (p: CampaignPeriod) =>
+  p.start.getTime() === p.end.getTime()
+    ? format(p.start, "d MMM yyyy", { locale: sv })
+    : `${format(p.start, "d MMM", { locale: sv })} – ${format(p.end, "d MMM yyyy", { locale: sv })}`;
 
 export function OrderDialog({
   open,
@@ -206,7 +229,8 @@ export function OrderDialog({
   const [items, setItems] = useState<Item[]>([emptyItem()]);
   const [totalPrice, setTotalPrice] = useState<string>("0");
   const [selectedWeeks, setSelectedWeeks] = useState<number[]>([]);
-  const [exactDates, setExactDates] = useState<Date[]>([]);
+  const [campaignPeriods, setCampaignPeriods] = useState<CampaignPeriod[]>([]);
+  const [pendingRange, setPendingRange] = useState<DateRange | undefined>();
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [splits, setSplits] = useState<Array<{ user_id: string; share_pct: string }>>([]);
 
@@ -240,7 +264,8 @@ export function OrderDialog({
         invoice_status: order.invoice_status ?? null,
       });
       setSelectedWeeks(Array.isArray(order.selected_weeks) ? order.selected_weeks : []);
-      setExactDates(Array.isArray(order.exact_dates) ? order.exact_dates.map((d: string) => new Date(d)) : []);
+      setCampaignPeriods(periodsFromExactDates(order.exact_dates));
+      setPendingRange(undefined);
       setOwnerId(order.owner_id ?? null);
 
       // load items (commission is protected in the DB and fetched separately)
@@ -290,7 +315,8 @@ export function OrderDialog({
       setItems([emptyItem()]);
       setTotalPrice("0");
       setSelectedWeeks([]);
-      setExactDates([]);
+      setCampaignPeriods([]);
+      setPendingRange(undefined);
       setOwnerId(currentUserId ?? null);
       setSplits([]);
     }
@@ -500,7 +526,7 @@ export function OrderDialog({
       total_excl_vat: subtotal,
       total_commission: totalCommission,
       selected_weeks: selectedWeeks,
-      exact_dates: exactDates.map(d => format(d, "yyyy-MM-dd")),
+      exact_dates: campaignPeriods.flatMap(p => [format(p.start, "yyyy-MM-dd"), format(p.end, "yyyy-MM-dd")]),
       owner_id: effectiveOwner,
       created_by: order?.created_by ?? uid,
     };
@@ -680,7 +706,7 @@ export function OrderDialog({
         created_at: (order as any)?.created_at ?? new Date().toISOString(),
         ...form,
         selected_weeks: selectedWeeks,
-        exact_dates: exactDates.map(d => format(d, "yyyy-MM-dd")),
+        exact_dates: campaignPeriods.flatMap(p => [format(p.start, "yyyy-MM-dd"), format(p.end, "yyyy-MM-dd")]),
       },
       items: items.filter(it => it.product_name.trim()).map(it => {
         const weeks = Number(it.weeks) || 1;
@@ -1245,40 +1271,61 @@ export function OrderDialog({
 
               <TabsContent value="dates" className="space-y-3 pt-3">
                 <div className="text-xs text-muted-foreground">
-                  Välj specifika datum kunden vill köra på. {exactDates.length} datum valda.
+                  Välj period från–till i kalendern (klicka startdatum och sedan slutdatum).{" "}
+                  {campaignPeriods.length} period{campaignPeriods.length === 1 ? "" : "er"} valda.
                 </div>
                 <div className="flex flex-wrap gap-3 items-start">
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button type="button" variant="outline" size="sm">
-                        <CalendarIcon className="size-4 mr-1" /> Lägg till datum
+                        <CalendarIcon className="size-4 mr-1" /> Lägg till period
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
-                        mode="multiple"
-                        selected={exactDates}
-                        onSelect={(d) => setExactDates(d ?? [])}
+                        mode="range"
+                        selected={pendingRange}
+                        onSelect={setPendingRange}
                         locale={sv}
                         weekStartsOn={1}
+                        numberOfMonths={2}
                         className="p-3 pointer-events-auto"
                       />
+                      <div className="flex justify-end gap-2 p-3 pt-0">
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={!pendingRange?.from}
+                          onClick={() => {
+                            if (!pendingRange?.from) return;
+                            let start = pendingRange.from;
+                            let end = pendingRange.to ?? pendingRange.from;
+                            if (isBefore(end, start)) [start, end] = [end, start];
+                            setCampaignPeriods(prev =>
+                              [...prev, { start, end }].sort((a, b) => a.start.getTime() - b.start.getTime())
+                            );
+                            setPendingRange(undefined);
+                          }}
+                        >
+                          Lägg till {pendingRange?.from ? periodLabel({ start: pendingRange.from, end: pendingRange.to ?? pendingRange.from }) : "period"}
+                        </Button>
+                      </div>
                     </PopoverContent>
                   </Popover>
-                  {exactDates.length > 0 && (
-                    <Button type="button" size="sm" variant="ghost" onClick={() => setExactDates([])}>
-                      Rensa datum
+                  {campaignPeriods.length > 0 && (
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setCampaignPeriods([])}>
+                      Rensa perioder
                     </Button>
                   )}
                 </div>
-                {exactDates.length > 0 && (
+                {campaignPeriods.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
-                    {[...exactDates].sort((a, b) => a.getTime() - b.getTime()).map((d, i) => (
+                    {campaignPeriods.map((p, i) => (
                       <Badge key={i} variant="secondary" className="gap-1">
-                        {format(d, "d MMM yyyy", { locale: sv })}
+                        {periodLabel(p)}
                         <button
                           type="button"
-                          onClick={() => setExactDates(prev => prev.filter(x => x.getTime() !== d.getTime()))}
+                          onClick={() => setCampaignPeriods(prev => prev.filter((_, j) => j !== i))}
                           className="hover:text-destructive"
                         >
                           <X className="size-3" />
