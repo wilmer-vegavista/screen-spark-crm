@@ -220,18 +220,53 @@ export const getScreenOwnerLoginLink = createServerFn({ method: "POST" })
     return { actionLink: linkData.properties.action_link, email: userRes.user.email };
   });
 
-export const updateScreenOwnerEmail = createServerFn({ method: "POST" })
+export const updateScreenOwner = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ user_id: z.string().uuid(), email: z.string().email() }))
+  .inputValidator(
+    z.object({
+      user_id: z.string().uuid(),
+      email: z.string().email().optional(),
+      full_name: z.string().optional(),
+      owner_name: z.string().min(1).optional(),
+    }),
+  )
   .handler(async ({ context, data }) => {
     await checkAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
-      email: data.email,
-      email_confirm: true,
-    });
-    if (error) throw new Error(error.message);
-    await supabaseAdmin.from("profiles").update({ email: data.email }).eq("id", data.user_id);
+
+    // Säkerhetsspärr: bara för skärmägarkonton
+    const { data: mapping } = await supabaseAdmin
+      .from("screen_owners")
+      .select("id")
+      .eq("user_id", data.user_id)
+      .maybeSingle();
+    if (!mapping) throw new Error("Användaren är inte en skärmägare");
+
+    if (data.email || data.full_name) {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
+        ...(data.email ? { email: data.email, email_confirm: true } : {}),
+        ...(data.full_name ? { user_metadata: { full_name: data.full_name } } : {}),
+      });
+      if (error) {
+        const msg = (error.message || "").toLowerCase();
+        if (msg.includes("already"))
+          throw new Error("E-postadressen används redan av ett annat konto");
+        throw new Error(error.message);
+      }
+      const profileUpdate: { email?: string; full_name?: string } = {};
+      if (data.email) profileUpdate.email = data.email;
+      if (data.full_name) profileUpdate.full_name = data.full_name;
+      await supabaseAdmin.from("profiles").update(profileUpdate).eq("id", data.user_id);
+    }
+
+    if (data.owner_name) {
+      const { error } = await supabaseAdmin
+        .from("screen_owners")
+        .update({ owner_name: data.owner_name })
+        .eq("user_id", data.user_id);
+      if (error) throw new Error(error.message);
+    }
+
     return { ok: true };
   });
 
