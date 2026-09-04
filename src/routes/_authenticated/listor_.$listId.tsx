@@ -176,6 +176,20 @@ function ListSida() {
     await saveColumns(columns.filter((c) => c.id !== col.id));
   };
 
+  // Väljer vilken kolumn order/offert läggs på (företagsnamnet hämtas härifrån)
+  const setOrderColumn = async (col: ListColumn) => {
+    await saveColumns(
+      columns.map((c) =>
+        c.id === col.id
+          ? { ...c, role: "company" }
+          : c.role === "company"
+            ? { id: c.id, name: c.name }
+            : c,
+      ),
+    );
+    toast.success(`Order / offert läggs nu på kolumnen "${col.name}"`);
+  };
+
   // Ser till att det alltid finns tomma rader längst ner, som i ett kalkylark
   const ensureTrailingEmptyRows = async () => {
     const current =
@@ -301,7 +315,10 @@ function ListSida() {
       // Behåll kolumn-id:n för kolumner med samma rubrik så inget refereras fel
       const mapped = newCols.map((nc) => {
         const existing = columns.find((c) => c.name.toLowerCase() === nc.name.toLowerCase());
-        return existing ? { ...nc, id: existing.id } : nc;
+        // Behåll även vald orderkolumn (role) vid omhämtning
+        return existing
+          ? { ...nc, id: existing.id, ...(existing.role ? { role: existing.role } : {}) }
+          : nc;
       });
       const remapped = newRows.map((r) => {
         const obj: Record<string, string> = {};
@@ -464,7 +481,15 @@ function ListSida() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button className="w-full px-2.5 py-1.5 text-left font-semibold text-xs uppercase tracking-wide hover:bg-accent/60 flex items-center justify-between gap-1">
-                          <span className="truncate">{col.name}</span>
+                          <span className="truncate flex items-center gap-1.5">
+                            {col.id === companyColId && (
+                              <ShoppingCart
+                                className="size-3 text-primary shrink-0"
+                                aria-label="Order / offert läggs på denna kolumn"
+                              />
+                            )}
+                            {col.name}
+                          </span>
                           <ChevronDown className="size-3 text-muted-foreground shrink-0" />
                         </button>
                       </DropdownMenuTrigger>
@@ -472,6 +497,18 @@ function ListSida() {
                         <DropdownMenuItem onClick={() => renameColumn(col)}>
                           <Pencil className="size-4 mr-2" /> Byt namn
                         </DropdownMenuItem>
+                        {col.id === companyColId ? (
+                          <DropdownMenuItem disabled>
+                            <ShoppingCart className="size-4 mr-2 text-primary" /> Order / offert
+                            läggs här
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => setOrderColumn(col)}>
+                            <ShoppingCart className="size-4 mr-2" /> Lägg order / offert på denna
+                            kolumn
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => deleteColumn(col)}
                           className="text-destructive focus:text-destructive"

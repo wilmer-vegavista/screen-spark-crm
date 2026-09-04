@@ -23,9 +23,14 @@ export const statusChipClass = (value: string) =>
 export const isEmptyRowData = (d: Record<string, string> | null | undefined) =>
   Object.values(d ?? {}).every((v) => !String(v ?? "").trim());
 
-/** Gissar vilken kolumn som innehåller företagsnamnet (annars första kolumnen) */
+/**
+ * Kolumnen som order/offert läggs på: i första hand den som användaren
+ * valt själv (role "company"), annars gissning på namnet, annars första kolumnen.
+ */
 export const findCompanyColumn = (columns: ListColumn[]) =>
-  columns.find((c) => /företag|company|kund|namn/i.test(c.name)) ?? columns[0];
+  columns.find((c) => c.role === "company") ??
+  columns.find((c) => /företag|company|kund|namn/i.test(c.name)) ??
+  columns[0];
 
 export const findContactColumn = (columns: ListColumn[]) =>
   columns.find((c) => /kontakt/i.test(c.name));
