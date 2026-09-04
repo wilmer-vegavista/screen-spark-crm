@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
@@ -24,13 +24,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Loader2, LogOut, Monitor } from "lucide-react";
+import { ChevronDown, ChevronRight, KeyRound, Loader2, LogOut, Monitor } from "lucide-react";
 
 export const Route = createFileRoute("/skarmportal")({
   ssr: false,
   component: SkarmportalPage,
 });
+
+// Läses vid sidladdning innan supabase-klienten hinner konsumera hashen:
+// inbjudnings-/återställningslänkar ska öppna "välj lösenord"-dialogen direkt.
+const arrivedViaEmailLink =
+  typeof window !== "undefined" && /type=(invite|recovery|signup)/.test(window.location.hash);
 
 const SEK = (n: number) =>
   new Intl.NumberFormat("sv-SE", {
@@ -102,16 +114,36 @@ function periodTextOf(it: PortalItem) {
   return `${n} ${n === 1 ? pair[0] : pair[1]}`;
 }
 
+/** Alla år som förekommer i faktureringsschemat, så väljaren även täcker framtida bokningar */
+function availableYears(report: PortalReport): number[] {
+  const orderById = new Map<string, PortalOrder>();
+  for (const o of report.orders) orderById.set(o.id, o);
+  const years = new Set<number>();
+  const current = new Date().getFullYear();
+  years.add(current);
+  years.add(current + 1);
+  for (const it of report.items) {
+    const o = orderById.get(it.order_id);
+    if (!o) continue;
+    const total = Number(it.unit_price || 0) * Number(it.weeks || 1);
+    const schedule = buildInvoiceSchedule(
+      o.invoice_start_date || o.created_at,
+      (o.billing_frequency ?? "engang") as BillingFrequency,
+      Number(o.billing_duration_months ?? 0),
+      total,
+    );
+    for (const h of schedule) years.add(h.date.getFullYear());
+  }
+  return Array.from(years).sort((a, b) => b - a);
+}
+
 /** Samma intäktslogik som CRM:ets ekonomirapport: pris × perioder, utslaget per faktureringstillfälle */
-function computeScreens(report: PortalReport, year: number): ScreenRow[] {
+function computeScreens(report: PortalReport, from: Date, to: Date): ScreenRow[] {
   const orderById = new Map<string, PortalOrder>();
   for (const o of report.orders) orderById.set(o.id, o);
 
   type Agg = { yearRevenue: number; totalOrderValue: number; detail: DetailRow[] };
   const byProduct = new Map<string, Agg>();
-
-  const from = new Date(year, 0, 1);
-  const to = new Date(year, 11, 31, 23, 59, 59);
 
   for (const it of report.items) {
     const o = orderById.get(it.order_id);
@@ -160,6 +192,15 @@ function computeScreens(report: PortalReport, year: number): ScreenRow[] {
 
 function SkarmportalPage() {
   const qc = useQueryClient();
+
+  // Inbjudnings-/magiska länkar loggar in användaren asynkront efter sidladdning
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      qc.invalidateQueries({ queryKey: ["portal-session"] });
+      qc.invalidateQueries({ queryKey: ["portal-report"] });
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [qc]);
 
   const { data: session, isLoading: sessionLoading } = useQuery({
     queryKey: ["portal-session"],
@@ -307,16 +348,38 @@ function PortalLogin({ onSignedIn }: { onSignedIn: () => void }) {
 function PortalDashboard({ report, onSignOut }: { report: PortalReport; onSignOut: () => void }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState<string>("alla"); // "alla" eller "0".."11"
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [pwOpen, setPwOpen] = useState(arrivedViaEmailLink);
 
-  const rows = useMemo(() => computeScreens(report, year), [report, year]);
+  const { from, to, periodLabel } = useMemo(() => {
+    if (month === "alla") {
+      return {
+        from: new Date(year, 0, 1),
+        to: new Date(year, 11, 31, 23, 59, 59),
+        periodLabel: String(year),
+      };
+    }
+    const m = Number(month);
+    return {
+      from: new Date(year, m, 1),
+      to: new Date(year, m + 1, 0, 23, 59, 59),
+      periodLabel: `${format(new Date(year, m, 1), "MMMM", { locale: sv })} ${year}`,
+    };
+  }, [year, month]);
+
+  const rows = useMemo(() => computeScreens(report, from, to), [report, from, to]);
 
   const totalYear = rows.reduce((s, r) => s + r.yearRevenue, 0);
   const totalShare = rows.reduce((s, r) => s + r.yearShare, 0);
   const totalAllTime = rows.reduce((s, r) => s + r.totalOrderValue, 0);
   const hasShare = rows.some((r) => Number(r.product.revenue_share_pct ?? 0) > 0);
 
-  const years = Array.from({ length: 4 }, (_, i) => now.getFullYear() - i);
+  const years = useMemo(() => availableYears(report), [report]);
+  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
+    value: String(i),
+    label: format(new Date(2000, i, 1), "MMMM", { locale: sv }),
+  }));
 
   const toggle = (id: string) =>
     setExpanded((prev) => {
@@ -341,7 +404,20 @@ function PortalDashboard({ report, onSignOut }: { report: PortalReport; onSignOu
             <p className="text-xs text-muted-foreground">Skärmägarportal</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={month} onValueChange={setMonth}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alla">Hela året</SelectItem>
+              {monthOptions.map((m) => (
+                <SelectItem key={m.value} value={m.value}>
+                  {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
             <SelectTrigger className="w-28">
               <SelectValue />
@@ -354,6 +430,14 @@ function PortalDashboard({ report, onSignOut }: { report: PortalReport; onSignOu
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            size="icon"
+            title="Byt lösenord"
+            onClick={() => setPwOpen(true)}
+          >
+            <KeyRound className="size-4" />
+          </Button>
           <Button variant="outline" size="sm" onClick={onSignOut}>
             <LogOut className="size-4 mr-2" /> Logga ut
           </Button>
@@ -361,8 +445,8 @@ function PortalDashboard({ report, onSignOut }: { report: PortalReport; onSignOu
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-        <Kpi label={`Omsättning ${year}`} value={SEK(totalYear)} />
-        {hasShare && <Kpi label={`Er andel ${year}`} value={SEK(totalShare)} />}
+        <Kpi label={`Omsättning ${periodLabel}`} value={SEK(totalYear)} />
+        {hasShare && <Kpi label={`Er andel ${periodLabel}`} value={SEK(totalShare)} />}
         <Kpi label="Antal skärmar" value={String(rows.length)} />
         <Kpi label="Totalt ordervärde (alla år)" value={SEK(totalAllTime)} />
       </div>
@@ -374,7 +458,7 @@ function PortalDashboard({ report, onSignOut }: { report: PortalReport; onSignOu
               <TableHead className="w-8" />
               <TableHead>Skärm</TableHead>
               <TableHead>Stad</TableHead>
-              <TableHead className="text-right">Omsättning {year}</TableHead>
+              <TableHead className="text-right">Omsättning {periodLabel}</TableHead>
               {hasShare && <TableHead className="text-right">Er andel</TableHead>}
               <TableHead className="text-right">Totalt ordervärde</TableHead>
             </TableRow>
@@ -414,7 +498,7 @@ function PortalDashboard({ report, onSignOut }: { report: PortalReport; onSignOu
                       <TableCell colSpan={hasShare ? 6 : 5} className="bg-muted/30 p-0">
                         {r.detail.length === 0 ? (
                           <p className="text-sm text-muted-foreground px-10 py-3">
-                            Ingen fakturerad försäljning {year}.
+                            Ingen fakturerad försäljning {periodLabel}.
                           </p>
                         ) : (
                           <Table>
@@ -464,7 +548,76 @@ function PortalDashboard({ report, onSignOut }: { report: PortalReport; onSignOu
         Alla belopp i SEK exkl. moms. Omsättningen fördelas per faktureringstillfälle, på samma sätt
         som i vår ekonomirapport.
       </p>
+
+      <SetPasswordDialog open={pwOpen} onOpenChange={setPwOpen} />
     </PortalFrame>
+  );
+}
+
+function SetPasswordDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (b: boolean) => void;
+}) {
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (pw.length < 6) return toast.error("Lösenordet måste vara minst 6 tecken");
+    if (pw !== pw2) return toast.error("Lösenorden matchar inte");
+    setSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Lösenordet är sparat");
+    setPw("");
+    setPw2("");
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Välj lösenord</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Välj ett eget lösenord för att logga in i skärmägarportalen framöver.
+          </p>
+          <div>
+            <Label htmlFor="new-pw">Nytt lösenord</Label>
+            <Input
+              id="new-pw"
+              type="password"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              placeholder="minst 6 tecken"
+            />
+          </div>
+          <div>
+            <Label htmlFor="new-pw2">Upprepa lösenord</Label>
+            <Input
+              id="new-pw2"
+              type="password"
+              value={pw2}
+              onChange={(e) => setPw2(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Avbryt
+          </Button>
+          <Button onClick={save} disabled={saving || pw.length < 6}>
+            {saving && <Loader2 className="size-4 animate-spin mr-2" />} Spara
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -1,0 +1,155 @@
+import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { z } from "zod";
+
+async function checkAdmin(supabase: any, userId: string) {
+  const { data } = await supabase.rpc("has_role", {
+    _user_id: userId,
+    _role: "admin",
+  });
+  if (!data) throw new Error("Unauthorized: admin only");
+}
+
+export const listScreenOwnersAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await checkAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const [ownersRes, productsRes] = await Promise.all([
+      supabaseAdmin.from("screen_owners").select("id, user_id, owner_name, created_at"),
+      supabaseAdmin.from("products").select("owner_name"),
+    ]);
+
+    const authUsers: any[] = [];
+    let page = 1;
+    while (true) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
+      if (error) throw new Error(error.message);
+      authUsers.push(...data.users);
+      if (data.users.length < 200) break;
+      page++;
+    }
+    const authByUser = new Map(authUsers.map((u: any) => [u.id, u]));
+
+    const owners = (ownersRes.data ?? []).map((o) => {
+      const u: any = authByUser.get(o.user_id);
+      const lastSignIn = u?.last_sign_in_at ?? null;
+      return {
+        ...o,
+        email: u?.email ?? null,
+        full_name: u?.user_metadata?.full_name ?? null,
+        last_sign_in_at: lastSignIn,
+        invited_at: u?.invited_at ?? null,
+        pending_invite: Boolean(u?.invited_at) && !lastSignIn,
+      };
+    });
+
+    const ownerNames = Array.from(
+      new Set((productsRes.data ?? []).map((p) => p.owner_name).filter(Boolean) as string[]),
+    ).sort((a, b) => a.localeCompare(b, "sv"));
+
+    return { owners, ownerNames };
+  });
+
+export const inviteScreenOwner = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      email: z.string().email(),
+      owner_name: z.string().min(1),
+      full_name: z.string().optional(),
+      redirect_to: z.string().url().optional(),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    await checkAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: inviteData, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      data.email,
+      {
+        data: { full_name: data.full_name || data.owner_name },
+        redirectTo: data.redirect_to,
+      },
+    );
+    if (inviteErr) {
+      const msg = (inviteErr.message || "").toLowerCase();
+      if (msg.includes("already") && msg.includes("registered")) {
+        throw new Error("E-postadressen har redan ett konto");
+      }
+      throw new Error(inviteErr.message);
+    }
+    const userId = inviteData.user.id;
+
+    // handle_new_user-triggern gav kontot saljare-rollen; skärmägare ska inte ha någon CRM-roll
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
+    const { error: mapErr } = await supabaseAdmin
+      .from("screen_owners")
+      .insert({ user_id: userId, owner_name: data.owner_name });
+    if (mapErr) throw new Error(mapErr.message);
+
+    return { userId };
+  });
+
+export const resendScreenOwnerInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ email: z.string().email(), redirect_to: z.string().url().optional() }))
+  .handler(async ({ context, data }) => {
+    await checkAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email, {
+      redirectTo: data.redirect_to,
+    });
+    if (error) {
+      const msg = (error.message || "").toLowerCase();
+      // Redan aktiverat konto: skicka återställningslänk istället
+      if (msg.includes("already") && msg.includes("registered")) {
+        const { error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+          type: "recovery",
+          email: data.email,
+          options: { redirectTo: data.redirect_to },
+        });
+        if (linkErr) throw new Error(linkErr.message);
+        return { ok: true, resent: "recovery" as const };
+      }
+      throw new Error(error.message);
+    }
+    return { ok: true, resent: "invite" as const };
+  });
+
+export const updateScreenOwnerEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ user_id: z.string().uuid(), email: z.string().email() }))
+  .handler(async ({ context, data }) => {
+    await checkAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
+      email: data.email,
+      email_confirm: true,
+    });
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.from("profiles").update({ email: data.email }).eq("id", data.user_id);
+    return { ok: true };
+  });
+
+export const removeScreenOwner = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ user_id: z.string().uuid() }))
+  .handler(async ({ context, data }) => {
+    await checkAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Skärmägarkonton finns bara för portalen — ta bort hela kontot.
+    // Säkerhetsspärr: rör aldrig konton som inte är mappade som skärmägare.
+    const { data: mapping } = await supabaseAdmin
+      .from("screen_owners")
+      .select("id")
+      .eq("user_id", data.user_id)
+      .maybeSingle();
+    if (!mapping) throw new Error("Användaren är inte en skärmägare");
+
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.user_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
