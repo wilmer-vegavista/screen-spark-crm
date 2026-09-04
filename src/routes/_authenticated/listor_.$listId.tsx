@@ -54,10 +54,23 @@ export const Route = createFileRoute("/_authenticated/listor_/$listId")({
 
 type ListRow = { id: string; list_id: string; position: number; data: Record<string, string> };
 
-type Duplicate = { row_id: string; match_type: string; match_value: string; other_seller: string };
+type Duplicate = {
+  row_id: string;
+  match_type: string;
+  match_value: string;
+  other_seller: string;
+  source: string;
+};
 
 const matchTypeLabel = (t: string) =>
   t === "telefon" ? "samma telefonnummer" : t === "mail" ? "samma mejladress" : "samma företag";
+
+const sourceLabel = (s: string) =>
+  s === "bokning"
+    ? "en bokad order med"
+    : s === "offert"
+      ? "en registrerad offert med"
+      : "i sin kundlista";
 
 // Rader som fått status Offert kopplas till en affär i pipeline via en dold nyckel
 const DEAL_KEY = "_deal_id";
@@ -504,7 +517,11 @@ function ListSida() {
                               <div key={i} className="text-xs">
                                 <span className="font-medium">{d.other_seller}</span>{" "}
                                 <span className="text-muted-foreground">
-                                  har {matchTypeLabel(d.match_type)}:
+                                  har{" "}
+                                  {d.source === "lista"
+                                    ? `${matchTypeLabel(d.match_type)} i sin kundlista`
+                                    : `${sourceLabel(d.source)} ${matchTypeLabel(d.match_type)}`}
+                                  :
                                 </span>{" "}
                                 {d.match_value}
                               </div>

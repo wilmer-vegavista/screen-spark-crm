@@ -1234,6 +1234,7 @@ export type Database = {
           match_type: string
           match_value: string
           other_seller: string
+          source: string
         }[]
       }
       get_order_commission: {
