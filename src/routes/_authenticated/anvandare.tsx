@@ -7,18 +7,65 @@ import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Loader2, Mail, Eye, EyeOff, Copy, KeyRound } from "lucide-react";
-import { createSeller, updateSeller, resendSellerInvite, setSellerPassword, listSellersAdmin } from "@/lib/sellers.functions";
+import {
+  Plus,
+  Pencil,
+  Loader2,
+  Mail,
+  Eye,
+  EyeOff,
+  Copy,
+  KeyRound,
+  Monitor,
+  Trash2,
+} from "lucide-react";
+import {
+  createSeller,
+  updateSeller,
+  resendSellerInvite,
+  setSellerPassword,
+  listSellersAdmin,
+} from "@/lib/sellers.functions";
+import {
+  listScreenOwnersAdmin,
+  inviteScreenOwner,
+  resendScreenOwnerInvite,
+  removeScreenOwner,
+} from "@/lib/screen-owners.functions";
 
 export const Route = createFileRoute("/_authenticated/anvandare")({
   component: SaljarePage,
 });
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat("sv-SE", { style: "currency", currency: "SEK", maximumFractionDigits: 0 }).format(n || 0);
+  new Intl.NumberFormat("sv-SE", {
+    style: "currency",
+    currency: "SEK",
+    maximumFractionDigits: 0,
+  }).format(n || 0);
 
 function SaljarePage() {
   const { isAdmin } = useCurrentUser();
@@ -38,9 +85,13 @@ function SaljarePage() {
 
   return (
     <>
-      <PageHeader title="Användare" description="Lägg till och hantera användare, provision och grundlön" />
-      <div className="p-6">
+      <PageHeader
+        title="Användare"
+        description="Lägg till och hantera användare, provision och grundlön"
+      />
+      <div className="p-6 space-y-6">
         <SellersTable />
+        <ScreenOwnersTable />
       </div>
     </>
   );
@@ -68,9 +119,17 @@ function SellersTable() {
       <div className="p-4 border-b flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold">Användare</h3>
-          <p className="text-xs text-muted-foreground">Kontaktuppgifter, lön och inloggning. Lösenord visas endast för admin.</p>
+          <p className="text-xs text-muted-foreground">
+            Kontaktuppgifter, lön och inloggning. Lösenord visas endast för admin.
+          </p>
         </div>
-        <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+        <Button
+          size="sm"
+          onClick={() => {
+            setEditing(null);
+            setDialogOpen(true);
+          }}
+        >
           <Plus className="size-4 mr-1" /> Ny användare
         </Button>
       </div>
@@ -100,25 +159,43 @@ function SellersTable() {
             {(data ?? []).map((s: any) => (
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.full_name || "—"}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">{s.title || "Account Manager"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {s.title || "Account Manager"}
+                </TableCell>
                 <TableCell className="text-xs">{s.email || "—"}</TableCell>
                 <TableCell className="text-xs">{s.phone || "—"}</TableCell>
                 <TableCell>
-                  <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${s.role === "admin" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+                  <span
+                    className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${s.role === "admin" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}
+                  >
                     {s.role === "admin" ? "Admin" : "Säljare"}
                   </span>
                 </TableCell>
                 <TableCell>
                   {s.pending_invite ? (
-                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">Inbjuden</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                      Inbjuden
+                    </span>
                   ) : s.has_password ? (
-                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">Aktiv</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                      Aktiv
+                    </span>
                   ) : (
-                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-muted text-muted-foreground">Inget lösenord</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                      Inget lösenord
+                    </span>
                   )}
                 </TableCell>
-                <TableCell className="text-xs">{s.last_sign_in_at ? new Date(s.last_sign_in_at).toLocaleString("sv-SE") : <span className="text-muted-foreground italic">aldrig</span>}</TableCell>
-                <TableCell><PasswordCell value={s.password} /></TableCell>
+                <TableCell className="text-xs">
+                  {s.last_sign_in_at ? (
+                    new Date(s.last_sign_in_at).toLocaleString("sv-SE")
+                  ) : (
+                    <span className="text-muted-foreground italic">aldrig</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <PasswordCell value={s.password} />
+                </TableCell>
                 <TableCell className="text-xs">
                   {s.compensation_type === "endast_provision" ? "Endast prov." : "Med grundlön"}
                 </TableCell>
@@ -152,7 +229,15 @@ function SellersTable() {
                     >
                       <Mail className="size-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" title="Redigera" onClick={() => { setEditing(s); setDialogOpen(true); }}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Redigera"
+                      onClick={() => {
+                        setEditing(s);
+                        setDialogOpen(true);
+                      }}
+                    >
                       <Pencil className="size-3.5" />
                     </Button>
                   </div>
@@ -169,13 +254,273 @@ function SellersTable() {
           </TableBody>
         </Table>
       )}
-      <SellerDialog open={dialogOpen} onOpenChange={setDialogOpen} seller={editing} onSaved={handleSaved} />
+      <SellerDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        seller={editing}
+        onSaved={handleSaved}
+      />
       <SetPasswordDialog
         seller={pwSeller}
-        onOpenChange={(b) => { if (!b) setPwSeller(null); }}
-        onSaved={() => { setPwSeller(null); qc.invalidateQueries({ queryKey: ["sellers-admin"] }); }}
+        onOpenChange={(b) => {
+          if (!b) setPwSeller(null);
+        }}
+        onSaved={() => {
+          setPwSeller(null);
+          qc.invalidateQueries({ queryKey: ["sellers-admin"] });
+        }}
       />
     </Card>
+  );
+}
+
+function ScreenOwnersTable() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["screen-owners-admin"],
+    queryFn: () => listScreenOwnersAdmin(),
+  });
+
+  const [inviteOpen, setInviteOpen] = useState(false);
+
+  const portalRedirect = () => `${window.location.origin}/skarmportal`;
+
+  const resend = async (email: string | null) => {
+    if (!email) return;
+    try {
+      const res = await resendScreenOwnerInvite({ data: { email, redirect_to: portalRedirect() } });
+      toast.success(
+        res.resent === "invite"
+          ? "Inbjudan skickad till " + email
+          : "Kontot är redan aktivt — återställningslänk skickad till " + email,
+      );
+    } catch (e: any) {
+      toast.error(e.message ?? "Kunde inte skicka inbjudan");
+    }
+  };
+
+  const remove = async (o: any) => {
+    if (!confirm(`Ta bort skärmägarkontot för ${o.owner_name} (${o.email})?`)) return;
+    try {
+      await removeScreenOwner({ data: { user_id: o.user_id } });
+      toast.success("Kontot borttaget");
+      qc.invalidateQueries({ queryKey: ["screen-owners-admin"] });
+    } catch (e: any) {
+      toast.error(e.message ?? "Kunde inte ta bort kontot");
+    }
+  };
+
+  return (
+    <Card>
+      <div className="p-4 border-b flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold flex items-center gap-1.5">
+            <Monitor className="size-4" /> Skärmägare
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Externa ägare som loggar in i skärmägarportalen och bara ser försäljningen på sina egna
+            skärmar.
+          </p>
+        </div>
+        <Button size="sm" onClick={() => setInviteOpen(true)}>
+          <Mail className="size-4 mr-1" /> Bjud in skärmägare
+        </Button>
+      </div>
+      {isLoading ? (
+        <div className="p-8 flex items-center justify-center text-muted-foreground text-sm">
+          <Loader2 className="size-4 mr-2 animate-spin" /> Laddar…
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Ägare</TableHead>
+              <TableHead>Namn</TableHead>
+              <TableHead>E-post</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Senast inloggad</TableHead>
+              <TableHead className="w-24"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(data?.owners ?? []).map((o: any) => (
+              <TableRow key={o.id}>
+                <TableCell className="font-medium">{o.owner_name}</TableCell>
+                <TableCell className="text-xs">{o.full_name || "—"}</TableCell>
+                <TableCell className="text-xs">{o.email || "—"}</TableCell>
+                <TableCell>
+                  {o.pending_invite ? (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                      Inbjuden
+                    </span>
+                  ) : o.last_sign_in_at ? (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                      Aktiv
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                      Ej inloggad
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="text-xs">
+                  {o.last_sign_in_at ? (
+                    new Date(o.last_sign_in_at).toLocaleString("sv-SE")
+                  ) : (
+                    <span className="text-muted-foreground italic">aldrig</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Skicka inbjudan / återställningslänk via e-post"
+                      onClick={() => resend(o.email)}
+                    >
+                      <Mail className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Ta bort konto"
+                      onClick={() => remove(o)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+            {(data?.owners ?? []).length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                  Inga skärmägarkonton ännu
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      )}
+      <InviteScreenOwnerDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        ownerNames={data?.ownerNames ?? []}
+        onSaved={() => {
+          setInviteOpen(false);
+          qc.invalidateQueries({ queryKey: ["screen-owners-admin"] });
+        }}
+      />
+    </Card>
+  );
+}
+
+function InviteScreenOwnerDialog({
+  open,
+  onOpenChange,
+  ownerNames,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (b: boolean) => void;
+  ownerNames: string[];
+  onSaved: () => void;
+}) {
+  const [ownerName, setOwnerName] = useState("");
+  const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setOwnerName("");
+      setEmail("");
+      setFullName("");
+    }
+  }, [open]);
+
+  const save = async () => {
+    if (!ownerName || !email) {
+      toast.error("Ägare och e-post krävs");
+      return;
+    }
+    setSaving(true);
+    try {
+      await inviteScreenOwner({
+        data: {
+          email,
+          owner_name: ownerName,
+          full_name: fullName || undefined,
+          redirect_to: `${window.location.origin}/skarmportal`,
+        },
+      });
+      toast.success("Inbjudan skickad till " + email);
+      onSaved();
+    } catch (e: any) {
+      toast.error(e.message ?? "Något gick fel");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Bjud in skärmägare</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium">Ägare (från skärmarna)</label>
+            <Select value={ownerName} onValueChange={setOwnerName}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Välj ägare…" />
+              </SelectTrigger>
+              <SelectContent>
+                {ownerNames.map((n) => (
+                  <SelectItem key={n} value={n}>
+                    {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Kontot ser bara skärmar där ägaren matchar detta namn.
+            </p>
+          </div>
+          <div>
+            <label className="text-xs font-medium">E-post</label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="agare@exempel.se"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium">Namn (valfritt)</label>
+            <Input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Anna Svensson"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Ett mejl skickas med en länk där mottagaren väljer sitt eget lösenord och landar direkt
+            i skärmägarportalen.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Avbryt
+          </Button>
+          <Button onClick={save} disabled={saving || !ownerName || !email}>
+            {saving ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
+            Skicka inbjudan
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -185,14 +530,23 @@ function PasswordCell({ value }: { value: string | null }) {
   return (
     <div className="flex items-center gap-1">
       <span className="text-xs font-mono">{show ? value : "••••••••"}</span>
-      <Button variant="ghost" size="icon" className="size-6" onClick={() => setShow((v) => !v)} title={show ? "Dölj" : "Visa"}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-6"
+        onClick={() => setShow((v) => !v)}
+        title={show ? "Dölj" : "Visa"}
+      >
         {show ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
       </Button>
       <Button
         variant="ghost"
         size="icon"
         className="size-6"
-        onClick={() => { navigator.clipboard.writeText(value); toast.success("Kopierat"); }}
+        onClick={() => {
+          navigator.clipboard.writeText(value);
+          toast.success("Kopierat");
+        }}
         title="Kopiera"
       >
         <Copy className="size-3" />
@@ -201,7 +555,11 @@ function PasswordCell({ value }: { value: string | null }) {
   );
 }
 
-function SetPasswordDialog({ seller, onOpenChange, onSaved }: {
+function SetPasswordDialog({
+  seller,
+  onOpenChange,
+  onSaved,
+}: {
   seller: any;
   onOpenChange: (b: boolean) => void;
   onSaved: () => void;
@@ -238,15 +596,25 @@ function SetPasswordDialog({ seller, onOpenChange, onSaved }: {
         </DialogHeader>
         <div className="space-y-3 text-sm">
           <div className="text-xs text-muted-foreground">
-            Användare: <span className="font-medium text-foreground">{seller?.full_name || seller?.email}</span>
+            Användare:{" "}
+            <span className="font-medium text-foreground">
+              {seller?.full_name || seller?.email}
+            </span>
           </div>
           <div>
             <label className="text-xs font-medium">Nytt lösenord</label>
-            <Input type="text" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="minst 6 tecken" />
+            <Input
+              type="text"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              placeholder="minst 6 tecken"
+            />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Avbryt</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Avbryt
+          </Button>
           <Button onClick={save} disabled={saving || pw.length < 6}>
             {saving ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
             Spara
@@ -257,7 +625,12 @@ function SetPasswordDialog({ seller, onOpenChange, onSaved }: {
   );
 }
 
-function SellerDialog({ open, onOpenChange, seller, onSaved }: {
+function SellerDialog({
+  open,
+  onOpenChange,
+  seller,
+  onSaved,
+}: {
   open: boolean;
   onOpenChange: (b: boolean) => void;
   seller: any;
@@ -304,31 +677,35 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
     setSaving(true);
     try {
       if (seller) {
-        await updateSeller({ data: {
-          user_id: seller.id,
-          full_name: name,
-          email,
-          phone,
-          title,
-          role,
-          compensation_type: type,
-          base_salary: type === "endast_provision" ? 0 : Number(base),
-          default_commission_pct: Number(pct),
-        }});
+        await updateSeller({
+          data: {
+            user_id: seller.id,
+            full_name: name,
+            email,
+            phone,
+            title,
+            role,
+            compensation_type: type,
+            base_salary: type === "endast_provision" ? 0 : Number(base),
+            default_commission_pct: Number(pct),
+          },
+        });
         toast.success("Användare uppdaterad");
       } else {
-        const result = await createSeller({ data: {
-          full_name: name,
-          email,
-          phone,
-          title,
-          role,
-          compensation_type: type,
-          base_salary: type === "endast_provision" ? 0 : Number(base),
-          default_commission_pct: Number(pct),
-          credential_mode: credMode,
-          password: credMode === "password" ? password : undefined,
-        }});
+        const result = await createSeller({
+          data: {
+            full_name: name,
+            email,
+            phone,
+            title,
+            role,
+            compensation_type: type,
+            base_salary: type === "endast_provision" ? 0 : Number(base),
+            default_commission_pct: Number(pct),
+            credential_mode: credMode,
+            password: credMode === "password" ? password : undefined,
+          },
+        });
         if (result.invited) {
           toast.success("Användare skapad — inbjudan skickad till " + email);
         } else {
@@ -352,21 +729,38 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium">Namn</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Anna Svensson" />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Anna Svensson"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium">E-post</label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="anna@exempel.se" />
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="anna@exempel.se"
+              />
             </div>
             <div>
               <label className="text-xs font-medium">Telefon</label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="070-123 45 67" />
+              <Input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="070-123 45 67"
+              />
             </div>
           </div>
           <div>
             <label className="text-xs font-medium">Titel</label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Account Manager" />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Account Manager"
+            />
           </div>
           <div>
             <label className="text-xs font-medium">Roll</label>
@@ -385,7 +779,9 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
                 className={`text-left p-3 rounded-md border text-xs ${role === "admin" ? "border-primary bg-primary/10" : "border-border"}`}
               >
                 <div className="font-semibold">Admin</div>
-                <div className="text-muted-foreground mt-1">Full tillgång till systemet, inkl. användare och faktura</div>
+                <div className="text-muted-foreground mt-1">
+                  Full tillgång till systemet, inkl. användare och faktura
+                </div>
               </button>
             </div>
           </div>
@@ -418,8 +814,16 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
           )}
           <div>
             <label className="text-xs font-medium">Standard provision %</label>
-            <Input type="number" step="0.1" min={0} value={pct} onChange={(e) => setPct(e.target.value)} />
-            <p className="text-[10px] text-muted-foreground mt-1">Används endast om affären saknar produkt.</p>
+            <Input
+              type="number"
+              step="0.1"
+              min={0}
+              value={pct}
+              onChange={(e) => setPct(e.target.value)}
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Används endast om affären saknar produkt.
+            </p>
           </div>
 
           {!seller && (
@@ -432,7 +836,9 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
                   className={`text-left p-2 rounded-md border text-xs ${credMode === "password" ? "border-primary bg-primary/10" : "border-border"}`}
                 >
                   <div className="font-semibold">Sätt lösenord</div>
-                  <div className="text-muted-foreground mt-1">Du väljer lösenordet. Syns på adminsidan.</div>
+                  <div className="text-muted-foreground mt-1">
+                    Du väljer lösenordet. Syns på adminsidan.
+                  </div>
                 </button>
                 <button
                   type="button"
@@ -440,7 +846,9 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
                   className={`text-left p-2 rounded-md border text-xs ${credMode === "invite" ? "border-primary bg-primary/10" : "border-border"}`}
                 >
                   <div className="font-semibold">Skicka inbjudan</div>
-                  <div className="text-muted-foreground mt-1">Säljaren sätter eget lösenord via mail.</div>
+                  <div className="text-muted-foreground mt-1">
+                    Säljaren sätter eget lösenord via mail.
+                  </div>
                 </button>
               </div>
               {credMode === "password" && (
@@ -464,7 +872,8 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
                     </Button>
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    ⚠️ Lösenordet sparas i klartext så det syns på adminsidan. Be säljaren byta lösenord vid första inloggning.
+                    ⚠️ Lösenordet sparas i klartext så det syns på adminsidan. Be säljaren byta
+                    lösenord vid första inloggning.
                   </p>
                 </div>
               )}
@@ -472,7 +881,9 @@ function SellerDialog({ open, onOpenChange, seller, onSaved }: {
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Avbryt</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Avbryt
+          </Button>
           <Button onClick={save} disabled={saving || !name || !email}>
             {saving ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
             {seller ? "Spara" : "Skapa säljare"}

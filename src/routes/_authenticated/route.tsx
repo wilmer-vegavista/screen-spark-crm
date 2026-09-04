@@ -7,6 +7,13 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
+    // Skärmägarkonton hör hemma i portalen, inte i CRM:et
+    const { data: ownerRow } = await supabase
+      .from("screen_owners")
+      .select("id")
+      .eq("user_id", data.user.id)
+      .maybeSingle();
+    if (ownerRow) throw redirect({ to: "/skarmportal" });
     return { user: data.user };
   },
   component: () => (
