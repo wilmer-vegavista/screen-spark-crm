@@ -60,11 +60,42 @@ export const inviteScreenOwner = createServerFn({ method: "POST" })
       owner_name: z.string().min(1),
       full_name: z.string().optional(),
       redirect_to: z.string().url().optional(),
+      // "email" skickar inbjudningsmejl via Supabase, "link" skapar bara en länk
+      // som admin kopierar och skickar själv (påverkas inte av mejlgränsen)
+      mode: z.enum(["email", "link"]).default("email"),
     }),
   )
   .handler(async ({ context, data }) => {
     await checkAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const finishSetup = async (userId: string) => {
+      // handle_new_user-triggern gav kontot saljare-rollen; skärmägare ska inte ha någon CRM-roll
+      await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
+      const { error: mapErr } = await supabaseAdmin
+        .from("screen_owners")
+        .insert({ user_id: userId, owner_name: data.owner_name });
+      if (mapErr) throw new Error(mapErr.message);
+    };
+
+    const generateInviteLink = async () => {
+      const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+        type: "invite",
+        email: data.email,
+        options: {
+          data: { full_name: data.full_name || data.owner_name },
+          redirectTo: data.redirect_to,
+        },
+      });
+      if (linkErr) throw new Error(linkErr.message);
+      return { userId: linkData.user.id, actionLink: linkData.properties.action_link };
+    };
+
+    if (data.mode === "link") {
+      const { userId, actionLink } = await generateInviteLink();
+      await finishSetup(userId);
+      return { userId, actionLink, emailSent: false };
+    }
 
     const { data: inviteData, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(
       data.email,
@@ -78,18 +109,17 @@ export const inviteScreenOwner = createServerFn({ method: "POST" })
       if (msg.includes("already") && msg.includes("registered")) {
         throw new Error("E-postadressen har redan ett konto");
       }
+      // Supabases inbyggda mejltjänst har låg timgräns — skapa länken utan mejl istället
+      if (msg.includes("rate limit")) {
+        const { userId, actionLink } = await generateInviteLink();
+        await finishSetup(userId);
+        return { userId, actionLink, emailSent: false, rateLimited: true };
+      }
       throw new Error(inviteErr.message);
     }
     const userId = inviteData.user.id;
-
-    // handle_new_user-triggern gav kontot saljare-rollen; skärmägare ska inte ha någon CRM-roll
-    await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
-    const { error: mapErr } = await supabaseAdmin
-      .from("screen_owners")
-      .insert({ user_id: userId, owner_name: data.owner_name });
-    if (mapErr) throw new Error(mapErr.message);
-
-    return { userId };
+    await finishSetup(userId);
+    return { userId, actionLink: null, emailSent: true };
   });
 
 export const resendScreenOwnerInvite = createServerFn({ method: "POST" })
@@ -103,6 +133,9 @@ export const resendScreenOwnerInvite = createServerFn({ method: "POST" })
     });
     if (error) {
       const msg = (error.message || "").toLowerCase();
+      if (msg.includes("rate limit")) {
+        throw new Error("Mejlgränsen är nådd — använd länk-knappen och skicka länken själv");
+      }
       // Redan aktiverat konto: skicka återställningslänk istället
       if (msg.includes("already") && msg.includes("registered")) {
         const { error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
@@ -116,6 +149,44 @@ export const resendScreenOwnerInvite = createServerFn({ method: "POST" })
       throw new Error(error.message);
     }
     return { ok: true, resent: "invite" as const };
+  });
+
+export const getScreenOwnerLoginLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({ user_id: z.string().uuid(), redirect_to: z.string().url().optional() }),
+  )
+  .handler(async ({ context, data }) => {
+    await checkAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Säkerhetsspärr: bara för skärmägarkonton
+    const { data: mapping } = await supabaseAdmin
+      .from("screen_owners")
+      .select("id")
+      .eq("user_id", data.user_id)
+      .maybeSingle();
+    if (!mapping) throw new Error("Användaren är inte en skärmägare");
+
+    const { data: userRes, error: userErr } = await supabaseAdmin.auth.admin.getUserById(
+      data.user_id,
+    );
+    if (userErr || !userRes.user?.email) throw new Error("Kunde inte hämta användaren");
+
+    // Bekräfta e-posten så att en återställningslänk kan skapas även för
+    // konton som ännu inte accepterat sin inbjudan
+    if (!userRes.user.email_confirmed_at) {
+      await supabaseAdmin.auth.admin.updateUserById(data.user_id, { email_confirm: true });
+    }
+
+    const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+      type: "recovery",
+      email: userRes.user.email,
+      options: { redirectTo: data.redirect_to },
+    });
+    if (linkErr) throw new Error(linkErr.message);
+
+    return { actionLink: linkData.properties.action_link, email: userRes.user.email };
   });
 
 export const updateScreenOwnerEmail = createServerFn({ method: "POST" })
