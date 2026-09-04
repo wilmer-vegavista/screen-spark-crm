@@ -3,6 +3,8 @@
 export interface ListColumn {
   id: string;
   name: string;
+  /** "company" = kolumnen som order/offert-knappen och pipeline-titeln hämtar företagsnamnet från */
+  role?: string;
 }
 
 export function newColumnId() {
