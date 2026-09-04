@@ -214,6 +214,71 @@ export type Database = {
           },
         ]
       }
+      customer_list_rows: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          list_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          list_id: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          list_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_list_rows_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "customer_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_lists: {
+        Row: {
+          columns: Json
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          source_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          columns?: Json
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          source_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          columns?: Json
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          source_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           billing_address: string | null
