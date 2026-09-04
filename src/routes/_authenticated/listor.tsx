@@ -166,6 +166,7 @@ function Listor() {
                   <th className="p-2">Lista</th>
                   {isAdmin && <th className="p-2 hidden sm:table-cell">Ägare</th>}
                   <th className="p-2 text-right hidden sm:table-cell">Rader</th>
+                  {isAdmin && <th className="p-2 text-right">Dubbletter</th>}
                   <th className="p-2 hidden md:table-cell">Uppdaterad</th>
                   <th className="p-2 w-10" />
                 </tr>
@@ -183,22 +184,7 @@ function Listor() {
                           <FileSpreadsheet className="size-4" />
                         </div>
                         <div>
-                          <div className="font-medium flex items-center gap-2 flex-wrap">
-                            {l.name}
-                            {isAdmin && (adminDups?.get(l.id)?.length ?? 0) > 0 && (
-                              <button
-                                className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-medium hover:bg-amber-200 transition-colors"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDupDialogList({ id: l.id, name: l.name });
-                                }}
-                                title="Visa dubbletter i denna lista"
-                              >
-                                <AlertTriangle className="size-3" />
-                                {adminDups?.get(l.id)?.length} dubbletter
-                              </button>
-                            )}
-                          </div>
+                          <div className="font-medium">{l.name}</div>
                           {l.source_url && (
                             <div className="text-xs text-muted-foreground flex items-center gap-1">
                               <Link2 className="size-3" /> Kopplad till Google Sheets
@@ -217,6 +203,25 @@ function Listor() {
                     <td className="p-2 text-right hidden sm:table-cell">
                       {rowCounts?.get(l.id) ?? 0}
                     </td>
+                    {isAdmin && (
+                      <td className="p-2 text-right">
+                        {(adminDups?.get(l.id)?.length ?? 0) > 0 ? (
+                          <button
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-medium hover:bg-amber-200 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDupDialogList({ id: l.id, name: l.name });
+                            }}
+                            title="Visa dubbletter i denna lista"
+                          >
+                            <AlertTriangle className="size-3" />
+                            {adminDups?.get(l.id)?.length}
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">0</span>
+                        )}
+                      </td>
+                    )}
                     <td className="p-2 hidden md:table-cell text-muted-foreground">
                       {new Date(l.updated_at).toLocaleDateString("sv-SE")}
                     </td>
