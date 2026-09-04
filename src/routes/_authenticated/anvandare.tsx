@@ -39,6 +39,7 @@ import {
   EyeOff,
   Copy,
   KeyRound,
+  Link2,
   Monitor,
   Trash2,
 } from "lucide-react";
@@ -53,6 +54,7 @@ import {
   listScreenOwnersAdmin,
   inviteScreenOwner,
   resendScreenOwnerInvite,
+  getScreenOwnerLoginLink,
   removeScreenOwner,
 } from "@/lib/screen-owners.functions";
 
@@ -282,6 +284,8 @@ function ScreenOwnersTable() {
   });
 
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [linkResult, setLinkResult] = useState<{ email: string; link: string } | null>(null);
+  const [linkLoading, setLinkLoading] = useState<string | null>(null);
 
   const portalRedirect = () => `${window.location.origin}/skarmportal`;
 
@@ -296,6 +300,20 @@ function ScreenOwnersTable() {
       );
     } catch (e: any) {
       toast.error(e.message ?? "Kunde inte skicka inbjudan");
+    }
+  };
+
+  const makeLink = async (o: any) => {
+    setLinkLoading(o.user_id);
+    try {
+      const res = await getScreenOwnerLoginLink({
+        data: { user_id: o.user_id, redirect_to: portalRedirect() },
+      });
+      setLinkResult({ email: res.email, link: res.actionLink });
+    } catch (e: any) {
+      toast.error(e.message ?? "Kunde inte skapa länk");
+    } finally {
+      setLinkLoading(null);
     }
   };
 
@@ -383,6 +401,19 @@ function ScreenOwnersTable() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      title="Skapa inloggningslänk att skicka själv (kräver inget mejl)"
+                      disabled={linkLoading === o.user_id}
+                      onClick={() => makeLink(o)}
+                    >
+                      {linkLoading === o.user_id ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Link2 className="size-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       title="Ta bort konto"
                       onClick={() => remove(o)}
                     >
@@ -407,11 +438,64 @@ function ScreenOwnersTable() {
         onOpenChange={setInviteOpen}
         ownerNames={data?.ownerNames ?? []}
         onSaved={() => {
-          setInviteOpen(false);
           qc.invalidateQueries({ queryKey: ["screen-owners-admin"] });
         }}
       />
+      <ShowLinkDialog result={linkResult} onOpenChange={(b) => !b && setLinkResult(null)} />
     </Card>
+  );
+}
+
+function CopyLinkBox({ link }: { link: string }) {
+  return (
+    <div className="space-y-2">
+      <div className="rounded-md border bg-muted/40 p-2 text-[11px] font-mono break-all max-h-24 overflow-y-auto">
+        {link}
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-full"
+        onClick={() => {
+          navigator.clipboard.writeText(link);
+          toast.success("Länk kopierad");
+        }}
+      >
+        <Copy className="size-3.5 mr-1" /> Kopiera länk
+      </Button>
+    </div>
+  );
+}
+
+function ShowLinkDialog({
+  result,
+  onOpenChange,
+}: {
+  result: { email: string; link: string } | null;
+  onOpenChange: (b: boolean) => void;
+}) {
+  return (
+    <Dialog open={!!result} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Inloggningslänk</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Skicka länken till <span className="font-medium text-foreground">{result?.email}</span>{" "}
+            på valfritt sätt (mejl, sms). Mottagaren loggas in och väljer sitt eget lösenord. Länken
+            är personlig och giltig för en inloggning.
+          </p>
+          {result && <CopyLinkBox link={result.link} />}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Stäng
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -429,13 +513,17 @@ function InviteScreenOwnerDialog({
   const [ownerName, setOwnerName] = useState("");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [mode, setMode] = useState<"email" | "link">("email");
   const [saving, setSaving] = useState(false);
+  const [createdLink, setCreatedLink] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setOwnerName("");
       setEmail("");
       setFullName("");
+      setMode("email");
+      setCreatedLink(null);
     }
   }, [open]);
 
@@ -446,16 +534,27 @@ function InviteScreenOwnerDialog({
     }
     setSaving(true);
     try {
-      await inviteScreenOwner({
+      const res = await inviteScreenOwner({
         data: {
           email,
           owner_name: ownerName,
           full_name: fullName || undefined,
           redirect_to: `${window.location.origin}/skarmportal`,
+          mode,
         },
       });
-      toast.success("Inbjudan skickad till " + email);
       onSaved();
+      if (res.emailSent) {
+        toast.success("Inbjudan skickad till " + email);
+        onOpenChange(false);
+      } else {
+        if (res.rateLimited) {
+          toast.warning("Mejlgränsen är nådd — kontot skapades, skicka länken nedan själv");
+        } else {
+          toast.success("Konto skapat — skicka länken nedan till " + email);
+        }
+        setCreatedLink(res.actionLink);
+      }
     } catch (e: any) {
       toast.error(e.message ?? "Något gick fel");
     } finally {
@@ -469,55 +568,92 @@ function InviteScreenOwnerDialog({
         <DialogHeader>
           <DialogTitle>Bjud in skärmägare</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium">Ägare (från skärmarna)</label>
-            <Select value={ownerName} onValueChange={setOwnerName}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Välj ägare…" />
-              </SelectTrigger>
-              <SelectContent>
-                {ownerNames.map((n) => (
-                  <SelectItem key={n} value={n}>
-                    {n}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Kontot ser bara skärmar där ägaren matchar detta namn.
+        {createdLink ? (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Kontot är skapat. Skicka länken till{" "}
+              <span className="font-medium text-foreground">{email}</span> på valfritt sätt —
+              mottagaren loggas in och väljer sitt eget lösenord.
+            </p>
+            <CopyLinkBox link={createdLink} />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium">Ägare (från skärmarna)</label>
+              <Select value={ownerName} onValueChange={setOwnerName}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Välj ägare…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ownerNames.map((n) => (
+                    <SelectItem key={n} value={n}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Kontot ser bara skärmar där ägaren matchar detta namn.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-medium">E-post</label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="agare@exempel.se"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium">Namn (valfritt)</label>
+              <Input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Anna Svensson"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium">Leverans</label>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setMode("email")}
+                  className={`text-left p-2 rounded-md border text-xs ${mode === "email" ? "border-primary bg-primary/10" : "border-border"}`}
+                >
+                  <div className="font-semibold">Skicka mejl</div>
+                  <div className="text-muted-foreground mt-1">
+                    Supabase mejlar inbjudan. Obs: låg timgräns utan egen SMTP.
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("link")}
+                  className={`text-left p-2 rounded-md border text-xs ${mode === "link" ? "border-primary bg-primary/10" : "border-border"}`}
+                >
+                  <div className="font-semibold">Skapa länk</div>
+                  <div className="text-muted-foreground mt-1">
+                    Du får en länk att skicka själv. Ingen mejlgräns.
+                  </div>
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Mottagaren väljer sitt eget lösenord och landar direkt i skärmägarportalen.
             </p>
           </div>
-          <div>
-            <label className="text-xs font-medium">E-post</label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="agare@exempel.se"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium">Namn (valfritt)</label>
-            <Input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Anna Svensson"
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Ett mejl skickas med en länk där mottagaren väljer sitt eget lösenord och landar direkt
-            i skärmägarportalen.
-          </p>
-        </div>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Avbryt
+            {createdLink ? "Stäng" : "Avbryt"}
           </Button>
-          <Button onClick={save} disabled={saving || !ownerName || !email}>
-            {saving ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
-            Skicka inbjudan
-          </Button>
+          {!createdLink && (
+            <Button onClick={save} disabled={saving || !ownerName || !email}>
+              {saving ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
+              {mode === "email" ? "Skicka inbjudan" : "Skapa länk"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
