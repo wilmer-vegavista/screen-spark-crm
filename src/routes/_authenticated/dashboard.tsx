@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Wallet, TrendingUp, FileText, Package, Target, CalendarDays, ChevronLeft, ChevronRight, Plane } from "lucide-react";
+import { Wallet, TrendingUp, FileText, Package, Target, CalendarDays, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Plane, Gamepad2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { startOfMonth, endOfMonth, startOfQuarter, startOfYear, endOfYear, subYears, startOfDay, endOfDay, startOfWeek, endOfWeek, addDays, addWeeks, format } from "date-fns";
 import { buildInvoiceSchedule, type BillingFrequency } from "@/lib/billing";
@@ -104,6 +104,8 @@ function Dashboard() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [orderDrill, setOrderDrill] = useState<{ title: string; orders: OrderLite[] } | null>(null);
+  const [stefanPopupOpen, setStefanPopupOpen] = useState(true);
+  const [prizeImgOk, setPrizeImgOk] = useState(true);
   const navigate = useNavigate();
   const now = new Date();
   const yearStart = startOfYear(now);
@@ -409,9 +411,113 @@ function Dashboard() {
     }
   }, [dataLoaded, contestMilestonesReached, contestYear]);
 
+  // Stefans egen säljtävling: säljer Stefan mest under september vinner han
+  // ett Playstation 5 + nya GTA-spelet. Räknas på fakturaplanen (bara det som
+  // faktureras i september), precis som huvudtävlingen.
+  const stefanMonthStart = new Date(contestYear, 8, 1); // 1 sep
+  const stefanMonthEnd = endOfDay(new Date(contestYear, 8, 30)); // 30 sep
+  const stefanContestActive = now >= stefanMonthStart && now <= stefanMonthEnd;
+  const stefanProfile = (data?.profiles ?? []).find((p) =>
+    `${p.full_name ?? ""} ${p.email ?? ""}`.toLowerCase().includes("stefan"),
+  );
+  const septSellerSales = new Map<string, number>();
+  for (const e of scheduleEntries) {
+    if (!e.owner_id) continue;
+    if (e.date < stefanMonthStart || e.date > stefanMonthEnd) continue;
+    septSellerSales.set(e.owner_id, (septSellerSales.get(e.owner_id) ?? 0) + e.amount);
+  }
+  const stefanSold = stefanProfile ? (septSellerSales.get(stefanProfile.id) ?? 0) : 0;
+  let stefanRivalTop = 0;
+  let stefanRivalId: string | null = null;
+  for (const [uid, amount] of septSellerSales) {
+    if (uid === stefanProfile?.id) continue;
+    if (amount > stefanRivalTop) {
+      stefanRivalTop = amount;
+      stefanRivalId = uid;
+    }
+  }
+  const stefanRivalProfile = stefanRivalId ? profileMap.get(stefanRivalId) : null;
+  const stefanRivalName = (
+    (stefanRivalProfile?.full_name && stefanRivalProfile.full_name.trim()) ||
+    stefanRivalProfile?.email ||
+    ""
+  ).split(" ")[0];
+  const stefanLeads = stefanSold > 0 && stefanSold > stefanRivalTop;
+
   return (
     <>
       <PageHeader title="Dashboard" description="Översikt över sälj, budget och lön" />
+
+      {/* Stefans säljtävling – alltid högst upp till höger under september */}
+      {stefanContestActive && stefanProfile && (
+        <div className="fixed top-4 right-4 z-50 w-72">
+          <Card className="overflow-hidden shadow-2xl border-primary/50">
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground">
+              <Gamepad2 className="size-4" />
+              <span className="text-xs font-semibold flex-1 truncate">
+                Stefans säljtävling – september
+              </span>
+              <button
+                type="button"
+                onClick={() => setStefanPopupOpen((o) => !o)}
+                className="shrink-0 opacity-80 hover:opacity-100"
+                title={stefanPopupOpen ? "Minimera" : "Visa"}
+              >
+                {stefanPopupOpen ? (
+                  <ChevronUp className="size-4" />
+                ) : (
+                  <ChevronDown className="size-4" />
+                )}
+              </button>
+            </div>
+            {stefanPopupOpen && (
+              <div>
+                {prizeImgOk ? (
+                  <img
+                    src="/saljtavling-stefan.png"
+                    alt="Playstation 5 + Grand Theft Auto V"
+                    className="w-full bg-white"
+                    onError={() => setPrizeImgOk(false)}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-1 py-8 bg-gradient-to-br from-slate-900 to-slate-700 text-white">
+                    <span className="text-4xl">🎮</span>
+                    <span className="text-lg font-bold tracking-wide">PS5 + GTA</span>
+                  </div>
+                )}
+                <div className="p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Säljer Stefan mest i september vinner han ett Playstation 5 och nya GTA-spelet
+                    🏆
+                  </p>
+                  {stefanLeads ? (
+                    <div className="rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-2 py-1.5 text-xs font-semibold">
+                      🥇 Stefan leder månaden med {fmt(stefanSold - stefanRivalTop)}!
+                    </div>
+                  ) : (
+                    <div className="rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2 py-1.5 text-xs font-semibold">
+                      Kvar för att ligga bäst till: {fmt(stefanRivalTop - stefanSold)}
+                    </div>
+                  )}
+                  <div className="text-[11px] text-muted-foreground">
+                    Stefan: <span className="font-semibold text-foreground">{fmt(stefanSold)}</span>
+                    {stefanRivalId && (
+                      <>
+                        {" "}
+                        · Etta just nu:{" "}
+                        <span className="font-semibold text-foreground">
+                          {stefanRivalName} {fmt(stefanRivalTop)}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
       <div className="p-6 space-y-6">
         {/* Today / this week */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
