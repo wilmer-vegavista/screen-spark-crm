@@ -45,6 +45,7 @@ import {
   findContactColumn,
   findPhoneColumn,
   findEmailColumn,
+  columnKind,
 } from "@/lib/list-status";
 import { OrderDialog, type OrderDialogInitial } from "@/components/order-dialog";
 
@@ -79,7 +80,7 @@ function ListSida() {
   const { listId } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { user } = useCurrentUser();
+  const { user, isAdmin } = useCurrentUser();
   const [q, setQ] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
@@ -111,13 +112,38 @@ function ListSida() {
 
   const columns = useMemo(() => (list?.columns ?? []) as unknown as ListColumn[], [list]);
 
-  // Rader där en annan säljare har samma företag, telefon eller mejl i sina listor
+  // Rader där en annan säljare har samma företag, telefon eller mejl.
+  // Admin ser varningar i alla listor (via adminfunktionen), säljare i sina egna.
   const { data: dups } = useQuery({
-    queryKey: ["list-duplicates"],
+    queryKey: ["list-duplicates", listId, isAdmin],
     queryFn: async () => {
-      const { data } = await supabase.rpc("get_list_duplicates");
+      let items: Duplicate[];
+      if (isAdmin) {
+        const { data } = await supabase.rpc("get_all_list_duplicates");
+        items = (
+          (data ?? []) as {
+            list_id: string;
+            row_id: string;
+            match_type: string;
+            match_value: string;
+            other_party: string;
+            source: string;
+          }[]
+        )
+          .filter((d) => d.list_id === listId)
+          .map((d) => ({
+            row_id: d.row_id,
+            match_type: d.match_type,
+            match_value: d.match_value,
+            other_seller: d.other_party,
+            source: d.source,
+          }));
+      } else {
+        const { data } = await supabase.rpc("get_list_duplicates");
+        items = (data ?? []) as Duplicate[];
+      }
       const m = new Map<string, Duplicate[]>();
-      ((data ?? []) as Duplicate[]).forEach((d) => {
+      items.forEach((d) => {
         const arr = m.get(d.row_id) ?? [];
         arr.push(d);
         m.set(d.row_id, arr);
@@ -618,13 +644,31 @@ function ListSida() {
                       <td key={col.id} className="border border-border/70 p-0">
                         <div className="relative group/cell">
                           <input
-                            className="w-full px-2.5 py-1.5 bg-transparent outline-none focus:bg-primary/5 focus:ring-1 focus:ring-primary/50 focus:relative"
+                            className={`w-full px-2.5 py-1.5 outline-none focus:bg-primary/5 focus:ring-1 focus:ring-primary/50 focus:relative ${
+                              columnKind(col) !== null &&
+                              (dups?.get(row.id) ?? []).some(
+                                (d) => d.match_type === columnKind(col),
+                              ) &&
+                              (row.data?.[col.id] ?? "").trim() !== ""
+                                ? "bg-amber-50 pr-7"
+                                : "bg-transparent"
+                            }`}
                             defaultValue={row.data?.[col.id] ?? ""}
                             onBlur={(e) => saveCell(row, col.id, e.target.value)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                             }}
                           />
+                          {columnKind(col) !== null &&
+                            (dups?.get(row.id) ?? []).some(
+                              (d) => d.match_type === columnKind(col),
+                            ) &&
+                            (row.data?.[col.id] ?? "").trim() !== "" && (
+                              <AlertTriangle
+                                className="absolute right-1.5 top-1/2 -translate-y-1/2 size-3 text-amber-500 pointer-events-none"
+                                aria-label="Denna uppgift finns även hos en annan säljare"
+                              />
+                            )}
                           {col.id === companyColId && (row.data?.[col.id] ?? "").trim() !== "" && (
                             <button
                               className="absolute right-1 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover/cell:opacity-100 focus:opacity-100 flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-[11px] font-medium shadow-sm transition-opacity whitespace-nowrap"

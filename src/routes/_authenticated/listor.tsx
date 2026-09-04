@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { ListImportDialog } from "@/components/list-import-dialog";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
-import { newColumnId } from "@/lib/sheet-import";
+import { newColumnId, type ListColumn } from "@/lib/sheet-import";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/listor")({
@@ -27,6 +27,7 @@ const DEFAULT_COLUMNS = ["Företag", "Kontaktperson", "Telefon", "E-post", "Stat
 
 type AdminDup = {
   list_id: string;
+  row_id: string;
   match_type: string;
   match_value: string;
   other_party: string;
@@ -97,6 +98,32 @@ function Listor() {
     },
     enabled: isAdmin,
   });
+
+  // Fullständigt radinnehåll för dubblettdialogen
+  const dialogDups = adminDups?.get(dupDialogList?.id ?? "") ?? [];
+  const { data: dupRows } = useQuery({
+    queryKey: ["dup-dialog-rows", dupDialogList?.id],
+    queryFn: async () => {
+      const ids = [...new Set(dialogDups.map((d) => d.row_id))];
+      if (ids.length === 0) return new Map<string, Record<string, string>>();
+      const { data } = await supabase.from("customer_list_rows").select("id, data").in("id", ids);
+      return new Map((data ?? []).map((r) => [r.id, (r.data ?? {}) as Record<string, string>]));
+    },
+    enabled: !!dupDialogList,
+  });
+
+  const dialogColumns = ((lists ?? []).find((l) => l.id === dupDialogList?.id)?.columns ??
+    []) as unknown as ListColumn[];
+
+  const dupsByRow = (() => {
+    const m = new Map<string, AdminDup[]>();
+    dialogDups.forEach((d) => {
+      const arr = m.get(d.row_id) ?? [];
+      arr.push(d);
+      m.set(d.row_id, arr);
+    });
+    return m;
+  })();
 
   const ownerName = (id: string) => {
     const p = (profiles ?? []).find((p) => p.id === id);
@@ -248,7 +275,7 @@ function Listor() {
         onCreated={(listId) => navigate({ to: "/listor/$listId", params: { listId } })}
       />
       <Dialog open={!!dupDialogList} onOpenChange={(o) => !o && setDupDialogList(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="size-4 text-amber-500" />
@@ -259,17 +286,42 @@ function Listor() {
               registrerad order/offert.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-96 overflow-y-auto space-y-2">
-            {(adminDups?.get(dupDialogList?.id ?? "") ?? []).map((d, i) => (
-              <div key={i} className="text-sm border rounded-md px-3 py-2">
-                <div className="font-medium">{d.match_value}</div>
-                <div className="text-xs text-muted-foreground">
-                  {dupTypeLabel(d.match_type)} • finns även hos{" "}
-                  <span className="font-medium text-foreground">{d.other_party}</span> (
-                  {dupSourceLabel(d.source)})
+          <div className="max-h-[28rem] overflow-y-auto space-y-3">
+            {[...dupsByRow.entries()].map(([rowId, rowDups]) => {
+              const rowData = dupRows?.get(rowId) ?? {};
+              const fields = dialogColumns
+                .map((c) => ({ name: c.name, value: (rowData[c.id] ?? "").trim() }))
+                .filter((f) => f.value);
+              return (
+                <div key={rowId} className="border rounded-md overflow-hidden">
+                  <div className="px-3 py-2 space-y-0.5">
+                    {fields.length > 0 ? (
+                      fields.map((f, i) => (
+                        <div key={i} className="text-sm flex gap-2">
+                          <span className="text-xs text-muted-foreground uppercase tracking-wide w-32 shrink-0 pt-0.5">
+                            {f.name}
+                          </span>
+                          <span className="min-w-0 break-words">{f.value}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-muted-foreground">Radens innehåll laddas…</div>
+                    )}
+                  </div>
+                  <div className="px-3 py-2 bg-amber-50 border-t space-y-1">
+                    {rowDups.map((d, i) => (
+                      <div key={i} className="text-xs text-amber-900">
+                        <AlertTriangle className="size-3 inline mr-1 text-amber-500" />
+                        {dupTypeLabel(d.match_type)}{" "}
+                        <span className="font-medium">{d.match_value}</span> finns även hos{" "}
+                        <span className="font-medium">{d.other_party}</span> (
+                        {dupSourceLabel(d.source)})
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>
