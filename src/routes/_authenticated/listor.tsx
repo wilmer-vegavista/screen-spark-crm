@@ -38,9 +38,15 @@ function Listor() {
   const { data: rowCounts } = useQuery({
     queryKey: ["customer-lists-row-counts"],
     queryFn: async () => {
-      const { data } = await supabase.from("customer_list_rows").select("list_id");
+      const { data } = await supabase.from("customer_list_rows").select("list_id, data");
       const m = new Map<string, number>();
-      (data ?? []).forEach((r) => m.set(r.list_id, (m.get(r.list_id) ?? 0) + 1));
+      (data ?? []).forEach((r) => {
+        // Tomma utfyllnadsrader räknas inte
+        const filled = Object.values((r.data ?? {}) as Record<string, string>).some((v) =>
+          String(v ?? "").trim(),
+        );
+        if (filled) m.set(r.list_id, (m.get(r.list_id) ?? 0) + 1);
+      });
       return m;
     },
   });
@@ -68,6 +74,10 @@ function Listor() {
       .select()
       .single();
     if (error) return toast.error(error.message);
+    // Starta med ett gäng tomma rader så det känns som ett kalkylark direkt
+    await supabase
+      .from("customer_list_rows")
+      .insert(Array.from({ length: 20 }, (_, i) => ({ list_id: data.id, position: i, data: {} })));
     qc.invalidateQueries({ queryKey: ["customer-lists"] });
     navigate({ to: "/listor/$listId", params: { listId: data.id } });
   };

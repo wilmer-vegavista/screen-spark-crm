@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,9 @@ const STATUS_OPTIONS = [
 ];
 
 const isStatusColumn = (col: ListColumn) => col.name.trim().toLowerCase().includes("status");
+
+const isEmptyRowData = (d: Record<string, string> | null | undefined) =>
+  Object.values(d ?? {}).every((v) => !String(v ?? "").trim());
 
 // Värden som importerats från arket får rätt färg även om skiftläget skiljer sig
 const statusChipClass = (value: string) =>
@@ -142,6 +145,32 @@ function ListSida() {
     await saveColumns(columns.filter((c) => c.id !== col.id));
   };
 
+  // Ser till att det alltid finns tomma rader längst ner, som i ett kalkylark
+  const ensureTrailingEmptyRows = async () => {
+    const current =
+      (qc.getQueryData(["customer-list-rows", listId]) as ListRow[] | undefined) ?? [];
+    let trailing = 0;
+    for (let i = current.length - 1; i >= 0 && isEmptyRowData(current[i].data); i--) trailing++;
+    if (trailing >= 3) return;
+    const maxPos = current.reduce((m, r) => Math.max(m, r.position), -1);
+    const { error } = await supabase.from("customer_list_rows").insert(
+      Array.from({ length: 10 }, (_, i) => ({
+        list_id: listId,
+        position: maxPos + 1 + i,
+        data: {},
+      })),
+    );
+    if (!error) qc.invalidateQueries({ queryKey: ["customer-list-rows", listId] });
+  };
+
+  const paddedListId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!rows || paddedListId.current === listId) return;
+    paddedListId.current = listId;
+    ensureTrailingEmptyRows();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, listId]);
+
   const saveCell = async (row: ListRow, colId: string, value: string) => {
     if ((row.data?.[colId] ?? "") === value) return;
     const data = { ...(row.data ?? {}), [colId]: value };
@@ -153,6 +182,7 @@ function ListSida() {
     qc.setQueryData(["customer-list-rows", listId], (old: ListRow[] | undefined) =>
       (old ?? []).map((r) => (r.id === row.id ? { ...r, data } : r)),
     );
+    if (value.trim()) ensureTrailingEmptyRows();
   };
 
   const addRow = async () => {
@@ -229,7 +259,8 @@ function ListSida() {
     exportListToCsv(
       list.name,
       columns,
-      (rows ?? []).map((r) => r.data ?? {}),
+      // Tomma utfyllnadsrader ska inte med i filen
+      (rows ?? []).map((r) => r.data ?? {}).filter((d) => !isEmptyRowData(d)),
     );
     toast.success("Listan exporterad som CSV");
   };
@@ -275,7 +306,8 @@ function ListSida() {
               {list?.name ?? "…"} <Pencil className="size-3.5 text-muted-foreground shrink-0" />
             </button>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {(rows ?? []).length} rader • {columns.length} kolumner
+              {(rows ?? []).filter((r) => !isEmptyRowData(r.data)).length} rader • {columns.length}{" "}
+              kolumner
             </p>
           </div>
         </div>
