@@ -1027,6 +1027,27 @@ export type Database = {
         }
         Relationships: []
       }
+      screen_owners: {
+        Row: {
+          created_at: string
+          id: string
+          owner_name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       seller_compensation: {
         Row: {
           base_salary: number
@@ -1151,6 +1172,8 @@ export type Database = {
           total_commission: number
         }[]
       }
+      get_screen_owner_name: { Args: { _user_id: string }; Returns: string }
+      get_screen_owner_report: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1158,6 +1181,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_screen_owner: { Args: { _user_id: string }; Returns: boolean }
       my_order_commissions: {
         Args: never
         Returns: {

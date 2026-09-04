@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SkarmportalRouteImport } from './routes/skarmportal'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -32,6 +33,11 @@ import { Route as AuthenticatedAnvandareRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAktiviteterRouteImport } from './routes/_authenticated/aktiviteter'
 import { Route as AuthenticatedKunderCustomerIdRouteImport } from './routes/_authenticated/kunder_.$customerId'
 
+const SkarmportalRoute = SkarmportalRouteImport.update({
+  id: '/skarmportal',
+  path: '/skarmportal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -149,6 +155,7 @@ const AuthenticatedKunderCustomerIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/skarmportal': typeof SkarmportalRoute
   '/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/anvandare': typeof AuthenticatedAnvandareRoute
   '/avslutad': typeof AuthenticatedAvslutadRoute
@@ -172,6 +179,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/skarmportal': typeof SkarmportalRoute
   '/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/anvandare': typeof AuthenticatedAnvandareRoute
   '/avslutad': typeof AuthenticatedAvslutadRoute
@@ -197,6 +205,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/skarmportal': typeof SkarmportalRoute
   '/_authenticated/aktiviteter': typeof AuthenticatedAktiviteterRoute
   '/_authenticated/anvandare': typeof AuthenticatedAnvandareRoute
   '/_authenticated/avslutad': typeof AuthenticatedAvslutadRoute
@@ -222,6 +231,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/skarmportal'
     | '/aktiviteter'
     | '/anvandare'
     | '/avslutad'
@@ -245,6 +255,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/skarmportal'
     | '/aktiviteter'
     | '/anvandare'
     | '/avslutad'
@@ -269,6 +280,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/skarmportal'
     | '/_authenticated/aktiviteter'
     | '/_authenticated/anvandare'
     | '/_authenticated/avslutad'
@@ -294,10 +306,18 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  SkarmportalRoute: typeof SkarmportalRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/skarmportal': {
+      id: '/skarmportal'
+      path: '/skarmportal'
+      fullPath: '/skarmportal'
+      preLoaderRoute: typeof SkarmportalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -506,6 +526,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  SkarmportalRoute: SkarmportalRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
