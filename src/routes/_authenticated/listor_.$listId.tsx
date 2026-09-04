@@ -24,6 +24,7 @@ import {
   ExternalLink,
   Download,
   X,
+  ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -40,7 +41,11 @@ import {
   isEmptyRowData,
   statusChipClass,
   findCompanyColumn,
+  findContactColumn,
+  findPhoneColumn,
+  findEmailColumn,
 } from "@/lib/list-status";
+import { OrderDialog, type OrderDialogInitial } from "@/components/order-dialog";
 
 export const Route = createFileRoute("/_authenticated/listor_/$listId")({
   component: ListSida,
@@ -58,6 +63,8 @@ function ListSida() {
   const { user } = useCurrentUser();
   const [q, setQ] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [orderOpen, setOrderOpen] = useState(false);
+  const [orderInitial, setOrderInitial] = useState<OrderDialogInitial | null>(null);
 
   const { data: list } = useQuery({
     queryKey: ["customer-list", listId],
@@ -164,6 +171,20 @@ function ListSida() {
   const companyNameFor = (data: Record<string, string>) => {
     const companyCol = findCompanyColumn(columns);
     return (data?.[companyCol?.id ?? ""] ?? "").trim();
+  };
+
+  const companyColId = findCompanyColumn(columns)?.id;
+
+  // Öppnar order/offert-dialogen förifylld med radens uppgifter
+  const openOrderFor = (row: ListRow) => {
+    const d = row.data ?? {};
+    setOrderInitial({
+      company_name: (d[companyColId ?? ""] ?? "").trim(),
+      contact_name: (d[findContactColumn(columns)?.id ?? ""] ?? "").trim(),
+      contact_phone: (d[findPhoneColumn(columns)?.id ?? ""] ?? "").trim(),
+      contact_email: (d[findEmailColumn(columns)?.id ?? ""] ?? "").trim(),
+    });
+    setOrderOpen(true);
   };
 
   // Status Offert => skapa affär i pipeline (en gång per rad)
@@ -486,14 +507,26 @@ function ListSida() {
                       </td>
                     ) : (
                       <td key={col.id} className="border border-border/70 p-0">
-                        <input
-                          className="w-full px-2.5 py-1.5 bg-transparent outline-none focus:bg-primary/5 focus:ring-1 focus:ring-primary/50 focus:relative"
-                          defaultValue={row.data?.[col.id] ?? ""}
-                          onBlur={(e) => saveCell(row, col.id, e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                          }}
-                        />
+                        <div className="relative group/cell">
+                          <input
+                            className="w-full px-2.5 py-1.5 bg-transparent outline-none focus:bg-primary/5 focus:ring-1 focus:ring-primary/50 focus:relative"
+                            defaultValue={row.data?.[col.id] ?? ""}
+                            onBlur={(e) => saveCell(row, col.id, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                            }}
+                          />
+                          {col.id === companyColId && (row.data?.[col.id] ?? "").trim() !== "" && (
+                            <button
+                              className="absolute right-1 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover/cell:opacity-100 focus:opacity-100 flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-[11px] font-medium shadow-sm transition-opacity whitespace-nowrap"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => openOrderFor(row)}
+                              title="Skapa order / offert med uppgifterna från raden"
+                            >
+                              <ShoppingCart className="size-3" /> Order / offert
+                            </button>
+                          )}
+                        </div>
                       </td>
                     ),
                   )}
@@ -528,6 +561,12 @@ function ListSida() {
           <Plus className="size-4 mr-1" /> Ny rad
         </Button>
       </div>
+      <OrderDialog
+        open={orderOpen}
+        onOpenChange={setOrderOpen}
+        order={null}
+        initial={orderInitial}
+      />
     </>
   );
 }

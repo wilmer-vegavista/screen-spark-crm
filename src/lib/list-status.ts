@@ -32,3 +32,6 @@ export const findContactColumn = (columns: ListColumn[]) =>
 
 export const findPhoneColumn = (columns: ListColumn[]) =>
   columns.find((c) => /telefon|phone|tel\b|nummer|mobil/i.test(c.name));
+
+export const findEmailColumn = (columns: ListColumn[]) =>
+  columns.find((c) => /e-?post|mail/i.test(c.name));
