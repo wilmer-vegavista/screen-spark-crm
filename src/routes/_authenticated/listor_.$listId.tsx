@@ -33,6 +33,7 @@ import {
   exportListToCsv,
   type ListColumn,
 } from "@/lib/sheet-import";
+import { useCurrentUser } from "@/lib/hooks/use-current-user";
 
 export const Route = createFileRoute("/_authenticated/listor_/$listId")({
   component: ListSida,
@@ -49,8 +50,12 @@ const STATUS_OPTIONS = [
   { label: "Inte intresserad", className: "bg-rose-300 text-rose-950" },
   { label: "Inget svar", className: "bg-purple-600 text-white" },
   { label: "Ring senare", className: "bg-blue-600 text-white" },
+  { label: "Offert", className: "bg-indigo-200 text-indigo-950" },
   { label: "SÄLJ", className: "bg-emerald-800 text-white" },
 ];
+
+// Rader som fått status Offert kopplas till en affär i pipeline via en dold nyckel
+const DEAL_KEY = "_deal_id";
 
 const isStatusColumn = (col: ListColumn) => col.name.trim().toLowerCase().includes("status");
 
@@ -66,6 +71,7 @@ function ListSida() {
   const { listId } = Route.useParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const { user } = useCurrentUser();
   const [q, setQ] = useState("");
   const [syncing, setSyncing] = useState(false);
 
@@ -171,6 +177,40 @@ function ListSida() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, listId]);
 
+  // Gissar vilken kolumn som innehåller företagsnamnet (annars första kolumnen)
+  const companyNameFor = (data: Record<string, string>) => {
+    const companyCol = columns.find((c) => /företag|company|kund|namn/i.test(c.name)) ?? columns[0];
+    return (data?.[companyCol?.id ?? ""] ?? "").trim();
+  };
+
+  // Status Offert => skapa affär i pipeline (en gång per rad)
+  const createOfferDeal = async (row: ListRow, data: Record<string, string>) => {
+    if (data[DEAL_KEY]) return;
+    const company = companyNameFor(data) || "Namnlös kund";
+    const { data: deal, error } = await supabase
+      .from("deals")
+      .insert({
+        title: company,
+        stage: "offert",
+        owner_id: user?.id ?? null,
+        created_by: user?.id ?? null,
+        notes: `Från kundlistan "${list?.name ?? ""}"`,
+      })
+      .select()
+      .single();
+    if (error) return toast.error(error.message);
+    const linked = { ...data, [DEAL_KEY]: deal.id };
+    await supabase
+      .from("customer_list_rows")
+      .update({ data: linked as unknown as Json })
+      .eq("id", row.id);
+    qc.setQueryData(["customer-list-rows", listId], (old: ListRow[] | undefined) =>
+      (old ?? []).map((r) => (r.id === row.id ? { ...r, data: linked } : r)),
+    );
+    qc.invalidateQueries({ queryKey: ["deals-with-customers"] });
+    toast.success(`"${company}" lades till som offert i pipeline`);
+  };
+
   const saveCell = async (row: ListRow, colId: string, value: string) => {
     if ((row.data?.[colId] ?? "") === value) return;
     const data = { ...(row.data ?? {}), [colId]: value };
@@ -183,6 +223,10 @@ function ListSida() {
       (old ?? []).map((r) => (r.id === row.id ? { ...r, data } : r)),
     );
     if (value.trim()) ensureTrailingEmptyRows();
+    const col = columns.find((c) => c.id === colId);
+    if (col && isStatusColumn(col) && value.trim().toLowerCase() === "offert") {
+      await createOfferDeal(row, data);
+    }
   };
 
   const addRow = async () => {
