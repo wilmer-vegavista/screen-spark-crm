@@ -130,7 +130,7 @@ export function ListImportDialog({ open, onOpenChange, onCreated }: Props) {
         onOpenChange(o);
       }}
     >
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-3xl overflow-hidden">
         <DialogHeader>
           <DialogTitle>Importera kundlista</DialogTitle>
           <DialogDescription>
@@ -207,57 +207,75 @@ export function ListImportDialog({ open, onOpenChange, onCreated }: Props) {
             </TabsContent>
           </Tabs>
         ) : (
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Listans namn</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="T.ex. Mina kunder 2026"
-              />
+          <div className="space-y-4 min-w-0">
+            <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+              <div className="space-y-1.5 flex-1 min-w-56">
+                <Label>Listans namn</Label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="T.ex. Mina kunder 2026"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-sm cursor-pointer pb-2.5 select-none">
+                <Checkbox
+                  checked={firstRowIsHeader}
+                  onCheckedChange={(v) => setFirstRowIsHeader(v === true)}
+                />
+                Första raden är rubriker
+              </label>
             </div>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <Checkbox
-                checked={firstRowIsHeader}
-                onCheckedChange={(v) => setFirstRowIsHeader(v === true)}
-              />
-              Första raden är rubriker
-            </label>
             {preview && (
-              <div className="border rounded-md overflow-auto max-h-64">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/60 sticky top-0">
-                    <tr>
-                      {preview.columns.map((c) => (
-                        <th
-                          key={c.id}
-                          className="p-2 text-left font-semibold whitespace-nowrap border-r last:border-r-0"
-                        >
-                          {c.name}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {preview.rows.slice(0, 8).map((r, i) => (
-                      <tr key={i} className="border-t">
+              <div className="border rounded-lg min-w-0 overflow-hidden">
+                <div className="overflow-auto max-h-72">
+                  <table className="min-w-full text-xs border-collapse">
+                    <thead className="sticky top-0 z-10">
+                      <tr>
+                        <th className="bg-muted w-9 min-w-9 border-b border-r border-border/70" />
                         {preview.columns.map((c) => (
-                          <td
+                          <th
                             key={c.id}
-                            className="p-2 whitespace-nowrap border-r last:border-r-0 max-w-48 truncate"
+                            className="bg-muted px-2.5 py-2 text-left font-semibold uppercase tracking-wide text-[10px] whitespace-nowrap max-w-48 truncate border-b border-r border-border/70 last:border-r-0"
+                            title={c.name}
                           >
-                            {r[c.id]}
-                          </td>
+                            {c.name}
+                          </th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {preview.rows.slice(0, 10).map((r, i) => (
+                        <tr key={i} className={i % 2 === 1 ? "bg-muted/30" : undefined}>
+                          <td className="bg-muted/60 text-muted-foreground text-center text-[10px] border-t border-r border-border/70 select-none">
+                            {i + 1}
+                          </td>
+                          {preview.columns.map((c) => (
+                            <td
+                              key={c.id}
+                              className="px-2.5 py-1.5 whitespace-nowrap max-w-48 truncate border-t border-r border-border/50 last:border-r-0"
+                              title={r[c.id]}
+                            >
+                              {r[c.id]}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {preview.rows.length > 10 && (
+                  <div className="px-3 py-1.5 text-[11px] text-muted-foreground bg-muted/40 border-t">
+                    Visar 10 av {preview.rows.length} rader – allt följer med vid importen
+                  </div>
+                )}
               </div>
             )}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <span className="text-sm text-muted-foreground">
-                {preview?.rows.length ?? 0} rader • {preview?.columns.length ?? 0} kolumner
+                <span className="font-medium text-foreground">{preview?.rows.length ?? 0}</span>{" "}
+                rader •{" "}
+                <span className="font-medium text-foreground">{preview?.columns.length ?? 0}</span>{" "}
+                kolumner
               </span>
               <div className="flex gap-2">
                 <Button
@@ -270,7 +288,8 @@ export function ListImportDialog({ open, onOpenChange, onCreated }: Props) {
                   Tillbaka
                 </Button>
                 <Button onClick={doImport} disabled={saving || !preview?.rows.length}>
-                  {saving && <Loader2 className="size-4 mr-1 animate-spin" />} Importera
+                  {saving && <Loader2 className="size-4 mr-1 animate-spin" />} Importera{" "}
+                  {preview?.rows.length ?? 0} rader
                 </Button>
               </div>
             </div>

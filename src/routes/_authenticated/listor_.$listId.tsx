@@ -22,9 +22,16 @@ import {
   Pencil,
   ChevronDown,
   ExternalLink,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
-import { fetchSheetCsv, rowsToListData, newColumnId, type ListColumn } from "@/lib/sheet-import";
+import {
+  fetchSheetCsv,
+  rowsToListData,
+  newColumnId,
+  exportListToCsv,
+  type ListColumn,
+} from "@/lib/sheet-import";
 
 export const Route = createFileRoute("/_authenticated/listor_/$listId")({
   component: ListSida,
@@ -197,6 +204,16 @@ function ListSida() {
     }
   };
 
+  const exportCsv = () => {
+    if (!list) return;
+    exportListToCsv(
+      list.name,
+      columns,
+      (rows ?? []).map((r) => r.data ?? {}),
+    );
+    toast.success("Listan exporterad som CSV");
+  };
+
   const deleteList = async () => {
     if (!list) return;
     if (!confirm(`Ta bort listan "${list.name}" och alla dess rader? Detta kan inte ångras.`))
@@ -260,6 +277,9 @@ function ListSida() {
               </Button>
             </>
           )}
+          <Button size="sm" variant="outline" onClick={exportCsv} disabled={!(rows ?? []).length}>
+            <Download className="size-3.5 mr-1" /> Exportera
+          </Button>
           <Button size="sm" onClick={addRow}>
             <Plus className="size-4 mr-1" /> Ny rad
           </Button>

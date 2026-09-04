@@ -72,8 +72,9 @@ export async function fetchSheetCsv(url: string): Promise<string[][]> {
       "Det där ser inte ut som en Google Sheets-länk. Kopiera adressen från webbläsarens adressfält.",
     );
   const endpoints = [
-    // gviz-endpointen skickar CORS-headers och funkar för länkdelade ark
-    `https://docs.google.com/spreadsheets/d/${ref.spreadsheetId}/gviz/tq?tqx=out:csv&gid=${ref.gid}`,
+    // gviz-endpointen skickar CORS-headers och funkar för länkdelade ark.
+    // headers=0 hindrar Google från att gissa rubrikrader och slå ihop dem till en.
+    `https://docs.google.com/spreadsheets/d/${ref.spreadsheetId}/gviz/tq?tqx=out:csv&headers=0&gid=${ref.gid}`,
     `https://docs.google.com/spreadsheets/d/${ref.spreadsheetId}/export?format=csv&gid=${ref.gid}`,
   ];
   let lastError: unknown = null;
@@ -104,6 +105,33 @@ export async function fetchSheetCsv(url: string): Promise<string[][]> {
     'Kunde inte hämta arket. Kontrollera att det är delat: öppna arket i Google Sheets → Dela → "Alla som har länken" → Läsare. Du kan också kopiera cellerna och använda fliken Klistra in.',
     { cause: lastError },
   );
+}
+
+/**
+ * Bygger en CSV av listan och laddar ned den. Semikolon + BOM gör att svensk
+ * Excel öppnar filen rätt direkt; Google Sheets läser den också utan problem.
+ */
+export function exportListToCsv(
+  fileName: string,
+  columns: ListColumn[],
+  rows: Record<string, string>[],
+) {
+  const delimiter = ";";
+  const esc = (v: string) =>
+    /["\n\r]/.test(v) || v.includes(delimiter) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  const lines = [
+    columns.map((c) => esc(c.name)).join(delimiter),
+    ...rows.map((r) => columns.map((c) => esc(r[c.id] ?? "")).join(delimiter)),
+  ];
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${fileName.replace(/[\\/:*?"<>|]/g, "-").trim() || "kundlista"}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /** Gör om råa rader (första raden = rubriker) till kolumner + radobjekt */
