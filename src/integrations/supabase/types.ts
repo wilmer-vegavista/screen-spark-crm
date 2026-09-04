@@ -1227,6 +1227,15 @@ export type Database = {
     }
     Functions: {
       can_manage_order: { Args: { _order_id: string }; Returns: boolean }
+      get_list_duplicates: {
+        Args: never
+        Returns: {
+          row_id: string
+          match_type: string
+          match_value: string
+          other_seller: string
+        }[]
+      }
       get_order_commission: {
         Args: { _order_id: string }
         Returns: {

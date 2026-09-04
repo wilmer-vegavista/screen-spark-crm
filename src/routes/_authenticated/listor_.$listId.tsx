@@ -25,6 +25,7 @@ import {
   Download,
   X,
   ShoppingCart,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -52,6 +53,11 @@ export const Route = createFileRoute("/_authenticated/listor_/$listId")({
 });
 
 type ListRow = { id: string; list_id: string; position: number; data: Record<string, string> };
+
+type Duplicate = { row_id: string; match_type: string; match_value: string; other_seller: string };
+
+const matchTypeLabel = (t: string) =>
+  t === "telefon" ? "samma telefonnummer" : t === "mail" ? "samma mejladress" : "samma företag";
 
 // Rader som fått status Offert kopplas till en affär i pipeline via en dold nyckel
 const DEAL_KEY = "_deal_id";
@@ -91,6 +97,21 @@ function ListSida() {
   });
 
   const columns = useMemo(() => (list?.columns ?? []) as unknown as ListColumn[], [list]);
+
+  // Rader där en annan säljare har samma företag, telefon eller mejl i sina listor
+  const { data: dups } = useQuery({
+    queryKey: ["list-duplicates"],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("get_list_duplicates");
+      const m = new Map<string, Duplicate[]>();
+      ((data ?? []) as Duplicate[]).forEach((d) => {
+        const arr = m.get(d.row_id) ?? [];
+        arr.push(d);
+        m.set(d.row_id, arr);
+      });
+      return m;
+    },
+  });
 
   const filtered = useMemo(() => {
     if (!q.trim()) return rows ?? [];
@@ -226,6 +247,7 @@ function ListSida() {
     qc.setQueryData(["customer-list-rows", listId], (old: ListRow[] | undefined) =>
       (old ?? []).map((r) => (r.id === row.id ? { ...r, data } : r)),
     );
+    qc.invalidateQueries({ queryKey: ["list-duplicates"] });
     if (value.trim()) ensureTrailingEmptyRows();
     const col = columns.find((c) => c.id === colId);
     if (col && isStatusColumn(col) && value.trim().toLowerCase() === "offert") {
@@ -461,8 +483,41 @@ function ListSida() {
             <tbody>
               {filtered.map((row, idx) => (
                 <tr key={row.id} className="group">
-                  <td className="bg-muted/60 text-muted-foreground text-xs text-center border border-border/70 select-none">
-                    {idx + 1}
+                  <td className="bg-muted/60 text-muted-foreground text-xs text-center border border-border/70 select-none p-0">
+                    {(dups?.get(row.id)?.length ?? 0) > 0 ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="w-full flex items-center justify-center py-1.5 hover:bg-amber-100/60"
+                            title="En annan säljare har också kontakt med denna kund"
+                          >
+                            <AlertTriangle className="size-3.5 text-amber-500" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-80 p-0">
+                          <div className="px-3 py-2 text-xs font-semibold border-b flex items-center gap-1.5">
+                            <AlertTriangle className="size-3.5 text-amber-500" />
+                            En annan säljare har också denna kund
+                          </div>
+                          <div className="p-3 space-y-1.5">
+                            {(dups?.get(row.id) ?? []).map((d, i) => (
+                              <div key={i} className="text-xs">
+                                <span className="font-medium">{d.other_seller}</span>{" "}
+                                <span className="text-muted-foreground">
+                                  har {matchTypeLabel(d.match_type)}:
+                                </span>{" "}
+                                {d.match_value}
+                              </div>
+                            ))}
+                            <p className="text-[11px] text-muted-foreground pt-1">
+                              Stäm av med kollegan innan du kontaktar kunden.
+                            </p>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <span className="block py-1.5">{idx + 1}</span>
+                    )}
                   </td>
                   {columns.map((col) =>
                     isStatusColumn(col) ? (
