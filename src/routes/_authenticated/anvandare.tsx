@@ -286,6 +286,7 @@ function ScreenOwnersTable() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [linkResult, setLinkResult] = useState<{ email: string; link: string } | null>(null);
   const [linkLoading, setLinkLoading] = useState<string | null>(null);
+  const [pwOwner, setPwOwner] = useState<any>(null);
 
   const portalRedirect = () => `${window.location.origin}/skarmportal`;
 
@@ -341,7 +342,7 @@ function ScreenOwnersTable() {
           </p>
         </div>
         <Button size="sm" onClick={() => setInviteOpen(true)}>
-          <Mail className="size-4 mr-1" /> Bjud in skärmägare
+          <Plus className="size-4 mr-1" /> Ny skärmägare
         </Button>
       </div>
       {isLoading ? (
@@ -357,7 +358,8 @@ function ScreenOwnersTable() {
               <TableHead>E-post</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Senast inloggad</TableHead>
-              <TableHead className="w-24"></TableHead>
+              <TableHead>Lösenord</TableHead>
+              <TableHead className="w-32"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -388,8 +390,19 @@ function ScreenOwnersTable() {
                     <span className="text-muted-foreground italic">aldrig</span>
                   )}
                 </TableCell>
+                <TableCell>
+                  <PasswordCell value={o.password} />
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Sätt nytt lösenord"
+                      onClick={() => setPwOwner(o)}
+                    >
+                      <KeyRound className="size-3.5" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -425,7 +438,7 @@ function ScreenOwnersTable() {
             ))}
             {(data?.owners ?? []).length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
                   Inga skärmägarkonton ännu
                 </TableCell>
               </TableRow>
@@ -442,6 +455,20 @@ function ScreenOwnersTable() {
         }}
       />
       <ShowLinkDialog result={linkResult} onOpenChange={(b) => !b && setLinkResult(null)} />
+      <SetPasswordDialog
+        seller={
+          pwOwner
+            ? { id: pwOwner.user_id, full_name: pwOwner.owner_name, email: pwOwner.email }
+            : null
+        }
+        onOpenChange={(b) => {
+          if (!b) setPwOwner(null);
+        }}
+        onSaved={() => {
+          setPwOwner(null);
+          qc.invalidateQueries({ queryKey: ["screen-owners-admin"] });
+        }}
+      />
     </Card>
   );
 }
@@ -513,7 +540,8 @@ function InviteScreenOwnerDialog({
   const [ownerName, setOwnerName] = useState("");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
-  const [mode, setMode] = useState<"email" | "link">("email");
+  const [mode, setMode] = useState<"password" | "email" | "link">("password");
+  const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [createdLink, setCreatedLink] = useState<string | null>(null);
 
@@ -522,7 +550,8 @@ function InviteScreenOwnerDialog({
       setOwnerName("");
       setEmail("");
       setFullName("");
-      setMode("email");
+      setMode("password");
+      setPassword(generateSuggestedPassword());
       setCreatedLink(null);
     }
   }, [open]);
@@ -530,6 +559,10 @@ function InviteScreenOwnerDialog({
   const save = async () => {
     if (!ownerName || !email) {
       toast.error("Ägare och e-post krävs");
+      return;
+    }
+    if (mode === "password" && password.length < 6) {
+      toast.error("Lösenord måste vara minst 6 tecken");
       return;
     }
     setSaving(true);
@@ -541,10 +574,14 @@ function InviteScreenOwnerDialog({
           full_name: fullName || undefined,
           redirect_to: `${window.location.origin}/skarmportal`,
           mode,
+          password: mode === "password" ? password : undefined,
         },
       });
       onSaved();
-      if (res.emailSent) {
+      if (mode === "password") {
+        toast.success("Konto skapat med lösenord — syns i tabellen");
+        onOpenChange(false);
+      } else if (res.emailSent) {
         toast.success("Inbjudan skickad till " + email);
         onOpenChange(false);
       } else {
@@ -566,7 +603,7 @@ function InviteScreenOwnerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Bjud in skärmägare</DialogTitle>
+          <DialogTitle>Ny skärmägare</DialogTitle>
         </DialogHeader>
         {createdLink ? (
           <div className="space-y-3">
@@ -615,8 +652,18 @@ function InviteScreenOwnerDialog({
               />
             </div>
             <div>
-              <label className="text-xs font-medium">Leverans</label>
-              <div className="grid grid-cols-2 gap-2 mt-1">
+              <label className="text-xs font-medium">Inloggning</label>
+              <div className="grid grid-cols-3 gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setMode("password")}
+                  className={`text-left p-2 rounded-md border text-xs ${mode === "password" ? "border-primary bg-primary/10" : "border-border"}`}
+                >
+                  <div className="font-semibold">Sätt lösenord</div>
+                  <div className="text-muted-foreground mt-1">
+                    Du väljer lösenordet. Syns på adminsidan.
+                  </div>
+                </button>
                 <button
                   type="button"
                   onClick={() => setMode("email")}
@@ -624,7 +671,7 @@ function InviteScreenOwnerDialog({
                 >
                   <div className="font-semibold">Skicka mejl</div>
                   <div className="text-muted-foreground mt-1">
-                    Supabase mejlar inbjudan. Obs: låg timgräns utan egen SMTP.
+                    Supabase mejlar inbjudan. Låg timgräns utan egen SMTP.
                   </div>
                 </button>
                 <button
@@ -639,9 +686,36 @@ function InviteScreenOwnerDialog({
                 </button>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Mottagaren väljer sitt eget lösenord och landar direkt i skärmägarportalen.
-            </p>
+            {mode === "password" ? (
+              <div>
+                <label className="text-xs font-medium">Lösenord</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="minst 6 tecken"
+                    className="font-mono"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPassword(generateSuggestedPassword())}
+                  >
+                    Förslag
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  ⚠️ Lösenordet sparas i klartext så det syns på adminsidan. Be ägaren byta lösenord
+                  vid första inloggning.
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Mottagaren väljer sitt eget lösenord och landar direkt i skärmägarportalen.
+              </p>
+            )}
           </div>
         )}
         <DialogFooter>
@@ -651,7 +725,11 @@ function InviteScreenOwnerDialog({
           {!createdLink && (
             <Button onClick={save} disabled={saving || !ownerName || !email}>
               {saving ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
-              {mode === "email" ? "Skicka inbjudan" : "Skapa länk"}
+              {mode === "password"
+                ? "Skapa konto"
+                : mode === "email"
+                  ? "Skicka inbjudan"
+                  : "Skapa länk"}
             </Button>
           )}
         </DialogFooter>

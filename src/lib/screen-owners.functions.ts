@@ -16,10 +16,14 @@ export const listScreenOwnersAdmin = createServerFn({ method: "GET" })
     await checkAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [ownersRes, productsRes] = await Promise.all([
+    const [ownersRes, productsRes, credsRes] = await Promise.all([
       supabaseAdmin.from("screen_owners").select("id, user_id, owner_name, created_at"),
       supabaseAdmin.from("products").select("owner_name"),
+      supabaseAdmin.from("seller_credentials").select("user_id, initial_password"),
     ]);
+    const credMap = new Map(
+      (credsRes.data ?? []).map((c) => [c.user_id, c.initial_password] as const),
+    );
 
     const authUsers: any[] = [];
     let page = 1;
@@ -42,6 +46,7 @@ export const listScreenOwnersAdmin = createServerFn({ method: "GET" })
         last_sign_in_at: lastSignIn,
         invited_at: u?.invited_at ?? null,
         pending_invite: Boolean(u?.invited_at) && !lastSignIn,
+        password: credMap.get(o.user_id) ?? null,
       };
     });
 
@@ -60,9 +65,11 @@ export const inviteScreenOwner = createServerFn({ method: "POST" })
       owner_name: z.string().min(1),
       full_name: z.string().optional(),
       redirect_to: z.string().url().optional(),
+      // "password": admin sätter lösenordet direkt (som för säljare).
       // "email" skickar inbjudningsmejl via Supabase, "link" skapar bara en länk
       // som admin kopierar och skickar själv (påverkas inte av mejlgränsen)
-      mode: z.enum(["email", "link"]).default("email"),
+      mode: z.enum(["password", "email", "link"]).default("password"),
+      password: z.string().min(6).optional(),
     }),
   )
   .handler(async ({ context, data }) => {
@@ -90,6 +97,30 @@ export const inviteScreenOwner = createServerFn({ method: "POST" })
       if (linkErr) throw new Error(linkErr.message);
       return { userId: linkData.user.id, actionLink: linkData.properties.action_link };
     };
+
+    if (data.mode === "password") {
+      if (!data.password || data.password.length < 6) {
+        throw new Error("Lösenord (minst 6 tecken) krävs");
+      }
+      const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
+        email: data.email,
+        password: data.password,
+        email_confirm: true,
+        user_metadata: { full_name: data.full_name || data.owner_name },
+      });
+      if (userError) {
+        const msg = (userError.message || "").toLowerCase();
+        if (msg.includes("already")) throw new Error("E-postadressen har redan ett konto");
+        throw new Error(userError.message);
+      }
+      const userId = userData.user.id;
+      await finishSetup(userId);
+      // Spara lösenordet så admin kan se det igen (samma tabell som för säljare)
+      await supabaseAdmin
+        .from("seller_credentials")
+        .upsert({ user_id: userId, initial_password: data.password });
+      return { userId, actionLink: null, emailSent: false };
+    }
 
     if (data.mode === "link") {
       const { userId, actionLink } = await generateInviteLink();
