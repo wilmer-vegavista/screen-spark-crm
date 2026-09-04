@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ExternalLink,
   Download,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -38,6 +39,25 @@ export const Route = createFileRoute("/_authenticated/listor_/$listId")({
 });
 
 type ListRow = { id: string; list_id: string; position: number; data: Record<string, string> };
+
+// Statusalternativ med samma färger som säljarnas Google Sheets-ark
+const STATUS_OPTIONS = [
+  { label: "Ska kontaktas", className: "bg-yellow-200 text-yellow-950" },
+  { label: "Skicka mail", className: "bg-sky-200 text-sky-950" },
+  { label: "Påminnelse", className: "bg-orange-200 text-orange-950" },
+  { label: "Intresserad", className: "bg-teal-200 text-teal-950" },
+  { label: "Inte intresserad", className: "bg-rose-300 text-rose-950" },
+  { label: "Inget svar", className: "bg-purple-600 text-white" },
+  { label: "Ring senare", className: "bg-blue-600 text-white" },
+  { label: "SÄLJ", className: "bg-emerald-800 text-white" },
+];
+
+const isStatusColumn = (col: ListColumn) => col.name.trim().toLowerCase().includes("status");
+
+// Värden som importerats från arket får rätt färg även om skiftläget skiljer sig
+const statusChipClass = (value: string) =>
+  STATUS_OPTIONS.find((o) => o.label.toLowerCase() === value.trim().toLowerCase())?.className ??
+  "bg-muted text-foreground";
 
 function ListSida() {
   const { listId } = Route.useParams();
@@ -364,18 +384,60 @@ function ListSida() {
                   <td className="bg-muted/60 text-muted-foreground text-xs text-center border border-border/70 select-none">
                     {idx + 1}
                   </td>
-                  {columns.map((col) => (
-                    <td key={col.id} className="border border-border/70 p-0">
-                      <input
-                        className="w-full px-2.5 py-1.5 bg-transparent outline-none focus:bg-primary/5 focus:ring-1 focus:ring-primary/50 focus:relative"
-                        defaultValue={row.data?.[col.id] ?? ""}
-                        onBlur={(e) => saveCell(row, col.id, e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                        }}
-                      />
-                    </td>
-                  ))}
+                  {columns.map((col) =>
+                    isStatusColumn(col) ? (
+                      <td key={col.id} className="border border-border/70 p-0">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="w-full min-h-[30px] px-2 py-1 text-left hover:bg-accent/40 flex items-center gap-1">
+                              {(row.data?.[col.id] ?? "").trim() ? (
+                                <span
+                                  className={`px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${statusChipClass(row.data[col.id])}`}
+                                >
+                                  {row.data[col.id]}
+                                </span>
+                              ) : (
+                                <ChevronDown className="size-3 text-muted-foreground/50" />
+                              )}
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            {STATUS_OPTIONS.map((o) => (
+                              <DropdownMenuItem
+                                key={o.label}
+                                onClick={() => saveCell(row, col.id, o.label)}
+                              >
+                                <span
+                                  className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${o.className}`}
+                                >
+                                  {o.label}
+                                </span>
+                              </DropdownMenuItem>
+                            ))}
+                            {(row.data?.[col.id] ?? "").trim() !== "" && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => saveCell(row, col.id, "")}>
+                                  <X className="size-4 mr-2" /> Rensa
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    ) : (
+                      <td key={col.id} className="border border-border/70 p-0">
+                        <input
+                          className="w-full px-2.5 py-1.5 bg-transparent outline-none focus:bg-primary/5 focus:ring-1 focus:ring-primary/50 focus:relative"
+                          defaultValue={row.data?.[col.id] ?? ""}
+                          onBlur={(e) => saveCell(row, col.id, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                          }}
+                        />
+                      </td>
+                    ),
+                  )}
                   <td className="border border-border/70 p-0 text-center">
                     <button
                       className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive transition-opacity"
