@@ -55,6 +55,7 @@ import {
   inviteScreenOwner,
   resendScreenOwnerInvite,
   getScreenOwnerLoginLink,
+  updateScreenOwner,
   removeScreenOwner,
 } from "@/lib/screen-owners.functions";
 
@@ -287,6 +288,7 @@ function ScreenOwnersTable() {
   const [linkResult, setLinkResult] = useState<{ email: string; link: string } | null>(null);
   const [linkLoading, setLinkLoading] = useState<string | null>(null);
   const [pwOwner, setPwOwner] = useState<any>(null);
+  const [editingOwner, setEditingOwner] = useState<any>(null);
 
   const portalRedirect = () => `${window.location.origin}/skarmportal`;
 
@@ -398,6 +400,14 @@ function ScreenOwnersTable() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      title="Redigera (e-post, namn, ägare)"
+                      onClick={() => setEditingOwner(o)}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       title="Sätt nytt lösenord"
                       onClick={() => setPwOwner(o)}
                     >
@@ -455,6 +465,17 @@ function ScreenOwnersTable() {
         }}
       />
       <ShowLinkDialog result={linkResult} onOpenChange={(b) => !b && setLinkResult(null)} />
+      <EditScreenOwnerDialog
+        owner={editingOwner}
+        ownerNames={data?.ownerNames ?? []}
+        onOpenChange={(b) => {
+          if (!b) setEditingOwner(null);
+        }}
+        onSaved={() => {
+          setEditingOwner(null);
+          qc.invalidateQueries({ queryKey: ["screen-owners-admin"] });
+        }}
+      />
       <SetPasswordDialog
         seller={
           pwOwner
@@ -470,6 +491,102 @@ function ScreenOwnersTable() {
         }}
       />
     </Card>
+  );
+}
+
+function EditScreenOwnerDialog({
+  owner,
+  ownerNames,
+  onOpenChange,
+  onSaved,
+}: {
+  owner: any;
+  ownerNames: string[];
+  onOpenChange: (b: boolean) => void;
+  onSaved: () => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (owner) {
+      setEmail(owner.email ?? "");
+      setFullName(owner.full_name ?? "");
+      setOwnerName(owner.owner_name ?? "");
+    }
+  }, [owner]);
+
+  const save = async () => {
+    if (!email || !ownerName) {
+      toast.error("E-post och ägare krävs");
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateScreenOwner({
+        data: {
+          user_id: owner.user_id,
+          email: email !== owner.email ? email : undefined,
+          full_name: fullName && fullName !== owner.full_name ? fullName : undefined,
+          owner_name: ownerName !== owner.owner_name ? ownerName : undefined,
+        },
+      });
+      toast.success("Skärmägare uppdaterad");
+      onSaved();
+    } catch (e: any) {
+      toast.error(e.message ?? "Kunde inte uppdatera");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!owner} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Redigera skärmägare</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium">E-post (inloggning)</label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Ändras direkt utan bekräftelsemejl — nya adressen gäller vid nästa inloggning.
+            </p>
+          </div>
+          <div>
+            <label className="text-xs font-medium">Namn</label>
+            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs font-medium">Ägare (från skärmarna)</label>
+            <Select value={ownerName} onValueChange={setOwnerName}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Välj ägare…" />
+              </SelectTrigger>
+              <SelectContent>
+                {ownerNames.map((n) => (
+                  <SelectItem key={n} value={n}>
+                    {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Avbryt
+          </Button>
+          <Button onClick={save} disabled={saving || !email || !ownerName}>
+            {saving ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
+            Spara
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
