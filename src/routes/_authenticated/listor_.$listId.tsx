@@ -641,46 +641,77 @@ function ListSida() {
                         </DropdownMenu>
                       </td>
                     ) : (
-                      <td key={col.id} className="border border-border/70 p-0">
-                        <div className="relative group/cell">
-                          <input
-                            className={`w-full px-2.5 py-1.5 outline-none focus:bg-primary/5 focus:ring-1 focus:ring-primary/50 focus:relative ${
-                              columnKind(col) !== null &&
-                              (dups?.get(row.id) ?? []).some(
-                                (d) => d.match_type === columnKind(col),
-                              ) &&
-                              (row.data?.[col.id] ?? "").trim() !== ""
-                                ? "bg-amber-50 pr-7"
-                                : "bg-transparent"
-                            }`}
-                            defaultValue={row.data?.[col.id] ?? ""}
-                            onBlur={(e) => saveCell(row, col.id, e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                            }}
-                          />
-                          {columnKind(col) !== null &&
-                            (dups?.get(row.id) ?? []).some(
-                              (d) => d.match_type === columnKind(col),
-                            ) &&
-                            (row.data?.[col.id] ?? "").trim() !== "" && (
-                              <AlertTriangle
-                                className="absolute right-1.5 top-1/2 -translate-y-1/2 size-3 text-amber-500 pointer-events-none"
-                                aria-label="Denna uppgift finns även hos en annan säljare"
+                      (() => {
+                        const kind = columnKind(col);
+                        const cellValue = (row.data?.[col.id] ?? "").trim();
+                        const cellDups =
+                          kind !== null && cellValue !== ""
+                            ? (dups?.get(row.id) ?? []).filter((d) => d.match_type === kind)
+                            : [];
+                        const hasDup = cellDups.length > 0;
+                        return (
+                          <td key={col.id} className="border border-border/70 p-0">
+                            <div className="relative group/cell">
+                              <input
+                                className={`w-full px-2.5 py-1.5 outline-none focus:bg-primary/5 focus:ring-1 focus:ring-primary/50 focus:relative ${
+                                  hasDup ? "bg-amber-50 pr-7" : "bg-transparent"
+                                }`}
+                                defaultValue={row.data?.[col.id] ?? ""}
+                                onBlur={(e) => saveCell(row, col.id, e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                                }}
                               />
-                            )}
-                          {col.id === companyColId && (row.data?.[col.id] ?? "").trim() !== "" && (
-                            <button
-                              className="absolute right-1 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover/cell:opacity-100 focus:opacity-100 flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-[11px] font-medium shadow-sm transition-opacity whitespace-nowrap"
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => openOrderFor(row)}
-                              title="Skapa order / offert med uppgifterna från raden"
-                            >
-                              <ShoppingCart className="size-3" /> Order / offert
-                            </button>
-                          )}
-                        </div>
-                      </td>
+                              {hasDup && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button
+                                      className="absolute right-1 top-1/2 -translate-y-1/2 z-10 p-0.5 rounded hover:bg-amber-200/70"
+                                      title="Visa vem uppgiften krockar med"
+                                    >
+                                      <AlertTriangle className="size-3 text-amber-500" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-80 p-0">
+                                    <div className="px-3 py-2 text-xs font-semibold border-b flex items-center gap-1.5">
+                                      <AlertTriangle className="size-3.5 text-amber-500" />
+                                      Krockar med
+                                    </div>
+                                    <div className="p-3 space-y-1.5">
+                                      {cellDups.map((d, i) => (
+                                        <div key={i} className="text-xs">
+                                          <span className="font-medium">{d.other_seller}</span>{" "}
+                                          <span className="text-muted-foreground">
+                                            har{" "}
+                                            {d.source === "lista"
+                                              ? `${matchTypeLabel(d.match_type)} i sin kundlista`
+                                              : `${sourceLabel(d.source)} ${matchTypeLabel(d.match_type)}`}
+                                            :
+                                          </span>{" "}
+                                          {d.match_value}
+                                        </div>
+                                      ))}
+                                      <p className="text-[11px] text-muted-foreground pt-1">
+                                        Stäm av med kollegan innan du kontaktar kunden.
+                                      </p>
+                                    </div>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                              {col.id === companyColId && cellValue !== "" && (
+                                <button
+                                  className={`absolute ${hasDup ? "right-6" : "right-1"} top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover/cell:opacity-100 focus:opacity-100 flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-[11px] font-medium shadow-sm transition-opacity whitespace-nowrap`}
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => openOrderFor(row)}
+                                  title="Skapa order / offert med uppgifterna från raden"
+                                >
+                                  <ShoppingCart className="size-3" /> Order / offert
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })()
                     ),
                   )}
                   <td className="border border-border/70 p-0 text-center">
