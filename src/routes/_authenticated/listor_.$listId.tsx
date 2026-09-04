@@ -34,6 +34,13 @@ import {
   type ListColumn,
 } from "@/lib/sheet-import";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
+import {
+  STATUS_OPTIONS,
+  isStatusColumn,
+  isEmptyRowData,
+  statusChipClass,
+  findCompanyColumn,
+} from "@/lib/list-status";
 
 export const Route = createFileRoute("/_authenticated/listor_/$listId")({
   component: ListSida,
@@ -41,31 +48,8 @@ export const Route = createFileRoute("/_authenticated/listor_/$listId")({
 
 type ListRow = { id: string; list_id: string; position: number; data: Record<string, string> };
 
-// Statusalternativ med samma färger som säljarnas Google Sheets-ark
-const STATUS_OPTIONS = [
-  { label: "Ska kontaktas", className: "bg-yellow-200 text-yellow-950" },
-  { label: "Skicka mail", className: "bg-sky-200 text-sky-950" },
-  { label: "Påminnelse", className: "bg-orange-200 text-orange-950" },
-  { label: "Intresserad", className: "bg-teal-200 text-teal-950" },
-  { label: "Inte intresserad", className: "bg-rose-300 text-rose-950" },
-  { label: "Inget svar", className: "bg-purple-600 text-white" },
-  { label: "Ring senare", className: "bg-blue-600 text-white" },
-  { label: "Offert", className: "bg-indigo-200 text-indigo-950" },
-  { label: "SÄLJ", className: "bg-emerald-800 text-white" },
-];
-
 // Rader som fått status Offert kopplas till en affär i pipeline via en dold nyckel
 const DEAL_KEY = "_deal_id";
-
-const isStatusColumn = (col: ListColumn) => col.name.trim().toLowerCase().includes("status");
-
-const isEmptyRowData = (d: Record<string, string> | null | undefined) =>
-  Object.values(d ?? {}).every((v) => !String(v ?? "").trim());
-
-// Värden som importerats från arket får rätt färg även om skiftläget skiljer sig
-const statusChipClass = (value: string) =>
-  STATUS_OPTIONS.find((o) => o.label.toLowerCase() === value.trim().toLowerCase())?.className ??
-  "bg-muted text-foreground";
 
 function ListSida() {
   const { listId } = Route.useParams();
@@ -177,9 +161,8 @@ function ListSida() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, listId]);
 
-  // Gissar vilken kolumn som innehåller företagsnamnet (annars första kolumnen)
   const companyNameFor = (data: Record<string, string>) => {
-    const companyCol = columns.find((c) => /företag|company|kund|namn/i.test(c.name)) ?? columns[0];
+    const companyCol = findCompanyColumn(columns);
     return (data?.[companyCol?.id ?? ""] ?? "").trim();
   };
 

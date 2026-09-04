@@ -11,7 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ListStatusBoard } from "@/components/list-status-board";
+import { Plus, ListChecks, Tags } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { sv } from "date-fns/locale";
 import { toast } from "sonner";
@@ -51,42 +53,59 @@ function Aktiviteter() {
         description="Samtal, möten, uppgifter och återkopplingar – dag för dag"
         actions={<Button onClick={() => setOpen(true)}><Plus className="size-4 mr-1" /> Ny aktivitet</Button>}
       />
-      <div className="p-6 space-y-6">
-        {(data ?? []).length === 0 && (
-          <Card><div className="p-6 text-sm text-muted-foreground text-center">Inga aktiviteter än</div></Card>
-        )}
-        {groups.map(g => (
-          <div key={g.key} className="space-y-2">
-            <div className="flex items-center gap-2">
-              <h2 className={cn("text-sm font-semibold", g.tone === "overdue" && "text-destructive", g.tone === "today" && "text-primary")}>
-                {g.label}
-              </h2>
-              <span className="text-xs text-muted-foreground">{g.items.length} st</span>
-            </div>
-            <Card className="divide-y">
-              {g.items.map(a => {
-                const overdue = a.due_at && !a.completed && isPast(new Date(a.due_at)) && !isToday(new Date(a.due_at));
-                return (
-                  <div key={a.id} className="flex items-center gap-3 p-3">
-                    <Checkbox checked={a.completed} onCheckedChange={() => toggle(a.id, a.completed)} />
-                    <div className="flex-1 min-w-0">
-                      <div className={cn("text-sm font-medium", a.completed && "line-through text-muted-foreground")}>{a.title}</div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-2">
-                        <span className="capitalize">{a.type}</span>
-                        {a.description && <><span>·</span><span className="truncate">{a.description}</span></>}
+      <div className="p-6">
+        <Tabs defaultValue="aktiviteter">
+          <TabsList>
+            <TabsTrigger value="aktiviteter">
+              <ListChecks className="size-3.5 mr-1" /> Aktiviteter
+            </TabsTrigger>
+            <TabsTrigger value="kundstatus">
+              <Tags className="size-3.5 mr-1" /> Kundstatus
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="aktiviteter" className="space-y-6 pt-4">
+            {(data ?? []).length === 0 && (
+              <Card><div className="p-6 text-sm text-muted-foreground text-center">Inga aktiviteter än</div></Card>
+            )}
+            {groups.map(g => (
+              <div key={g.key} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <h2 className={cn("text-sm font-semibold", g.tone === "overdue" && "text-destructive", g.tone === "today" && "text-primary")}>
+                    {g.label}
+                  </h2>
+                  <span className="text-xs text-muted-foreground">{g.items.length} st</span>
+                </div>
+                <Card className="divide-y">
+                  {g.items.map(a => {
+                    const overdue = a.due_at && !a.completed && isPast(new Date(a.due_at)) && !isToday(new Date(a.due_at));
+                    return (
+                      <div key={a.id} className="flex items-center gap-3 p-3">
+                        <Checkbox checked={a.completed} onCheckedChange={() => toggle(a.id, a.completed)} />
+                        <div className="flex-1 min-w-0">
+                          <div className={cn("text-sm font-medium", a.completed && "line-through text-muted-foreground")}>{a.title}</div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span className="capitalize">{a.type}</span>
+                            {a.description && <><span>·</span><span className="truncate">{a.description}</span></>}
+                          </div>
+                        </div>
+                        {a.due_at && (
+                          <div className={cn("text-xs", overdue ? "text-destructive font-medium" : "text-muted-foreground")}>
+                            {format(new Date(a.due_at), "d MMM HH:mm", { locale: sv })}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    {a.due_at && (
-                      <div className={cn("text-xs", overdue ? "text-destructive font-medium" : "text-muted-foreground")}>
-                        {format(new Date(a.due_at), "d MMM HH:mm", { locale: sv })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </Card>
-          </div>
-        ))}
+                    );
+                  })}
+                </Card>
+              </div>
+            ))}
+          </TabsContent>
+
+          <TabsContent value="kundstatus" className="pt-4">
+            <ListStatusBoard />
+          </TabsContent>
+        </Tabs>
       </div>
       <ActivityDialog open={open} onOpenChange={setOpen} />
     </>
