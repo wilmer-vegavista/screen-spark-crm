@@ -6,7 +6,14 @@ import type { Json } from "@/integrations/supabase/types";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, FileSpreadsheet, Trash2, Link2 } from "lucide-react";
+import { Plus, FileSpreadsheet, Trash2, Link2, AlertTriangle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { ListImportDialog } from "@/components/list-import-dialog";
 import { useCurrentUser } from "@/lib/hooks/use-current-user";
 import { newColumnId } from "@/lib/sheet-import";
@@ -18,11 +25,26 @@ export const Route = createFileRoute("/_authenticated/listor")({
 
 const DEFAULT_COLUMNS = ["Företag", "Kontaktperson", "Telefon", "E-post", "Status", "Anteckningar"];
 
+type AdminDup = {
+  list_id: string;
+  match_type: string;
+  match_value: string;
+  other_party: string;
+  source: string;
+};
+
+const dupTypeLabel = (t: string) =>
+  t === "telefon" ? "Telefonnummer" : t === "mail" ? "Mejladress" : "Företag";
+
+const dupSourceLabel = (s: string) =>
+  s === "bokning" ? "bokad order" : s === "offert" ? "offert" : "kundlista";
+
 function Listor() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { user, isAdmin } = useCurrentUser();
   const [importOpen, setImportOpen] = useState(false);
+  const [dupDialogList, setDupDialogList] = useState<{ id: string; name: string } | null>(null);
 
   const { data: lists } = useQuery({
     queryKey: ["customer-lists"],
@@ -56,6 +78,22 @@ function Listor() {
     queryFn: async () => {
       const { data } = await supabase.from("profiles").select("id, full_name, email");
       return data ?? [];
+    },
+    enabled: isAdmin,
+  });
+
+  // Admin: dubbletter per lista (uppgifter som även finns hos en annan säljare)
+  const { data: adminDups } = useQuery({
+    queryKey: ["all-list-duplicates"],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("get_all_list_duplicates");
+      const m = new Map<string, AdminDup[]>();
+      ((data ?? []) as AdminDup[]).forEach((d) => {
+        const arr = m.get(d.list_id) ?? [];
+        arr.push(d);
+        m.set(d.list_id, arr);
+      });
+      return m;
     },
     enabled: isAdmin,
   });
@@ -145,7 +183,22 @@ function Listor() {
                           <FileSpreadsheet className="size-4" />
                         </div>
                         <div>
-                          <div className="font-medium">{l.name}</div>
+                          <div className="font-medium flex items-center gap-2 flex-wrap">
+                            {l.name}
+                            {isAdmin && (adminDups?.get(l.id)?.length ?? 0) > 0 && (
+                              <button
+                                className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-medium hover:bg-amber-200 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDupDialogList({ id: l.id, name: l.name });
+                                }}
+                                title="Visa dubbletter i denna lista"
+                              >
+                                <AlertTriangle className="size-3" />
+                                {adminDups?.get(l.id)?.length} dubbletter
+                              </button>
+                            )}
+                          </div>
                           {l.source_url && (
                             <div className="text-xs text-muted-foreground flex items-center gap-1">
                               <Link2 className="size-3" /> Kopplad till Google Sheets
@@ -189,6 +242,32 @@ function Listor() {
         onOpenChange={setImportOpen}
         onCreated={(listId) => navigate({ to: "/listor/$listId", params: { listId } })}
       />
+      <Dialog open={!!dupDialogList} onOpenChange={(o) => !o && setDupDialogList(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-amber-500" />
+              Dubbletter i &quot;{dupDialogList?.name}&quot;
+            </DialogTitle>
+            <DialogDescription>
+              Uppgifter i listan som även finns hos en annan säljare – i deras kundlista eller på en
+              registrerad order/offert.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-96 overflow-y-auto space-y-2">
+            {(adminDups?.get(dupDialogList?.id ?? "") ?? []).map((d, i) => (
+              <div key={i} className="text-sm border rounded-md px-3 py-2">
+                <div className="font-medium">{d.match_value}</div>
+                <div className="text-xs text-muted-foreground">
+                  {dupTypeLabel(d.match_type)} • finns även hos{" "}
+                  <span className="font-medium text-foreground">{d.other_party}</span> (
+                  {dupSourceLabel(d.source)})
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
