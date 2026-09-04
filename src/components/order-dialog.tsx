@@ -93,14 +93,24 @@ const periodLabel = (p: CampaignPeriod) =>
     ? format(p.start, "d MMM yyyy", { locale: sv })
     : `${format(p.start, "d MMM", { locale: sv })} – ${format(p.end, "d MMM yyyy", { locale: sv })}`;
 
+export interface OrderDialogInitial {
+  company_name?: string;
+  contact_name?: string;
+  contact_email?: string;
+  contact_phone?: string;
+}
+
 export function OrderDialog({
   open,
   onOpenChange,
   order,
+  initial = null,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   order: any | null;
+  /** Förifyllda uppgifter för en ny order, t.ex. från en rad i en kundlista */
+  initial?: OrderDialogInitial | null;
 }) {
   const qc = useQueryClient();
   const [saving, setSaving] = useState(false);
@@ -307,9 +317,9 @@ export function OrderDialog({
       });
     } else {
       setForm({
-        order_type: "offert", customer_id: null, company_name: "", org_number: "", vat_number: "",
+        order_type: "offert", customer_id: null, company_name: initial?.company_name ?? "", org_number: "", vat_number: "",
         billing_address: "", postal_code: "", city: "",
-        contact_name: "", contact_email: "", contact_phone: "", notes: "",
+        contact_name: initial?.contact_name ?? "", contact_email: initial?.contact_email ?? "", contact_phone: initial?.contact_phone ?? "", notes: "",
         invoice_start_date: new Date(), billing_frequency: "engang", billing_duration_months: 1,
         invoice_reference: "", invoice_peppol_id: "", invoice_email: "", invoice_info: "",
         payment_terms: "30 dagar netto från erlagd order", vat_exempt: false, invoice_status: null, pdf_language: "sv" as "sv" | "en",
@@ -324,6 +334,7 @@ export function OrderDialog({
     }
 
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order, open, currentUserId]);
 
   const [orgLookupLoading, setOrgLookupLoading] = useState(false);

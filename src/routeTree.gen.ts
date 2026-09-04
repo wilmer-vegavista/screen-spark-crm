@@ -21,6 +21,7 @@ import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedOrderRouteImport } from './routes/_authenticated/order'
 import { Route as AuthenticatedMaterialRouteImport } from './routes/_authenticated/material'
 import { Route as AuthenticatedLonRouteImport } from './routes/_authenticated/lon'
+import { Route as AuthenticatedListorRouteImport } from './routes/_authenticated/listor'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedKunderRouteImport } from './routes/_authenticated/kunder'
 import { Route as AuthenticatedKampanjerRouteImport } from './routes/_authenticated/kampanjer'
@@ -31,6 +32,7 @@ import { Route as AuthenticatedAvslutasSnartRouteImport } from './routes/_authen
 import { Route as AuthenticatedAvslutadRouteImport } from './routes/_authenticated/avslutad'
 import { Route as AuthenticatedAnvandareRouteImport } from './routes/_authenticated/anvandare'
 import { Route as AuthenticatedAktiviteterRouteImport } from './routes/_authenticated/aktiviteter'
+import { Route as AuthenticatedListorListIdRouteImport } from './routes/_authenticated/listor_.$listId'
 import { Route as AuthenticatedKunderCustomerIdRouteImport } from './routes/_authenticated/kunder_.$customerId'
 
 const SkarmportalRoute = SkarmportalRouteImport.update({
@@ -93,6 +95,11 @@ const AuthenticatedLonRoute = AuthenticatedLonRouteImport.update({
   path: '/lon',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedListorRoute = AuthenticatedListorRouteImport.update({
+  id: '/listor',
+  path: '/listor',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedLeadsRoute = AuthenticatedLeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
@@ -145,6 +152,12 @@ const AuthenticatedAktiviteterRoute =
     path: '/aktiviteter',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedListorListIdRoute =
+  AuthenticatedListorListIdRouteImport.update({
+    id: '/listor_/$listId',
+    path: '/listor/$listId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedKunderCustomerIdRoute =
   AuthenticatedKunderCustomerIdRouteImport.update({
     id: '/kunder_/$customerId',
@@ -166,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
   '/leads': typeof AuthenticatedLeadsRoute
+  '/listor': typeof AuthenticatedListorRoute
   '/lon': typeof AuthenticatedLonRoute
   '/material': typeof AuthenticatedMaterialRoute
   '/order': typeof AuthenticatedOrderRoute
@@ -175,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/rapport-ekonomi': typeof AuthenticatedRapportEkonomiRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
   '/kunder/$customerId': typeof AuthenticatedKunderCustomerIdRoute
+  '/listor/$listId': typeof AuthenticatedListorListIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -190,6 +205,7 @@ export interface FileRoutesByTo {
   '/kampanjer': typeof AuthenticatedKampanjerRoute
   '/kunder': typeof AuthenticatedKunderRoute
   '/leads': typeof AuthenticatedLeadsRoute
+  '/listor': typeof AuthenticatedListorRoute
   '/lon': typeof AuthenticatedLonRoute
   '/material': typeof AuthenticatedMaterialRoute
   '/order': typeof AuthenticatedOrderRoute
@@ -199,6 +215,7 @@ export interface FileRoutesByTo {
   '/rapport-ekonomi': typeof AuthenticatedRapportEkonomiRoute
   '/rapporter': typeof AuthenticatedRapporterRoute
   '/kunder/$customerId': typeof AuthenticatedKunderCustomerIdRoute
+  '/listor/$listId': typeof AuthenticatedListorListIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -216,6 +233,7 @@ export interface FileRoutesById {
   '/_authenticated/kampanjer': typeof AuthenticatedKampanjerRoute
   '/_authenticated/kunder': typeof AuthenticatedKunderRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
+  '/_authenticated/listor': typeof AuthenticatedListorRoute
   '/_authenticated/lon': typeof AuthenticatedLonRoute
   '/_authenticated/material': typeof AuthenticatedMaterialRoute
   '/_authenticated/order': typeof AuthenticatedOrderRoute
@@ -225,6 +243,7 @@ export interface FileRoutesById {
   '/_authenticated/rapport-ekonomi': typeof AuthenticatedRapportEkonomiRoute
   '/_authenticated/rapporter': typeof AuthenticatedRapporterRoute
   '/_authenticated/kunder_/$customerId': typeof AuthenticatedKunderCustomerIdRoute
+  '/_authenticated/listor_/$listId': typeof AuthenticatedListorListIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -242,6 +261,7 @@ export interface FileRouteTypes {
     | '/kampanjer'
     | '/kunder'
     | '/leads'
+    | '/listor'
     | '/lon'
     | '/material'
     | '/order'
@@ -251,6 +271,7 @@ export interface FileRouteTypes {
     | '/rapport-ekonomi'
     | '/rapporter'
     | '/kunder/$customerId'
+    | '/listor/$listId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -266,6 +287,7 @@ export interface FileRouteTypes {
     | '/kampanjer'
     | '/kunder'
     | '/leads'
+    | '/listor'
     | '/lon'
     | '/material'
     | '/order'
@@ -275,6 +297,7 @@ export interface FileRouteTypes {
     | '/rapport-ekonomi'
     | '/rapporter'
     | '/kunder/$customerId'
+    | '/listor/$listId'
   id:
     | '__root__'
     | '/'
@@ -291,6 +314,7 @@ export interface FileRouteTypes {
     | '/_authenticated/kampanjer'
     | '/_authenticated/kunder'
     | '/_authenticated/leads'
+    | '/_authenticated/listor'
     | '/_authenticated/lon'
     | '/_authenticated/material'
     | '/_authenticated/order'
@@ -300,6 +324,7 @@ export interface FileRouteTypes {
     | '/_authenticated/rapport-ekonomi'
     | '/_authenticated/rapporter'
     | '/_authenticated/kunder_/$customerId'
+    | '/_authenticated/listor_/$listId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -395,6 +420,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLonRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/listor': {
+      id: '/_authenticated/listor'
+      path: '/listor'
+      fullPath: '/listor'
+      preLoaderRoute: typeof AuthenticatedListorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/leads': {
       id: '/_authenticated/leads'
       path: '/leads'
@@ -465,6 +497,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAktiviteterRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/listor_/$listId': {
+      id: '/_authenticated/listor_/$listId'
+      path: '/listor/$listId'
+      fullPath: '/listor/$listId'
+      preLoaderRoute: typeof AuthenticatedListorListIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/kunder_/$customerId': {
       id: '/_authenticated/kunder_/$customerId'
       path: '/kunder/$customerId'
@@ -486,6 +525,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedKampanjerRoute: typeof AuthenticatedKampanjerRoute
   AuthenticatedKunderRoute: typeof AuthenticatedKunderRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
+  AuthenticatedListorRoute: typeof AuthenticatedListorRoute
   AuthenticatedLonRoute: typeof AuthenticatedLonRoute
   AuthenticatedMaterialRoute: typeof AuthenticatedMaterialRoute
   AuthenticatedOrderRoute: typeof AuthenticatedOrderRoute
@@ -495,6 +535,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRapportEkonomiRoute: typeof AuthenticatedRapportEkonomiRoute
   AuthenticatedRapporterRoute: typeof AuthenticatedRapporterRoute
   AuthenticatedKunderCustomerIdRoute: typeof AuthenticatedKunderCustomerIdRoute
+  AuthenticatedListorListIdRoute: typeof AuthenticatedListorListIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -508,6 +549,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKampanjerRoute: AuthenticatedKampanjerRoute,
   AuthenticatedKunderRoute: AuthenticatedKunderRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
+  AuthenticatedListorRoute: AuthenticatedListorRoute,
   AuthenticatedLonRoute: AuthenticatedLonRoute,
   AuthenticatedMaterialRoute: AuthenticatedMaterialRoute,
   AuthenticatedOrderRoute: AuthenticatedOrderRoute,
@@ -517,6 +559,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRapportEkonomiRoute: AuthenticatedRapportEkonomiRoute,
   AuthenticatedRapporterRoute: AuthenticatedRapporterRoute,
   AuthenticatedKunderCustomerIdRoute: AuthenticatedKunderCustomerIdRoute,
+  AuthenticatedListorListIdRoute: AuthenticatedListorListIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

@@ -23,6 +23,7 @@ import {
   Receipt,
   Contact,
   TrendingUp,
+  FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -45,11 +46,18 @@ const nav: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "saljare" },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare, group: "saljare" },
   { to: "/kunder", label: "Kunder", icon: Users, group: "saljare" },
+  { to: "/listor", label: "Listor", icon: FileSpreadsheet, group: "saljare" },
   { to: "/leads", label: "Leads", icon: Contact, group: "saljare" },
   { to: "/aktiviteter", label: "Aktiviteter", icon: CheckSquare, group: "saljare" },
   { to: "/order", label: "Order", icon: ShoppingCart, group: "saljare" },
   { to: "/lon", label: "Lön", icon: Wallet, group: "saljare" },
-  { to: "/produktion", label: "Produktion", icon: Settings, group: "produktion", adminOrProduktion: true },
+  {
+    to: "/produktion",
+    label: "Produktion",
+    icon: Settings,
+    group: "produktion",
+    adminOrProduktion: true,
+  },
   { to: "/kampanjer", label: "Kampanjer", icon: Calendar, group: "produktion" },
   { to: "/avslutas-snart", label: "Avslutas snart", icon: Clock, group: "produktion" },
   { to: "/avslutad", label: "Avslutad", icon: CheckCircle, group: "produktion" },
@@ -59,9 +67,14 @@ const nav: NavItem[] = [
   { to: "/produkter", label: "Produkter", icon: Package, group: "admin", adminOnly: true },
   { to: "/budget", label: "Budget", icon: Target, group: "admin", adminOnly: true },
   { to: "/faktura", label: "Faktura", icon: Receipt, group: "admin", adminOnly: true },
-  { to: "/rapport-ekonomi", label: "Rapport ekonomi", icon: TrendingUp, group: "admin", adminOnly: true },
+  {
+    to: "/rapport-ekonomi",
+    label: "Rapport ekonomi",
+    icon: TrendingUp,
+    group: "admin",
+    adminOnly: true,
+  },
 ];
-
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -78,16 +91,18 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigate({ to: "/auth", replace: true });
   };
 
-  const visibleNav = nav.filter(n =>
-    (!n.adminOnly || isAdmin) && (!n.adminOrProduktion || isAdmin || isProduktion)
+  const visibleNav = nav.filter(
+    (n) => (!n.adminOnly || isAdmin) && (!n.adminOrProduktion || isAdmin || isProduktion),
   );
-
 
   return (
     <div className="min-h-screen flex bg-background">
       <aside className="w-64 shrink-0 border-r border-sidebar-border bg-sidebar/85 backdrop-blur-xl flex flex-col">
         <div className="px-5 py-5">
-          <Link to="/dashboard" className="inline-flex bg-white rounded-xl p-2 shadow-[0_1px_2px_0_rgba(0,0,0,0.04),0_1px_1px_0_rgba(0,0,0,0.03)] group">
+          <Link
+            to="/dashboard"
+            className="inline-flex bg-white rounded-xl p-2 shadow-[0_1px_2px_0_rgba(0,0,0,0.04),0_1px_1px_0_rgba(0,0,0,0.03)] group"
+          >
             <img
               src={vegaVistaLogo}
               alt="Vega Vista"
@@ -98,20 +113,44 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 px-3 py-2 space-y-6 overflow-y-auto">
           <NavGroup label="Sälj">
-            {visibleNav.filter(n => n.group === "saljare").map(n => (
-              <NavLink key={n.to} to={n.to} label={n.label} icon={n.icon} active={pathname.startsWith(n.to)} />
-            ))}
+            {visibleNav
+              .filter((n) => n.group === "saljare")
+              .map((n) => (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  label={n.label}
+                  icon={n.icon}
+                  active={pathname.startsWith(n.to)}
+                />
+              ))}
           </NavGroup>
           <NavGroup label="Produktion">
-            {visibleNav.filter(n => n.group === "produktion").map(n => (
-              <NavLink key={n.to} to={n.to} label={n.label} icon={n.icon} active={pathname.startsWith(n.to)} />
-            ))}
+            {visibleNav
+              .filter((n) => n.group === "produktion")
+              .map((n) => (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  label={n.label}
+                  icon={n.icon}
+                  active={pathname.startsWith(n.to)}
+                />
+              ))}
           </NavGroup>
           {isAdmin && (
             <NavGroup label="Admin">
-              {visibleNav.filter(n => n.group === "admin").map(n => (
-                <NavLink key={n.to} to={n.to} label={n.label} icon={n.icon} active={pathname.startsWith(n.to)} />
-              ))}
+              {visibleNav
+                .filter((n) => n.group === "admin")
+                .map((n) => (
+                  <NavLink
+                    key={n.to}
+                    to={n.to}
+                    label={n.label}
+                    icon={n.icon}
+                    active={pathname.startsWith(n.to)}
+                  />
+                ))}
             </NavGroup>
           )}
         </nav>
@@ -125,11 +164,20 @@ export function AppShell({ children }: { children: ReactNode }) {
               {(profile?.full_name || profile?.email || "?").slice(0, 1).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold truncate tracking-tight">{profile?.full_name || profile?.email}</div>
-              <div className="text-[10px] text-muted-foreground truncate uppercase tracking-wider">{roles.join(" · ") || "ingen roll"}</div>
+              <div className="text-xs font-semibold truncate tracking-tight">
+                {profile?.full_name || profile?.email}
+              </div>
+              <div className="text-[10px] text-muted-foreground truncate uppercase tracking-wider">
+                {roles.join(" · ") || "ingen roll"}
+              </div>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground hover:text-foreground" onClick={handleSignOut}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
+            onClick={handleSignOut}
+          >
             <LogOut className="size-4 mr-2" /> Logga ut
           </Button>
         </div>
@@ -140,7 +188,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div />
           <GlobalSearch />
           <div className="flex items-center justify-end gap-4">
-            <div className="flex justify-end gap-2"><CelebrationSongDialog /><RecentSalesPanel /></div>
+            <div className="flex justify-end gap-2">
+              <CelebrationSongDialog />
+              <RecentSalesPanel />
+            </div>
             <img
               src={vegaVistaLogo}
               alt="Vega Vista"
@@ -157,7 +208,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 function NavGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <div className="px-3 pb-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70 font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+      <div
+        className="px-3 pb-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70 font-semibold"
+        style={{ fontFamily: "var(--font-display)" }}
+      >
         {label}
       </div>
       <div className="space-y-0.5">{children}</div>
@@ -165,7 +219,17 @@ function NavGroup({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function NavLink({ to, label, icon: Icon, active }: { to: string; label: string; icon: React.ComponentType<{ className?: string }>; active: boolean }) {
+function NavLink({
+  to,
+  label,
+  icon: Icon,
+  active,
+}: {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  active: boolean;
+}) {
   return (
     <Link
       to={to}
@@ -173,10 +237,15 @@ function NavLink({ to, label, icon: Icon, active }: { to: string; label: string;
         "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all",
         active
           ? "bg-primary text-primary-foreground shadow-sm"
-          : "text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-foreground"
+          : "text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-foreground",
       )}
     >
-      <Icon className={cn("size-4 shrink-0", active ? "text-primary-foreground" : "text-muted-foreground")} />
+      <Icon
+        className={cn(
+          "size-4 shrink-0",
+          active ? "text-primary-foreground" : "text-muted-foreground",
+        )}
+      />
       {label}
     </Link>
   );
