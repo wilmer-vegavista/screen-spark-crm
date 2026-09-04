@@ -1231,6 +1231,7 @@ export type Database = {
         Args: never
         Returns: {
           list_id: string
+          row_id: string
           match_type: string
           match_value: string
           other_party: string

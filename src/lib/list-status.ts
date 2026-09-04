@@ -40,3 +40,13 @@ export const findPhoneColumn = (columns: ListColumn[]) =>
 
 export const findEmailColumn = (columns: ListColumn[]) =>
   columns.find((c) => /e-?post|mail/i.test(c.name));
+
+/** Vilken typ av uppgift en kolumn innehåller, samma ordning som dubblettkollen i databasen */
+export const columnKind = (c: ListColumn): "mail" | "telefon" | "företag" | null =>
+  /e-?post|mail/i.test(c.name)
+    ? "mail"
+    : /telefon|phone|tel|nummer|mobil/i.test(c.name)
+      ? "telefon"
+      : c.role === "company" || /företag|company|kund|namn/i.test(c.name)
+        ? "företag"
+        : null;
