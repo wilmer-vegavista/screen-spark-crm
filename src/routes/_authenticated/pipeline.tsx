@@ -13,10 +13,24 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { DealDialog } from "@/components/deal-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  addMonths,
+  startOfQuarter,
+  endOfQuarter,
+  addQuarters,
+  getQuarter,
+  startOfYear,
+  endOfYear,
+  addYears,
+} from "date-fns";
+import { sv } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/pipeline")({
   component: Pipeline,
@@ -31,12 +45,64 @@ const STAGES = [
   { key: "forlorad", label: "Förlorad", color: "oklch(0.55 0.18 25)" },
 ] as const;
 
+type PeriodType = "alla" | "manad" | "kvartal" | "halvar" | "ar";
+
+const PERIOD_OPTIONS: { value: PeriodType; label: string }[] = [
+  { value: "alla", label: "Alla perioder" },
+  { value: "manad", label: "Månad" },
+  { value: "kvartal", label: "Kvartal" },
+  { value: "halvar", label: "Halvår" },
+  { value: "ar", label: "År" },
+];
+
+function getPeriodRange(type: PeriodType, offset: number) {
+  const now = new Date();
+  if (type === "manad") {
+    const base = addMonths(now, offset);
+    return {
+      start: startOfMonth(base),
+      end: endOfMonth(base),
+      label: format(base, "LLLL yyyy", { locale: sv }),
+    };
+  }
+  if (type === "kvartal") {
+    const base = addQuarters(now, offset);
+    return {
+      start: startOfQuarter(base),
+      end: endOfQuarter(base),
+      label: `Q${getQuarter(base)} ${format(base, "yyyy")}`,
+    };
+  }
+  if (type === "halvar") {
+    const base = addMonths(now, offset * 6);
+    const firstHalf = base.getMonth() < 6;
+    const start = new Date(base.getFullYear(), firstHalf ? 0 : 6, 1);
+    return {
+      start,
+      end: endOfMonth(addMonths(start, 5)),
+      label: `${firstHalf ? "H1" : "H2"} ${base.getFullYear()}`,
+    };
+  }
+  if (type === "ar") {
+    const base = addYears(now, offset);
+    return {
+      start: startOfYear(base),
+      end: endOfYear(base),
+      label: format(base, "yyyy"),
+    };
+  }
+  return null;
+}
+
 function Pipeline() {
   const qc = useQueryClient();
   const { user, isAdmin } = useCurrentUser();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [sellerFilter, setSellerFilter] = useState<string>("alla");
+  const [periodType, setPeriodType] = useState<PeriodType>("alla");
+  const [periodOffset, setPeriodOffset] = useState(0);
+  const period = getPeriodRange(periodType, periodOffset);
 
   const { data: sellers } = useQuery({
     queryKey: ["all-profiles-min"],
@@ -64,6 +130,10 @@ function Pipeline() {
   });
 
   const visibleDeals = (data ?? []).filter((d) => {
+    if (period) {
+      const created = d.created_at ? new Date(d.created_at) : null;
+      if (!created || created < period.start || created > period.end) return false;
+    }
     if (!isAdmin) return d.owner_id === user?.id || d.created_by === user?.id;
     if (sellerFilter === "alla") return true;
     return d.owner_id === sellerFilter;
@@ -91,7 +161,48 @@ function Pipeline() {
             : "Dina affärer – dra och släpp mellan stegen"
         }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <Select
+              value={periodType}
+              onValueChange={(v) => {
+                setPeriodType(v as PeriodType);
+                setPeriodOffset(0);
+              }}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Alla perioder" />
+              </SelectTrigger>
+              <SelectContent>
+                {PERIOD_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {period && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9"
+                  onClick={() => setPeriodOffset((o) => o - 1)}
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <span className="text-sm font-medium px-1 capitalize whitespace-nowrap min-w-24 text-center">
+                  {period.label}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9"
+                  onClick={() => setPeriodOffset((o) => o + 1)}
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            )}
             {isAdmin && (
               <Select value={sellerFilter} onValueChange={setSellerFilter}>
                 <SelectTrigger className="w-56">
