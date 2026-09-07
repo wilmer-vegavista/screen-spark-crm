@@ -19,6 +19,8 @@ import { sv } from "date-fns/locale";
 import { TaxCalculator } from "@/components/tax-calculator";
 import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/lib/billing";
 import { ORDER_SELECT } from "@/lib/order-columns";
+import { DealDialog } from "@/components/deal-dialog";
+import { OrderDialog } from "@/components/order-dialog";
 
 export const Route = createFileRoute("/_authenticated/lon")({
   component: LonPage,
@@ -138,10 +140,12 @@ function pickPct(deal: any, product: any, compType: string, defaultPct: number) 
 
 // Build commission events for a deal. If the deal has an order with
 // recurring billing, commission is split across the invoice schedule;
-// otherwise it's a single event at won_at.
+// otherwise it's a single event at won_at. Orders with commission_upfront
+// invoice the customer in full at once (billing shown as monthly only for
+// the screen owner), so the seller gets the whole commission immediately.
 function dealCommissionEvents(deal: any, order: any | null, pct: number) {
   const value = Number(deal.value ?? 0);
-  if (order && order.billing_frequency && order.billing_frequency !== "engang") {
+  if (order && order.billing_frequency && order.billing_frequency !== "engang" && !order.commission_upfront) {
     const schedule = buildInvoiceSchedule(
       order.invoice_start_date || deal.won_at,
       order.billing_frequency as BillingFrequency,
@@ -155,6 +159,10 @@ function dealCommissionEvents(deal: any, order: any | null, pct: number) {
 }
 
 function orderCommissionEvents(order: any, totalCommission: number) {
+  if (order.commission_upfront) {
+    const d = order.invoice_start_date ? new Date(order.invoice_start_date) : new Date(order.created_at);
+    return [{ date: d, amount: Number(order.total_excl_vat ?? 0), commission: totalCommission }];
+  }
   const schedule = buildInvoiceSchedule(
     order.invoice_start_date || order.created_at,
     (order.billing_frequency ?? "engang") as BillingFrequency,
@@ -207,6 +215,7 @@ function useSalary(userId: string, from: Date, to: Date) {
         const commission = events.reduce((s, e) => s + e.commission, 0);
         return [{
           id: d.id,
+          kind: "deal" as const,
           title: d.title,
           product: product?.name ?? "—",
           value,
@@ -214,6 +223,7 @@ function useSalary(userId: string, from: Date, to: Date) {
           commission,
           won_at: d.won_at,
           frequency: (order?.billing_frequency ?? "engang") as BillingFrequency,
+          upfront: !!order?.commission_upfront,
         }];
       });
       const commissionMap = new Map((commissionRows ?? []).map(r => [r.order_id, Number(r.total_commission ?? 0)]));
@@ -225,6 +235,7 @@ function useSalary(userId: string, from: Date, to: Date) {
         const commission = events.reduce((sum, event) => sum + event.commission, 0);
         return [{
           id: order.id,
+          kind: "order" as const,
           title: order.company_name,
           product: "Order",
           value,
@@ -232,6 +243,7 @@ function useSalary(userId: string, from: Date, to: Date) {
           commission,
           won_at: order.invoice_start_date || order.created_at,
           frequency: (order.billing_frequency ?? "engang") as BillingFrequency,
+          upfront: !!order.commission_upfront,
         }];
       });
       const allRows = [...rows, ...standaloneRows];
@@ -243,7 +255,42 @@ function useSalary(userId: string, from: Date, to: Date) {
 }
 
 function SalaryCard({ userId, from, to }: { userId: string; from: Date; to: Date }) {
+  const qc = useQueryClient();
   const { data, isLoading } = useSalary(userId, from, to);
+  const [editingDeal, setEditingDeal] = useState<any>(null);
+  const [editingOrder, setEditingOrder] = useState<any>(null);
+  const [dealOpen, setDealOpen] = useState(false);
+  const [orderOpen, setOrderOpen] = useState(false);
+
+  const openRow = async (row: any) => {
+    if (row.kind === "order") {
+      const { data: order, error } = await supabase.from("orders").select(ORDER_SELECT).eq("id", row.id).maybeSingle();
+      if (error || !order) return toast.error(error?.message ?? "Kunde inte hämta ordern");
+      setEditingOrder(order);
+      setOrderOpen(true);
+      return;
+    }
+    // Deal row: open the linked order if one exists (there is where billing lives),
+    // otherwise open the deal itself.
+    const { data: order } = await supabase.from("orders").select(ORDER_SELECT).eq("deal_id", row.id).maybeSingle();
+    if (order) {
+      setEditingOrder(order);
+      setOrderOpen(true);
+      return;
+    }
+    const { data: deal, error } = await supabase.from("deals").select("*").eq("id", row.id).maybeSingle();
+    if (error || !deal) return toast.error(error?.message ?? "Kunde inte hämta affären");
+    setEditingDeal(deal);
+    setDealOpen(true);
+  };
+
+  const refreshSalary = () => {
+    qc.invalidateQueries({ predicate: q => {
+      const k = q.queryKey[0];
+      return k === "salary" || k === "all-sellers-salary";
+    } });
+  };
+
   if (isLoading || !data) return <Card className="p-6 text-sm text-muted-foreground">Laddar…</Card>;
   return (
     <div className="space-y-6">
@@ -274,10 +321,13 @@ function SalaryCard({ userId, from, to }: { userId: string; from: Date; to: Date
             </TableHeader>
             <TableBody>
               {data.rows.map(r => (
-                <TableRow key={r.id}>
+                <TableRow key={r.id} className="cursor-pointer" onClick={() => openRow(r)}>
                   <TableCell className="font-medium">{r.title}</TableCell>
                   <TableCell>{r.product}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{frequencyLabels[r.frequency]}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {frequencyLabels[r.frequency]}
+                    {r.upfront && <span className="text-primary"> · provision direkt</span>}
+                  </TableCell>
                   <TableCell className="text-muted-foreground text-xs">{r.won_at ? format(new Date(r.won_at), "d MMM", { locale: sv }) : "—"}</TableCell>
                   <TableCell className="text-right">{fmt(r.value)}</TableCell>
                   <TableCell className="text-right">{r.pct}%</TableCell>
@@ -293,6 +343,16 @@ function SalaryCard({ userId, from, to }: { userId: string; from: Date; to: Date
           Ingen kompensation är satt för dig än. Be admin sätta grundlön och provision under fliken "Säljarinställningar".
         </Card>
       )}
+      <DealDialog
+        open={dealOpen}
+        onOpenChange={(o) => { setDealOpen(o); if (!o) refreshSalary(); }}
+        deal={editingDeal}
+      />
+      <OrderDialog
+        open={orderOpen}
+        onOpenChange={(o) => { setOrderOpen(o); if (!o) refreshSalary(); }}
+        order={editingOrder}
+      />
     </div>
   );
 }

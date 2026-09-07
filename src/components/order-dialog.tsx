@@ -228,6 +228,7 @@ export function OrderDialog({
     invoice_start_date: new Date() as Date,
     billing_frequency: "engang" as BillingFrequency,
     billing_duration_months: 1,
+    commission_upfront: false,
     invoice_reference: "",
     invoice_peppol_id: "",
     invoice_email: "",
@@ -266,6 +267,7 @@ export function OrderDialog({
         invoice_start_date: order.invoice_start_date ? new Date(order.invoice_start_date) : new Date(),
         billing_frequency: (order.billing_frequency as BillingFrequency) ?? "engang",
         billing_duration_months: order.billing_duration_months ?? 1,
+        commission_upfront: order.commission_upfront ?? false,
         invoice_reference: order.invoice_reference ?? "",
         invoice_peppol_id: order.invoice_peppol_id ?? "",
         invoice_email: order.invoice_email ?? "",
@@ -320,7 +322,7 @@ export function OrderDialog({
         order_type: "offert", customer_id: null, company_name: initial?.company_name ?? "", org_number: "", vat_number: "",
         billing_address: "", postal_code: "", city: "",
         contact_name: initial?.contact_name ?? "", contact_email: initial?.contact_email ?? "", contact_phone: initial?.contact_phone ?? "", notes: "",
-        invoice_start_date: new Date(), billing_frequency: "engang", billing_duration_months: 1,
+        invoice_start_date: new Date(), billing_frequency: "engang", billing_duration_months: 1, commission_upfront: false,
         invoice_reference: "", invoice_peppol_id: "", invoice_email: "", invoice_info: "",
         payment_terms: "30 dagar netto från erlagd order", vat_exempt: false, invoice_status: null, pdf_language: "sv" as "sv" | "en",
       });
@@ -1440,6 +1442,24 @@ export function OrderDialog({
                 </div>
               )}
             </div>
+            {form.billing_frequency !== "engang" && (
+              <div className="mt-3 flex items-start gap-2 rounded-md border p-3">
+                <input
+                  id="commission_upfront"
+                  type="checkbox"
+                  className="mt-1 size-4 accent-primary"
+                  checked={form.commission_upfront}
+                  onChange={e => setForm(f => ({ ...f, commission_upfront: e.target.checked }))}
+                />
+                <div>
+                  <Label htmlFor="commission_upfront" className="text-xs cursor-pointer">Vi fakturerar hela beloppet direkt – provision direkt</Label>
+                  <p className="text-[10px] text-muted-foreground">
+                    Ordern visas fortfarande som {frequencyLabels[form.billing_frequency].toLowerCase()} i rapporten till skärmägaren,
+                    men kunden faktureras hela beloppet på en gång och säljaren får hela provisionen direkt.
+                  </p>
+                </div>
+              </div>
+            )}
             {/* Schedule preview */}
             {(() => {
               const sched = buildInvoiceSchedule(form.invoice_start_date, form.billing_frequency, form.billing_duration_months, subtotal);
@@ -1448,10 +1468,13 @@ export function OrderDialog({
                 <div className="mt-3 p-3 rounded-md bg-accent/30 text-xs">
                   <div className="font-medium mb-1">
                     {frequencyLabels[form.billing_frequency]} – {sched.length} faktura{sched.length === 1 ? "" : "or"} à {SEK(sched[0].amount)} SEK
+                    {form.commission_upfront && form.billing_frequency !== "engang" && " (visas så för skärmägaren)"}
                   </div>
                   <div className="text-muted-foreground">
-                    Försäljning bokförs per månad: {format(sched[0].date, "MMM yyyy", { locale: sv })}
-                    {sched.length > 1 && ` – ${format(sched[sched.length - 1].date, "MMM yyyy", { locale: sv })}`}.
+                    {form.commission_upfront && form.billing_frequency !== "engang"
+                      ? <>Kunden faktureras hela beloppet ({SEK(subtotal)} SEK) direkt och säljaren får hela provisionen i {format(sched[0].date, "MMM yyyy", { locale: sv })}.</>
+                      : <>Försäljning bokförs per månad: {format(sched[0].date, "MMM yyyy", { locale: sv })}
+                        {sched.length > 1 && ` – ${format(sched[sched.length - 1].date, "MMM yyyy", { locale: sv })}`}.</>}
                   </div>
                 </div>
               );
