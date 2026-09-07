@@ -291,13 +291,16 @@ function ReportView() {
     queryFn: async () => {
       const [{ data: products }, { data: orders }, { data: items }] = await Promise.all([
         supabase.from("products").select("id, name, city, owner_name, revenue_share_pct, live_date").order("name"),
-        supabase.from("orders").select("id, company_name, invoice_start_date, created_at, status, billing_frequency, billing_duration_months, selected_weeks, exact_dates"),
+        // Endast bekräftade bokningar – offerter ska inte räknas som omsättning
+        supabase.from("orders").select("id, company_name, invoice_start_date, created_at, status, billing_frequency, billing_duration_months, selected_weeks, exact_dates").eq("order_type", "bokning"),
         supabase.from("order_items").select("order_id, product_id, product_name, unit_price, weeks, sov_pct, impressions, period_unit"),
       ]);
+      const orderIds = new Set((orders ?? []).map(o => o.id));
       return {
         products: (products ?? []) as ProductRow[],
         orders: orders ?? [],
-        items: items ?? [],
+        // Rader som hör till offerter filtreras bort så inga summeringar räknar med dem
+        items: (items ?? []).filter(it => orderIds.has(it.order_id)),
       };
     },
   });
