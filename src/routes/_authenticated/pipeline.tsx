@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -96,6 +96,7 @@ function getPeriodRange(type: PeriodType, offset: number) {
 
 function Pipeline() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { user, isAdmin } = useCurrentUser();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
@@ -120,12 +121,20 @@ function Pipeline() {
   const { data } = useQuery({
     queryKey: ["deals-with-customers"],
     queryFn: async () => {
-      const [{ data: deals }, { data: customers }] = await Promise.all([
+      const [{ data: deals }, { data: customers }, { data: orders }] = await Promise.all([
         supabase.from("deals").select("*").order("created_at", { ascending: false }),
         supabase.from("customers").select("id, company_name"),
+        supabase.from("orders").select("id, deal_id"),
       ]);
       const customerMap = new Map((customers ?? []).map(c => [c.id, c.company_name]));
-      return (deals ?? []).map(d => ({ ...d, customer_name: d.customer_id ? customerMap.get(d.customer_id) : null }));
+      const orderByDeal = new Map(
+        (orders ?? []).filter((o) => o.deal_id).map((o) => [o.deal_id, o.id]),
+      );
+      return (deals ?? []).map((d) => ({
+        ...d,
+        customer_name: d.customer_id ? customerMap.get(d.customer_id) : null,
+        order_id: orderByDeal.get(d.id) ?? null,
+      }));
     },
   });
 
@@ -256,7 +265,16 @@ function Pipeline() {
                       key={d.id}
                       draggable
                       onDragStart={(e) => onDragStart(e, d.id)}
-                      onClick={() => { setEditing(d); setOpen(true); }}
+                      onClick={() => {
+                        // Affärer skapade från en order redigeras i orderdialogen,
+                        // så offerten kan omvandlas till bokning därifrån
+                        if (d.order_id) {
+                          navigate({ to: "/order", search: { order: d.order_id } as any });
+                        } else {
+                          setEditing(d);
+                          setOpen(true);
+                        }
+                      }}
                       className={cn("p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors")}
                     >
                       <div className="text-sm font-medium">{d.title}</div>
