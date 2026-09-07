@@ -2,9 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrentUser } from "@/lib/hooks/use-current-user";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { DealDialog } from "@/components/deal-dialog";
 import { toast } from "sonner";
@@ -25,8 +33,23 @@ const STAGES = [
 
 function Pipeline() {
   const qc = useQueryClient();
+  const { user, isAdmin } = useCurrentUser();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [sellerFilter, setSellerFilter] = useState<string>("alla");
+
+  const { data: sellers } = useQuery({
+    queryKey: ["all-profiles-min"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .order("full_name");
+      return data ?? [];
+    },
+  });
+  const sellerName = new Map((sellers ?? []).map((s) => [s.id, s.full_name || s.email]));
 
   const { data } = useQuery({
     queryKey: ["deals-with-customers"],
@@ -38,6 +61,12 @@ function Pipeline() {
       const customerMap = new Map((customers ?? []).map(c => [c.id, c.company_name]));
       return (deals ?? []).map(d => ({ ...d, customer_name: d.customer_id ? customerMap.get(d.customer_id) : null }));
     },
+  });
+
+  const visibleDeals = (data ?? []).filter((d) => {
+    if (!isAdmin) return d.owner_id === user?.id || d.created_by === user?.id;
+    if (sellerFilter === "alla") return true;
+    return d.owner_id === sellerFilter;
   });
 
   const onDragStart = (e: React.DragEvent, id: string) => {
@@ -56,13 +85,44 @@ function Pipeline() {
     <>
       <PageHeader
         title="Pipeline"
-        description="Dra och släpp affärer mellan stegen"
-        actions={<Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="size-4 mr-1" /> Ny affär</Button>}
+        description={
+          isAdmin
+            ? "Dra och släpp affärer mellan stegen"
+            : "Dina affärer – dra och släpp mellan stegen"
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Select value={sellerFilter} onValueChange={setSellerFilter}>
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Alla säljare" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="alla">Alla säljare</SelectItem>
+                  {(sellers ?? []).map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.full_name || s.email}
+                      {s.id === user?.id ? " (jag)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setOpen(true);
+              }}
+            >
+              <Plus className="size-4 mr-1" /> Ny affär
+            </Button>
+          </div>
+        }
       />
       <div className="flex-1 overflow-x-auto p-6">
         <div className="flex gap-3 min-w-max">
           {STAGES.map(s => {
-            const deals = (data ?? []).filter(d => d.stage === s.key);
+            const deals = visibleDeals.filter((d) => d.stage === s.key);
             const total = deals.reduce((sum, d) => sum + Number(d.value || 0), 0);
             return (
               <div
@@ -90,6 +150,14 @@ function Pipeline() {
                     >
                       <div className="text-sm font-medium">{d.title}</div>
                       {d.customer_name && <div className="text-xs text-muted-foreground mt-0.5">{d.customer_name}</div>}
+                      {isAdmin &&
+                        sellerFilter === "alla" &&
+                        d.owner_id &&
+                        sellerName.get(d.owner_id) && (
+                          <div className="text-[10px] text-muted-foreground mt-0.5">
+                            {sellerName.get(d.owner_id)}
+                          </div>
+                        )}
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-xs font-medium">{Number(d.value || 0).toLocaleString("sv-SE")} kr</span>
                         {d.probability != null && <span className="text-[10px] text-muted-foreground">{d.probability}%</span>}
