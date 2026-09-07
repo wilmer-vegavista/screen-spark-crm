@@ -1,0 +1,208 @@
+/**
+ * fortnox-sync — the one HTTP entry point for the Fortnox integration (round zero).
+ *
+ * Callers:
+ *   - the Fortnox-koppling page, with the admin's Supabase JWT (checked here, server-side:
+ *     a valid session AND the admin role, via public.has_role);
+ *   - the hourly pg_cron job, with the x-fortnox-cron-token header (a random token that
+ *     lives in Supabase Vault, verified by fortnox.verify_cron_token). Cron may only sync.
+ *
+ * Body: { action: "status" | "sync" | "propose" | "confirm" | "link" | "create" | "candidates", ... }
+ *
+ * Runs unchanged in two places: deployed as a Supabase edge function, and locally with
+ * `deno run --env-file=<fortnox-agent .env> index.ts` (scripts/fortnox-dev.ps1 serve),
+ * which is how round zero reaches Fortnox before any secret is set on a project.
+ *
+ * Without Fortnox credentials in the environment the function answers plainly
+ * (503, fortnox-not-configured) and writes no run — so an hourly cron on a project
+ * without secrets is inert, not noisy.
+ */
+import { createClient } from "npm:@supabase/supabase-js@2.108.1";
+import {
+  guardedFortnoxFromEnv,
+  hasFortnoxCredentials,
+  redact,
+  TenantGuardError,
+} from "../_fortnox/mod.ts";
+import { runSync, type SyncDeps } from "./sync.ts";
+import {
+  ActionError,
+  candidates,
+  confirm,
+  createOne,
+  type Kind,
+  linkTo,
+  status,
+} from "./actions.ts";
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-fortnox-cron-token",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+};
+
+const json = (statusCode: number, body: unknown) =>
+  new Response(JSON.stringify(body), {
+    status: statusCode,
+    headers: { ...CORS, "content-type": "application/json" },
+  });
+
+type Actor = { kind: "cron" } | { kind: "admin"; userId: string };
+
+function env(name: string): string {
+  const v = Deno.env.get(name);
+  if (!v) throw new Error(`${name} is not set`);
+  return v;
+}
+
+const kindOf = (v: unknown): Kind => {
+  if (v === "customer" || v === "screen") return v;
+  throw new ActionError(400, 'kind måste vara "customer" eller "screen"');
+};
+const idOf = (v: unknown): string => {
+  if (typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v)) return v;
+  throw new ActionError(400, "id saknas eller är inte ett uuid");
+};
+
+export async function handle(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  try {
+    const url = env("SUPABASE_URL");
+    const db = createClient(url, env("SUPABASE_SERVICE_ROLE_KEY"), {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const body: Record<string, unknown> =
+      req.method === "POST"
+        ? await req.json().catch(() => ({}))
+        : Object.fromEntries(new URL(req.url).searchParams);
+
+    // ---- who is calling
+    let actor: Actor;
+    const cronToken = req.headers.get("x-fortnox-cron-token");
+    if (cronToken) {
+      const { data, error } = await db
+        .schema("fortnox")
+        .rpc("verify_cron_token", { p_token: cronToken });
+      if (error || data !== true) return json(401, { error: "Ogiltig cron-token" });
+      actor = { kind: "cron" };
+    } else {
+      const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+      if (!token) return json(401, { error: "Ingen inloggning skickades med" });
+      const anon = createClient(url, env("SUPABASE_ANON_KEY"), {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { data: userRes, error: userErr } = await anon.auth.getUser(token);
+      if (userErr || !userRes?.user) return json(401, { error: "Inloggningen är inte giltig" });
+      const { data: isAdmin, error: roleErr } = await db.rpc("has_role", {
+        _user_id: userRes.user.id,
+        _role: "admin",
+      });
+      if (roleErr) throw new Error(`has_role: ${roleErr.message}`);
+      if (isAdmin !== true)
+        return json(403, { error: "Endast administratörer kan använda Fortnox-kopplingen" });
+      actor = { kind: "admin", userId: userRes.user.id };
+    }
+
+    const action = actor.kind === "cron" ? "sync" : String(body.action ?? "status");
+    const fortnoxConfigured = hasFortnoxCredentials();
+    const claudeConfigured = Boolean(Deno.env.get("ANTHROPIC_API_KEY"));
+    const lines: string[] = [];
+    const log = (s: string) => {
+      lines.push(s);
+      console.log(s);
+    };
+    const deps = (): SyncDeps => {
+      if (!fortnoxConfigured)
+        throw new ActionError(
+          503,
+          "Fortnox-uppgifter är inte konfigurerade i den här miljön (fortnox-not-configured)",
+        );
+      return {
+        db,
+        fortnox: guardedFortnoxFromEnv(),
+        anthropicApiKey: Deno.env.get("ANTHROPIC_API_KEY") || undefined,
+        anthropicModel: Deno.env.get("ANTHROPIC_MODEL") || undefined,
+        log,
+      };
+    };
+
+    switch (action) {
+      case "status":
+        return json(
+          200,
+          await status(db, { fortnoxConfigured, claudeConfigured, functionUrl: null }),
+        );
+      case "sync": {
+        if (!fortnoxConfigured) {
+          console.log(`sync skipped (${actor.kind}): fortnox-not-configured`);
+          return json(503, {
+            ok: false,
+            skipped: "fortnox-not-configured",
+            message: "Fortnox-uppgifter är inte konfigurerade i den här miljön",
+          });
+        }
+        const summary = await runSync(deps(), {
+          triggeredBy: actor.kind === "cron" ? "cron" : "manual",
+          dryRun: body.dryRun === true,
+        });
+        return json(summary.status === "ok" ? 200 : 500, summary);
+      }
+      case "propose": {
+        const summary = await runSync(deps(), {
+          triggeredBy: "manual",
+          createMissing: false,
+          dryRun: body.dryRun === true,
+        });
+        return json(summary.status === "ok" ? 200 : 500, summary);
+      }
+      case "confirm":
+        return json(
+          200,
+          await confirm(
+            deps(),
+            kindOf(body.kind),
+            idOf(body.id),
+            (actor as { userId: string }).userId,
+          ),
+        );
+      case "link":
+        if (typeof body.number !== "string" || !body.number.trim())
+          throw new ActionError(400, "number saknas");
+        return json(
+          200,
+          await linkTo(
+            deps(),
+            kindOf(body.kind),
+            idOf(body.id),
+            body.number.trim(),
+            (actor as { userId: string }).userId,
+            "manual",
+          ),
+        );
+      case "create":
+        return json(200, {
+          ...(await createOne(
+            deps(),
+            kindOf(body.kind),
+            idOf(body.id),
+            (actor as { userId: string }).userId,
+            log,
+          )),
+          log: lines,
+        });
+      case "candidates":
+        return json(200, await candidates(deps().fortnox));
+      default:
+        return json(400, { error: `Okänd action: ${action}` });
+    }
+  } catch (e) {
+    const err = e as Error;
+    if (err instanceof ActionError) return json(err.status, { error: err.message });
+    if (err instanceof TenantGuardError) return json(403, { error: err.message });
+    console.error(redact(err.stack ?? err.message));
+    return json(500, { error: redact(err.message ?? String(err)) });
+  }
+}
+
+Deno.serve(handle);
