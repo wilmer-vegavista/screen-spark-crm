@@ -8,11 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, CheckCircle2, Receipt, Users, Undo2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlertCircle, CheckCircle2, Receipt, Users, Undo2, BarChart3 } from "lucide-react";
 import { OrderDialog } from "@/components/order-dialog";
-import { format } from "date-fns";
+import { format, addMonths, startOfMonth, endOfMonth } from "date-fns";
+import { sv } from "date-fns/locale";
 import { toast } from "sonner";
 import { ORDER_SELECT } from "@/lib/order-columns";
+import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/lib/billing";
 
 export const Route = createFileRoute("/_authenticated/faktura")({
   beforeLoad: async () => {
@@ -50,6 +54,7 @@ function FakturaPage() {
   const [editing, setEditing] = useState<any | null>(null);
   const [sellerFilter, setSellerFilter] = useState<string>("all");
   const [tab, setTab] = useState<Bucket>("saknar");
+  const [reportOpen, setReportOpen] = useState(false);
 
   const { data: orders = [] } = useQuery({
     queryKey: ["faktura-orders"],
@@ -238,6 +243,9 @@ function FakturaPage() {
           <span className="text-xs text-muted-foreground ml-auto">
             Saknar info: {filtered.saknar.length} · Klar: {filtered.klar.length} · Fakturerad: {filtered.fakturerad.length}
           </span>
+          <Button size="sm" variant="outline" onClick={() => setReportOpen(true)}>
+            <BarChart3 className="size-4 mr-1" /> Rapport ekonomi månadsvis
+          </Button>
         </Card>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as Bucket)}>
@@ -262,6 +270,142 @@ function FakturaPage() {
         </Tabs>
       </div>
       <OrderDialog open={open} onOpenChange={setOpen} order={editing} />
+      <MonthlyEconomyReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        orders={orders}
+        sellerName={sellerName}
+      />
     </>
+  );
+}
+
+/**
+ * Rapport ekonomi månadsvis — visar för admin vad som faktiskt ska faktureras
+ * en viss månad. Ordrar med "provision direkt" (commission_upfront) faktureras
+ * i sin helhet direkt även om de visas som månadsvisa mot skärmägaren.
+ */
+function MonthlyEconomyReportDialog({
+  open,
+  onOpenChange,
+  orders,
+  sellerName,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  orders: any[];
+  sellerName: (id: string | null) => string;
+}) {
+  const [monthOffset, setMonthOffset] = useState(0);
+  const month = addMonths(new Date(), monthOffset);
+  const from = startOfMonth(month);
+  const to = endOfMonth(month);
+
+  const { rows, total, oneOff, recurring } = useMemo(() => {
+    type Row = {
+      id: string;
+      company: string;
+      seller: string;
+      billingLabel: string;
+      installment: string;
+      amount: number;
+      upfront: boolean;
+    };
+    const list: Row[] = [];
+    for (const o of orders) {
+      const freq = (o.billing_frequency ?? "engang") as BillingFrequency;
+      const totalAmount = Number(o.total_excl_vat ?? 0);
+      if (!totalAmount) continue;
+      const start = o.invoice_start_date || o.created_at;
+      const upfront = !!o.commission_upfront && freq !== "engang";
+      // Vid "fakturerar direkt" är den verkliga faktureringen hela beloppet på en gång
+      const schedule = upfront
+        ? buildInvoiceSchedule(start, "engang", 1, totalAmount)
+        : buildInvoiceSchedule(start, freq, Number(o.billing_duration_months ?? 0), totalAmount);
+      const hits = schedule.filter(e => e.date >= from && e.date <= to);
+      for (const h of hits) {
+        list.push({
+          id: o.id,
+          company: o.company_name || "Okänd kund",
+          seller: sellerName(o.owner_id),
+          billingLabel: upfront
+            ? `Faktureras direkt (${frequencyLabels[freq].toLowerCase()} mot skärmägare)`
+            : frequencyLabels[freq],
+          installment: schedule.length > 1 ? `${schedule.indexOf(h) + 1}/${schedule.length}` : "—",
+          amount: h.amount,
+          upfront,
+        });
+      }
+    }
+    list.sort((a, b) => b.amount - a.amount);
+    const total = list.reduce((s, r) => s + r.amount, 0);
+    const oneOff = list.filter(r => r.installment === "—").reduce((s, r) => s + r.amount, 0);
+    return { rows: list, total, oneOff, recurring: total - oneOff };
+  }, [orders, from.getTime(), to.getTime(), sellerName]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader><DialogTitle>Rapport ekonomi månadsvis</DialogTitle></DialogHeader>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setMonthOffset(o => o - 1)}>← Föregående</Button>
+          <div className="text-sm font-medium px-3 capitalize">{format(month, "LLLL yyyy", { locale: sv })}</div>
+          <Button variant="outline" size="sm" onClick={() => setMonthOffset(o => o + 1)}>Nästa →</Button>
+          {monthOffset !== 0 && (
+            <Button variant="ghost" size="sm" onClick={() => setMonthOffset(0)}>Nu</Button>
+          )}
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="p-3">
+            <div className="text-xs text-muted-foreground uppercase tracking-wider">Att fakturera</div>
+            <div className="mt-1 text-xl font-semibold">{SEK(total)} SEK</div>
+          </Card>
+          <Card className="p-3">
+            <div className="text-xs text-muted-foreground uppercase tracking-wider">Engång / direkt</div>
+            <div className="mt-1 text-xl font-semibold">{SEK(oneOff)} SEK</div>
+          </Card>
+          <Card className="p-3">
+            <div className="text-xs text-muted-foreground uppercase tracking-wider">Abonnemang</div>
+            <div className="mt-1 text-xl font-semibold">{SEK(recurring)} SEK</div>
+          </Card>
+        </div>
+        <div className="max-h-[50vh] overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Kund</TableHead>
+                <TableHead>Säljare</TableHead>
+                <TableHead>Fakturering</TableHead>
+                <TableHead className="text-right">Delfaktura</TableHead>
+                <TableHead className="text-right">Belopp</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground text-center py-6">Inget att fakturera denna månad</TableCell></TableRow>
+              )}
+              {rows.map((r, i) => (
+                <TableRow key={`${r.id}-${i}`}>
+                  <TableCell className="font-medium">{r.company}</TableCell>
+                  <TableCell className="text-sm">{r.seller}</TableCell>
+                  <TableCell className={`text-xs ${r.upfront ? "text-primary" : "text-muted-foreground"}`}>{r.billingLabel}</TableCell>
+                  <TableCell className="text-right text-sm">{r.installment}</TableCell>
+                  <TableCell className="text-right font-medium">{SEK(r.amount)} SEK</TableCell>
+                </TableRow>
+              ))}
+              {rows.length > 0 && (
+                <TableRow className="bg-muted/40 font-semibold">
+                  <TableCell colSpan={4}>Totalt</TableCell>
+                  <TableCell className="text-right">{SEK(total)} SEK</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Stäng</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -739,6 +739,7 @@ export type Database = {
           billing_duration_months: number
           billing_frequency: Database["public"]["Enums"]["billing_frequency"]
           city: string | null
+          commission_upfront: boolean
           company_name: string
           contact_email: string | null
           contact_name: string | null
@@ -781,6 +782,7 @@ export type Database = {
           billing_duration_months?: number
           billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
           city?: string | null
+          commission_upfront?: boolean
           company_name: string
           contact_email?: string | null
           contact_name?: string | null
@@ -823,6 +825,7 @@ export type Database = {
           billing_duration_months?: number
           billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
           city?: string | null
+          commission_upfront?: boolean
           company_name?: string
           contact_email?: string | null
           contact_name?: string | null
