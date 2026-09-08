@@ -12,7 +12,16 @@
  * Normally run through scripts/fortnox-dev.ps1, which sets FORTNOX_TENANT_ID=1848969
  * in the process environment (the guard's constant) before loading the env file.
  */
-import { guardedFortnoxFromEnv, listArticles, listCustomers, listProjects } from "./mod.ts";
+import {
+  guardedFortnoxFromEnv,
+  isCancelled,
+  listArticles,
+  listCustomers,
+  listFinancialYears,
+  listInvoices,
+  listProjects,
+  num,
+} from "./mod.ts";
 
 const [mode, tenantArg] = Deno.args;
 
@@ -63,7 +72,28 @@ for (const [label, read] of reads) {
     console.log(`${label}: NOT READABLE — ${(e as Error).message}`);
   }
 }
+// Round one: the invoices and the financial years the first sync run will read.
+try {
+  const years = await listFinancialYears(g);
+  console.log(
+    `Financial years: ${years.length}${years.length ? " — " + years.map((y) => `${y.from}…${y.to}`).join(", ") : ""}`,
+  );
+} catch (e) {
+  console.log(`Financial years: NOT READABLE — ${(e as Error).message}`);
+}
+try {
+  const inv = await listInvoices(g);
+  const live = inv.rows.filter((r) => !isCancelled(r));
+  const dates = live.map((r) => String(r.InvoiceDate ?? "").slice(0, 10)).filter(Boolean).sort();
+  const paid = live.filter((r) => num(r.Balance) === 0).length;
+  console.log(
+    `Invoices: ${inv.rows.length} (pages read: ${inv.read.pages}, Fortnox reported: ${inv.read.reportedTotal}); ${live.length} not cancelled, ${paid} paid, ${live.length - paid} open; dates ${dates[0] ?? "–"}…${dates[dates.length - 1] ?? "–"}`,
+  );
+} catch (e) {
+  failed++;
+  console.log(`Invoices: NOT READABLE — ${(e as Error).message}`);
+}
 console.log(
   `Done in ${Date.now() - started} ms.${failed ? ` ${failed} endpoint(s) not readable with this integration's scopes.` : ""}`,
 );
-Deno.exit(failed && failed === reads.length ? 1 : 0);
+Deno.exit(failed && failed === reads.length + 1 ? 1 : 0);

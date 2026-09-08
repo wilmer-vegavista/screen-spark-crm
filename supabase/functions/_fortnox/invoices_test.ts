@@ -78,9 +78,24 @@ Deno.test("a cancelled invoice keeps its figures but has no balance; credits are
   const c = parseInvoice({ ...detail, Cancelled: true, Balance: "1409.90" });
   assertEquals(c.cancelled, true);
   assertEquals(c.balance, 0);
-  const cr = parseInvoice({ ...detail, Credit: true, Net: -1127.92, TotalVAT: -281.98, Total: -1409.9, Balance: 0 });
+  // Fortnox sends Credit as the string "true" on the full record, and "0" for "no reference".
+  const cr = parseInvoice({
+    ...detail,
+    Credit: "true",
+    CreditInvoiceReference: "0",
+    Net: -1127.92,
+    TotalVAT: -281.98,
+    Total: -1409.9,
+    Balance: -1409.9,
+  });
   assertEquals(cr.credit, true);
+  assertEquals(cr.credit_invoice_reference, null);
   assertEquals(cr.amount_excl_vat, -1127.92);
+  // The original names its credit note.
+  const original = parseInvoice({ ...detail, Credit: "false", CreditInvoiceReference: 13 });
+  assertEquals(original.credit, false);
+  assertEquals(original.credit_invoice_reference, "13");
+  assertEquals(parseInvoice(detail).credit_invoice_reference, null);
   assertEquals(isCancelled({ Cancel: true }), true, "the other spelling counts too");
   assertEquals(isCancelled({}), false, "absent means not cancelled");
 });

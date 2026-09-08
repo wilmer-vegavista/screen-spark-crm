@@ -149,6 +149,24 @@ Deno.test("a credit note with matching absolute amount links and is named as a c
   assertStringIncludes(m.reason, "Kreditfaktura");
 });
 
+Deno.test("a credit note follows the invoice it credits, whatever its own amount or date", () => {
+  const ix = index();
+  ix.orderIdByDocument = new Map([["12", "order-3"]]);
+  // Fortnox keeps the reference on the original, so the index carries note → original.
+  ix.originalOfCreditNote = new Map([["13", "12"]]);
+  const m = matchInvoice(
+    inv({ document_number: "13", amount_excl_vat: -4500, invoice_date: "2026-09-08", project_number: "1103", credit: true }),
+    ix,
+  );
+  assertEquals(m.status, "linked");
+  assertEquals(m.orderId, "order-3");
+  assertStringIncludes(m.reason, "Kreditfaktura till faktura 12");
+  // Without a linked original it falls back to the four rules.
+  ix.orderIdByDocument = new Map();
+  const fallback = matchInvoice(inv({ document_number: "13", amount_excl_vat: -4500, credit: true }), ix);
+  assertEquals(fallback.status, "proposed");
+});
+
 Deno.test("orderLabel names the plan", () => {
   assertEquals(orderLabel(oneOff), "Exempel Handel AB · 4 500 kr engångsfaktura från 2026-03-15");
   assertStringIncludes(orderLabel(monthly), "× 12 månadsvis från 2026-02-01");

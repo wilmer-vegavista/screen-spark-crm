@@ -32,11 +32,11 @@ export interface InvoiceSummary {
   Total?: number | string;
   Balance?: number | string;
   Currency?: string;
-  Booked?: boolean;
-  Sent?: boolean;
-  Cancelled?: boolean;
+  Booked?: boolean | string;
+  Sent?: boolean | string;
+  Cancelled?: boolean | string;
   /** `/supplierinvoices` spells it `Cancel`; read both, like the fortnox-agent does. */
-  Cancel?: boolean;
+  Cancel?: boolean | string;
   FinalPayDate?: string;
   Project?: string;
   TermsOfPayment?: string;
@@ -50,7 +50,12 @@ export interface InvoiceDetail extends InvoiceSummary {
   Net?: number | string;
   TotalVAT?: number | string;
   Gross?: number | string;
-  Credit?: boolean;
+  /** The string "true"/"false" on the full record. */
+  Credit?: boolean | string;
+  /**
+   * On the ORIGINAL invoice: the DocumentNumber of the credit note that credits it (verified
+   * live 2026-09-08: #12 carries "13", the credit note #13 carries "0"). Not on the note.
+   */
   CreditInvoiceReference?: string | number;
   OurReference?: string;
   YourReference?: string;
@@ -94,6 +99,7 @@ export interface InvoiceRow {
   sent: boolean;
   cancelled: boolean;
   credit: boolean;
+  credit_invoice_reference: string | null;
   invoice_type: string | null;
   final_pay_date: string | null;
   terms_of_payment: string | null;
@@ -113,9 +119,15 @@ export interface ListInvoicesOptions {
   toDate?: string;
 }
 
+/**
+ * Fortnox's booleans arrive as `true` on list rows and as the STRING "true" on some full
+ * records (Credit on GET /invoices/{n}, verified live 2026-09-08). Read both.
+ */
+export const fxBool = (v: unknown): boolean => v === true || String(v).toLowerCase() === "true";
+
 /** Cancelled under either spelling; absent means not cancelled (see the fortnox-agent's isCancelled). */
-export const isCancelled = (r: { Cancel?: boolean; Cancelled?: boolean }): boolean =>
-  r.Cancel === true || r.Cancelled === true;
+export const isCancelled = (r: { Cancel?: boolean | string; Cancelled?: boolean | string }): boolean =>
+  fxBool(r.Cancel) || fxBool(r.Cancelled);
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -247,10 +259,15 @@ export function parseInvoice(d: InvoiceDetail): InvoiceRow {
     // A cancelled invoice has no claim: Fortnox may still echo the old balance.
     balance: cancelled ? 0 : requiredNum(d.Balance, `${what} Balance`),
     currency: str(d.Currency) || "SEK",
-    booked: d.Booked === true,
-    sent: d.Sent === true,
+    booked: fxBool(d.Booked),
+    sent: fxBool(d.Sent),
     cancelled,
-    credit: d.Credit === true || num(d.Total) < 0,
+    credit: fxBool(d.Credit) || num(d.Total) < 0,
+    // "0" means none; kept only on the original (it names the credit note that credits it).
+    credit_invoice_reference: (() => {
+      const ref = str(d.CreditInvoiceReference).trim();
+      return ref && ref !== "0" ? ref : null;
+    })(),
     invoice_type: str(d.InvoiceType) || null,
     final_pay_date: isoDate(d.FinalPayDate, `${what} FinalPayDate`),
     terms_of_payment: str(d.TermsOfPayment) || null,

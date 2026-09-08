@@ -91,7 +91,7 @@ export async function orderCandidates(db: SupabaseClient, ids?: string[]): Promi
   }));
 }
 
-/** The Fakturor tab: every invoice that is not linked, newest first, with its candidate's label. */
+/** The Fakturor tab: every live (not cancelled) invoice that is not linked, newest first, with its candidate's label. */
 export async function leftovers(db: SupabaseClient) {
   const rows = must(
     await db
@@ -99,6 +99,7 @@ export async function leftovers(db: SupabaseClient) {
       .from("v_ledger")
       .select("*")
       .neq("match_status", "linked")
+      .eq("cancelled", false)
       .order("fakturadatum", { ascending: false })
       .order("document_number", { ascending: false }),
     "read v_ledger",

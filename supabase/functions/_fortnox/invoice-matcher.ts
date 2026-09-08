@@ -17,6 +17,12 @@
  * "project not in the CRM" leftover). No customer link → unmatched: nothing to propose.
  * Two orders passing all four → a proposal, never a link: ambiguity is a person's call.
  *
+ * One rule before the four: a credit note goes to the same order as the invoice it credits,
+ * when that invoice is linked — that is what makes "fakturerat" shrink by what was credited
+ * (ruling on credit notes: they reduce fakturerat and are listed, nothing more). Fortnox
+ * keeps the reference on the ORIGINAL (its CreditInvoiceReference names the note), so the
+ * index carries the reverse map note → original.
+ *
  * Tolerances are the builder's, stated here and on the meeting page: 1,00 kr or 0,5 %,
  * whichever is larger (öre rounding of total/12 and Fortnox's own rounding); 14 days
  * before, 31 days after.
@@ -50,6 +56,8 @@ export interface MatchInvoice {
   amount_excl_vat: number;
   invoice_date: string;
   credit: boolean;
+  /** On a credit note: the DocumentNumber of the invoice it credits, when known. */
+  credits_document_number?: string | null;
 }
 
 export interface MatchIndex {
@@ -59,6 +67,10 @@ export interface MatchIndex {
   productIdByProject: Map<string, string>;
   /** CRM customer id → that customer's orders. */
   ordersByCustomer: Map<string, MatchOrder[]>;
+  /** Fortnox DocumentNumber → order id, for every invoice already linked (credit notes follow their invoice). */
+  orderIdByDocument?: Map<string, string>;
+  /** Credit note DocumentNumber → the original's DocumentNumber (from the originals' CreditInvoiceReference). */
+  originalOfCreditNote?: Map<string, string>;
 }
 
 export interface RuleSet {
@@ -202,6 +214,21 @@ function whyNot(inv: MatchInvoice, best: Scored, index: MatchIndex): string {
 
 /** The verdict for one invoice. Cancelled invoices are judged like the rest, so the row shows where it belonged. */
 export function matchInvoice(inv: MatchInvoice, index: MatchIndex): InvoiceMatch {
+  if (inv.credit) {
+    const original = inv.credits_document_number ?? index.originalOfCreditNote?.get(inv.document_number);
+    const orderId = original ? index.orderIdByDocument?.get(original) : undefined;
+    if (original && orderId) {
+      return {
+        status: "linked",
+        orderId,
+        candidateOrderId: orderId,
+        confidence: "exact",
+        method: "rules",
+        reason: `Kreditfaktura till faktura ${original}, som är kopplad till samma order – minskar fakturerat med ${kr(Math.abs(inv.amount_excl_vat))}`,
+        rules: { customer: true, project: true, amount: true, date: true },
+      };
+    }
+  }
   const customerId = index.customerIdByNumber.get(inv.customer_number);
   if (!customerId) {
     return {

@@ -7,9 +7,12 @@
   ./scripts/fortnox-dev.ps1 refuse   the guard refusing tenant 1030384 before any request
   ./scripts/fortnox-dev.ps1 probe    company name, DatabaseNumber, counts in the test company
   ./scripts/fortnox-dev.ps1 seed     fill the dev project with the synthetic customers/screens/orders
-                                     (add -Fortnox to also plant the hand-made-looking rows in the test company)
+                                     (add -Fortnox to also plant the hand-made-looking rows in the test company;
+                                      add -Invoices for round one's year of invoices in the test company, and
+                                      -FakePayments if the company refuses to bookkeep payments)
   ./scripts/fortnox-dev.ps1 sync     one sync run from the command line (add -Dry to write nothing)
   ./scripts/fortnox-dev.ps1 serve    the fortnox-sync function on http://localhost:8000
+  ./scripts/fortnox-dev.ps1 feed     the fortnox-ledger-feed function on http://localhost:8001 (round one)
   ./scripts/fortnox-dev.ps1 crm      the CRM (vite dev) against the dev project and the local function
 
   Credentials: Fortnox comes from the env file named by FORTNOX_ENV_FILE (default: the
@@ -22,13 +25,19 @@
 #>
 param(
   [Parameter(Position = 0)]
-  [ValidateSet("refuse", "probe", "seed", "sync", "serve", "crm")]
+  [ValidateSet("refuse", "probe", "seed", "sync", "serve", "feed", "crm")]
   [string]$Command = "probe",
   [switch]$Dry,
-  [switch]$Fortnox
+  [switch]$Fortnox,
+  [switch]$Invoices,
+  [switch]$FakePayments
 )
 
 $ErrorActionPreference = "Stop"
+# npx prints "package not found, will be installed" on stderr the first time it fetches the
+# Supabase CLI; Windows PowerShell 5.1 turns any stderr line from a native command into a
+# terminating error under "Stop". Quieting npm to errors only keeps a fresh machine running.
+$env:npm_config_loglevel = "error"
 $ProjectRef = "fcxmtlbrwfbbjudjmloh"
 $Root = Split-Path -Parent $PSScriptRoot
 $EnvFile = if ($env:FORTNOX_ENV_FILE) { $env:FORTNOX_ENV_FILE } else { "C:\Users\erika\projects\fortnox-agent\.env" }
@@ -67,6 +76,8 @@ switch ($Command) {
     Load-SupabaseKeys
     $flags = @()
     if ($Fortnox) { $flags += "--fortnox" }
+    if ($Invoices) { $flags += "--invoices" }
+    if ($FakePayments) { $flags += "--fake-payments" }
     deno run --allow-env --allow-net @EnvFiles "$Root/supabase/seed/seed.ts" @flags
   }
   "sync" {
@@ -79,6 +90,13 @@ switch ($Command) {
     Load-SupabaseKeys
     Write-Host "fortnox-sync listening on http://localhost:8000 (Ctrl+C stops it)"
     deno run --allow-env --allow-net @EnvFiles "$Fx/fortnox-sync/index.ts"
+  }
+  "feed" {
+    Load-SupabaseKeys
+    # No Fortnox credentials needed: the feed reads the snapshot table only.
+    $env:PORT = "8001"
+    Write-Host "fortnox-ledger-feed listening on http://localhost:8001/<token> (Ctrl+C stops it)"
+    deno run --allow-env --allow-net "$Fx/fortnox-ledger-feed/index.ts"
   }
   "crm" {
     Load-SupabaseKeys

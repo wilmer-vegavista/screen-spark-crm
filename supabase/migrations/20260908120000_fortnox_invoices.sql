@@ -48,6 +48,9 @@ create table fortnox.invoices (
   sent boolean not null default false,
   cancelled boolean not null default false,
   credit boolean not null default false,
+  -- On a credit note: the DocumentNumber of the invoice it credits. The matcher links the
+  -- credit note to the same order as that invoice, so "fakturerat" shrinks by what was credited.
+  credit_invoice_reference text,
   -- Fortnox InvoiceType: INVOICE, AGREEMENTINVOICE (made by Fortnox's avtal/recurring
   -- module), CASHINVOICE, INTRESTINVOICE, SUMMARYINVOICE. Tells the meeting whether Filip's
   -- twelve instalments are hand-made or contract-generated (meeting page, question 1).
@@ -187,6 +190,7 @@ select
   (i.balance <> 0 and not i.cancelled and i.due_date is not null and i.due_date < current_date) as forfallen,
   i.cancelled,
   i.credit,
+  i.credit_invoice_reference,
   i.invoice_type,
   i.booked,
   i.sent,

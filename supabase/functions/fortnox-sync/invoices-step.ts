@@ -207,8 +207,21 @@ export async function syncInvoices(
     : [];
   const existing = new Map(existingRows.map((e) => [e.document_number, e]));
   const index = await loadMatchIndex(db);
+  // Credit notes follow the invoice they credit: every linked invoice, by document number,
+  // and the reverse map note → original (Fortnox keeps CreditInvoiceReference on the original).
+  const linkedRows = must(
+    await fx.from("invoices").select("document_number, order_id").not("order_id", "is", null),
+    "read linked invoices",
+  ) as { document_number: string; order_id: string }[];
+  index.orderIdByDocument = new Map(linkedRows.map((l) => [l.document_number, l.order_id]));
+  const creditedRows = must(
+    await fx.from("invoices").select("document_number, credit_invoice_reference").not("credit_invoice_reference", "is", null),
+    "read credited invoices",
+  ) as { document_number: string; credit_invoice_reference: string }[];
+  index.originalOfCreditNote = new Map(creditedRows.map((r) => [r.credit_invoice_reference, r.document_number]));
+  for (const r of rows) if (r.credit_invoice_reference) index.originalOfCreditNote.set(r.credit_invoice_reference, r.document_number);
   log(
-    `Match index: ${index.customerIdByNumber.size} linked customers, ${index.productIdByProject.size} linked screens, ${index.orders.length} bookings`,
+    `Match index: ${index.customerIdByNumber.size} linked customers, ${index.productIdByProject.size} linked screens, ${index.orders.length} bookings, ${linkedRows.length} invoices already linked, ${index.originalOfCreditNote.size} credit note(s) known`,
   );
 
   const fakeRaw = await readSetting(db, FAKE_KEY);
@@ -218,6 +231,9 @@ export async function syncInvoices(
   const seenAt = now.toISOString();
   const withMatch: Record<string, unknown>[] = [];
   const withoutMatch: Record<string, unknown>[] = [];
+  // Ordinary invoices first, credit notes last, so a credit note created in the same window
+  // as its invoice finds that invoice already linked.
+  rows.sort((a, b) => Number(a.credit) - Number(b.credit) || a.invoice_date.localeCompare(b.invoice_date));
   for (const r of rows) {
     if (fake.has(r.document_number) && !r.cancelled) {
       r.balance = 0;
@@ -239,6 +255,8 @@ export async function syncInvoices(
     const merged = mergeMatch(prev, fresh, now);
     const base = { ...r, lastmodified_seen_at: seenAt, synced_at: seenAt };
     const finalStatus = merged ? merged.match_status : prev!.match_status;
+    const finalOrder = merged ? merged.order_id : prev!.order_id;
+    if (finalStatus === "linked" && finalOrder) index.orderIdByDocument!.set(r.document_number, finalOrder);
     if (finalStatus === "linked") result.matched++;
     else if (finalStatus === "proposed") result.proposed++;
     else if (finalStatus === "ignored") result.ignored++;
