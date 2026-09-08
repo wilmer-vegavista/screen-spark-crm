@@ -15,7 +15,7 @@
  * finds every earlier invoice in one call. It does not print on the invoice.
  */
 import type { GuardedFortnox } from "../functions/_fortnox/mod.ts";
-import { str } from "../functions/_fortnox/mod.ts";
+import { num, str } from "../functions/_fortnox/mod.ts";
 
 const MARKER_RE = /\{VV inv ([A-Za-z0-9-]+)\}/;
 
@@ -77,7 +77,7 @@ export async function createInvoice(g: GuardedFortnox, i: NewInvoice): Promise<C
   );
   const no = str(res?.Invoice?.DocumentNumber);
   if (!no) throw new Error(`Fortnox created an invoice but returned no DocumentNumber: ${JSON.stringify(res)}`);
-  return { documentNumber: no, total: Number(String(res?.Invoice?.Total ?? "0").replace(/[\s ]/g, "").replace(",", ".")) };
+  return { documentNumber: no, total: num(res?.Invoice?.Total) };
 }
 
 /** Bookkeep the invoice (Fortnox requires it before a payment can be registered). */

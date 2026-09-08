@@ -142,7 +142,7 @@ export function dateInWindow(invoiceDate: string, s: PlannedSchedule): boolean {
 
 /** "1 127,92 kr" — Swedish grouping with a plain space (Intl's non-breaking one is invisible in a diff). */
 export const kr = (n: number) =>
-  new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 2 }).format(n).replace(/[  ]/g, " ") + " kr";
+  new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 2 }).format(n).replace(/\s/g, " ") + " kr";
 
 const FREQ_LABEL: Record<string, string> = {
   engang: "engångsfaktura",

@@ -810,7 +810,7 @@ if (withInvoices) {
     } else if (!p.cancel && inv.Booked !== true && !isCancelled(inv)) {
       await bookkeep(documentNumber); // an earlier run could not (project period); try again
     }
-    const balance = inv ? Number(String(inv.Balance ?? p.amount).replace(/[\s ]/g, "").replace(",", ".")) : NaN;
+    const balance = inv ? num(inv.Balance ?? p.amount) : NaN;
     const alreadyCancelled = inv ? isCancelled(inv) : false;
 
     let state = "open";
