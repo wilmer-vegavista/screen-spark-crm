@@ -1,14 +1,13 @@
 /**
  * The ledger snapshot the Google Sheet feed serves: fortnox.v_ledger frozen per year,
- * refreshed at the end of every successful sync and — when missing or older than
- * SNAPSHOT_STALE_MS — by the feed itself, at most once per SNAPSHOT_MIN_REFRESH_MS. A
- * sheet polling every few minutes therefore costs one indexed row read, never a join.
+ * refreshed at the end of every successful sync and — only when missing or older than
+ * SNAPSHOT_STALE_MS — by the feed itself, which then stores it. A sheet polling every few
+ * minutes therefore costs one indexed row read, never a join.
  */
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.108.1";
 import { type LedgerFeedRow, type LedgerViewRow, toFeedRow } from "./ledger-csv.ts";
 
 export const SNAPSHOT_STALE_MS = 6 * 60 * 60 * 1000;
-export const SNAPSHOT_MIN_REFRESH_MS = 15 * 60 * 1000;
 
 export interface LedgerSnapshot {
   year: number;

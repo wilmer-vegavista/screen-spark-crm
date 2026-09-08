@@ -104,7 +104,7 @@ create table fortnox.ledger_snapshot (
 );
 
 comment on table fortnox.ledger_snapshot is
-  'v_ledger frozen per year for the Google Sheet feed. Refreshed by the sync; the feed never hits the live view more than once per 15 minutes.';
+  'v_ledger frozen per year for the Google Sheet feed. Refreshed by every successful sync; the feed reads the live view only when a year''s snapshot is missing or older than six hours.';
 
 -- -----------------------------------------------------------------------------
 -- sync_runs grows the invoice counters (and remembers whether Claude was used, which
