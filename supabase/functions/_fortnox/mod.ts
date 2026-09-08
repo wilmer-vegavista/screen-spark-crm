@@ -11,6 +11,12 @@
  *   matcher.ts       the match proposer's rules and reasons
  *   fuzzy-claude.ts  one Claude call per unresolved row, when ANTHROPIC_API_KEY is set
  *   redact.ts        the one redactor every error passes through
+ *
+ *   round one:
+ *   invoices.ts         customer invoices, financial years, the backfill window (reads only)
+ *   invoice-matcher.ts  the four-rule invoice → order matcher and the admin-wins merge
+ *   ledger-csv.ts       Filip's eleven columns as CSV for the Google Sheet feed
+ *   ledger-snapshot.ts  the per-year snapshot the feed serves
  */
 export * from "./client.ts";
 export * from "./errors.ts";
@@ -22,4 +28,8 @@ export * from "./reads.ts";
 export * from "./writes.ts";
 export * from "./matcher.ts";
 export * from "./fuzzy-claude.ts";
+export * from "./invoices.ts";
+export * from "./invoice-matcher.ts";
+export * from "./ledger-csv.ts";
+export * from "./ledger-snapshot.ts";
 export { redact } from "./redact.ts";

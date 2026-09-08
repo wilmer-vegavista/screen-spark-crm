@@ -82,6 +82,7 @@ const nav: NavItem[] = [
     group: "admin",
     adminOnly: true,
   },
+  { to: "/kundreskontra", label: "Kundreskontra", icon: Receipt, group: "admin", adminOnly: true },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

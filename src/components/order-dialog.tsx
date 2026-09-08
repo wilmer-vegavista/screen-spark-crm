@@ -27,6 +27,7 @@ import { postSaleToSlack } from "@/lib/slack.functions";
 import { deleteOrders } from "@/lib/orders.functions";
 import { lookupCompanyAddress } from "@/lib/company-lookup.functions";
 import { normalizeOrgNumber, isValidOrgNumber } from "@/lib/orgnr";
+import { OrderInvoiceState } from "@/components/fortnox/order-invoice-state";
 
 
 
@@ -1453,6 +1454,7 @@ export function OrderDialog({
                     Försäljning bokförs per månad: {format(sched[0].date, "MMM yyyy", { locale: sv })}
                     {sched.length > 1 && ` – ${format(sched[sched.length - 1].date, "MMM yyyy", { locale: sv })}`}.
                   </div>
+                  {order?.id && <OrderInvoiceState orderId={order.id} className="mt-1" />}
                 </div>
               );
             })()}

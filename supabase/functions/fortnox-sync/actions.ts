@@ -23,6 +23,7 @@ import {
   projectLinkFor,
   type SyncDeps,
 } from "./sync.ts";
+import { leftovers } from "./invoice-actions.ts";
 
 export type Kind = "customer" | "screen";
 
@@ -46,23 +47,26 @@ export async function status(
   flags: { fortnoxConfigured: boolean; claudeConfigured: boolean; functionUrl: string | null },
 ) {
   const fx = db.schema("fortnox");
-  const [health, customers, screens, runs] = await Promise.all([
+  const [health, customers, screens, runs, invoices] = await Promise.all([
     fx.from("health").select("*").single(),
     fx.from("v_customer_numbers").select("*").order("company_name"),
     fx.from("v_project_numbers").select("*").order("name"),
     fx
       .from("sync_runs")
       .select(
-        "id, started_at, finished_at, triggered_by, status, tenant_id, company_name, proposals_written, auto_linked, customers_created, projects_created, mismatches_found, error",
+        "id, started_at, finished_at, triggered_by, status, tenant_id, company_name, proposals_written, auto_linked, customers_created, projects_created, mismatches_found, invoices_read, invoices_matched, invoices_proposed, invoices_unmatched, claude_used, error",
       )
       .order("started_at", { ascending: false })
       .limit(5),
+    // Round one: the Fakturor tab — every invoice that is not linked, with its candidate's label.
+    leftovers(db),
   ]);
   return {
     health: must(health, "health"),
     customers: must(customers, "v_customer_numbers"),
     screens: must(screens, "v_project_numbers"),
     runs: must(runs, "sync_runs"),
+    invoices,
     ...flags,
   };
 }

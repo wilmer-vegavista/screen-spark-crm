@@ -29,7 +29,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, Check, Link2, Loader2, Plus, RefreshCw, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  AlertTriangle,
+  Check,
+  Copy,
+  EyeOff,
+  Link2,
+  Loader2,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Sheet,
+} from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -39,6 +52,10 @@ import { toast } from "sonner";
 // function with the admin's session, and the function checks the admin role again
 // server-side. Nothing Fortnox-shaped is reachable from the browser.
 // Locally: VITE_FORTNOX_FUNCTIONS_URL points at the function run by scripts/fortnox-dev.ps1 serve.
+//
+// Round one adds the tab Fakturor (invoices no rule could match to an order: Bekräfta ·
+// Koppla till order… · Lämna okopplad) and the Google Sheet section (the feed URL Filip
+// pastes once; shown once, regenerable, revocable).
 
 export const Route = createFileRoute("/_authenticated/fortnox-koppling")({
   beforeLoad: async () => {
@@ -131,6 +148,17 @@ interface Health {
   projects_linked: number;
   projects_proposed: number;
   projects_unlinked: number;
+  // round one
+  invoices_total: number;
+  invoices_linked: number;
+  invoices_proposed: number;
+  invoices_unmatched: number;
+  invoices_ignored: number;
+  invoices_paid: number;
+  invoices_overdue: number;
+  invoices_synced_at: string | null;
+  feed_rotated_at: string | null;
+  dev_fake_payments: boolean;
 }
 
 interface RunRow {
@@ -145,7 +173,33 @@ interface RunRow {
   customers_created: number;
   projects_created: number;
   mismatches_found: number;
+  invoices_read: number;
+  invoices_matched: number;
+  invoices_proposed: number;
+  invoices_unmatched: number;
   error: string | null;
+}
+
+/** A leftover invoice (fortnox.v_ledger row, not linked), as the status action returns it. */
+interface InvoiceRow {
+  document_number: string;
+  fakturadatum: string;
+  forfallodatum: string | null;
+  kundnamn: string | null;
+  fortnox_customer_name: string | null;
+  customer_number: string;
+  projekt: string | null;
+  project_number: string | null;
+  belopp_ex_moms: number | string;
+  betald: boolean;
+  forfallen: boolean;
+  credit: boolean;
+  match_status: "unmatched" | "proposed" | "ignored";
+  match_confidence: string;
+  match_reason: string | null;
+  candidate_order_id: string | null;
+  candidate_label: string | null;
+  customer_id: string | null;
 }
 
 interface StatusResponse {
@@ -153,6 +207,7 @@ interface StatusResponse {
   customers: CustomerRow[];
   screens: ScreenRow[];
   runs: RunRow[];
+  invoices: InvoiceRow[];
   fortnoxConfigured: boolean;
   claudeConfigured: boolean;
 }
@@ -165,8 +220,23 @@ interface SyncSummary {
   projectsCreated: number;
   mismatchesFound: number;
   claudeUsed: boolean;
+  invoicesRead: number;
+  invoicesMatched: number;
+  invoicesProposed: number;
+  invoicesUnmatched: number;
   error?: string;
 }
+
+interface OrderCandidate {
+  id: string;
+  customer_id: string | null;
+  company_name: string;
+  label: string;
+  screens: string[];
+}
+
+const SEK2 = (n: number | string) =>
+  new Intl.NumberFormat("sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0);
 
 interface Candidates {
   customers: { number: string; name: string; orgNumber: string | null }[];
@@ -212,6 +282,7 @@ function FortnoxKopplingPage() {
     id: string;
     label: string;
   } | null>(null);
+  const [invoicePicker, setInvoicePicker] = useState<InvoiceRow | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["fortnox-status"],
@@ -231,10 +302,30 @@ function FortnoxKopplingPage() {
         );
       } else {
         toast.success(
-          `Synk klar: ${s.customersCreated} kunder + ${s.projectsCreated} skärmar skapade i Fortnox, ${s.autoLinked} kopplade, ${s.mismatchesFound} avvikelser`,
+          `Synk klar: ${s.customersCreated} kunder + ${s.projectsCreated} skärmar skapade i Fortnox, ${s.autoLinked} kopplade, ${s.mismatchesFound} avvikelser · fakturor: ${s.invoicesRead} lästa, ${s.invoicesMatched} kopplade, ${s.invoicesProposed} förslag, ${s.invoicesUnmatched} okopplade`,
         );
       }
       invalidate();
+      qc.invalidateQueries({ queryKey: ["fortnox-ledger"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const invoiceAction = useMutation({
+    mutationFn: (body: Record<string, unknown>) => callFortnox<{ ok: boolean; label?: string }>(body),
+    onSuccess: (r, body) => {
+      toast.success(
+        body.action === "invoice_link"
+          ? `Fakturan kopplad till ${r.label ?? "ordern"}`
+          : body.action === "invoice_ignore"
+            ? "Fakturan lämnas okopplad"
+            : "Fakturan bedöms om vid nästa synk",
+      );
+      setInvoicePicker(null);
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["fortnox-ledger"] });
+      qc.invalidateQueries({ queryKey: ["fortnox-ledger-leftovers"] });
+      qc.invalidateQueries({ queryKey: ["fortnox-order-invoice-state"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -256,7 +347,7 @@ function FortnoxKopplingPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const busy = sync.isPending || rowAction.isPending;
+  const busy = sync.isPending || rowAction.isPending || invoiceAction.isPending;
 
   return (
     <>
@@ -323,8 +414,128 @@ function FortnoxKopplingPage() {
                     {data.health.mismatch_count}
                   </Badge>
                 </TabsTrigger>
+                <TabsTrigger value="fakturor">
+                  Fakturor{" "}
+                  <Badge variant="secondary" className="ml-1">
+                    {data.invoices.filter((i) => i.match_status !== "ignored").length}
+                  </Badge>
+                </TabsTrigger>
                 <TabsTrigger value="korningar">Körningar</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="fakturor" className="pt-4 space-y-4">
+                <Card className="p-4 text-sm text-muted-foreground">
+                  Fakturor i Fortnox som ingen regel kunde koppla till en order: fel belopp, ett projekt som inte är en
+                  skärm i CRM:et, en kund utan koppling. <b>Bekräfta</b> tar förslaget, <b>Koppla till order…</b> låter dig
+                  välja, <b>Lämna okopplad</b> tar bort raden från listan för gott. Synken skriver aldrig över det du
+                  valt. Kopplade fakturor ser du på sidan Kundreskontra.
+                </Card>
+                <Card className="overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Faktura</TableHead>
+                        <TableHead>Kund i Fortnox</TableHead>
+                        <TableHead>Projekt</TableHead>
+                        <TableHead className="text-right">Belopp ex moms</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Förslag</TableHead>
+                        <TableHead>Anledning</TableHead>
+                        <TableHead className="text-right">Åtgärd</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {data.invoices.map((i) => (
+                        <TableRow key={i.document_number} className={i.match_status === "ignored" ? "text-muted-foreground" : ""}>
+                          <TableCell>
+                            <div className="font-medium">#{i.document_number}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {i.fakturadatum.slice(0, 10)}
+                              {i.betald ? " · betald" : i.forfallen ? " · förfallen" : " · obetald"}
+                              {i.credit ? " · kredit" : ""}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{i.kundnamn ?? i.fortnox_customer_name ?? "—"}</div>
+                            <div className="text-xs text-muted-foreground">kundnr {i.customer_number}</div>
+                          </TableCell>
+                          <TableCell className="text-sm">{i.projekt ?? "—"}</TableCell>
+                          <TableCell className="text-right">{SEK2(i.belopp_ex_moms)}</TableCell>
+                          <TableCell>
+                            <Badge variant={i.match_status === "proposed" ? "secondary" : "outline"}>
+                              {i.match_status === "proposed"
+                                ? `Förslag (${CONFIDENCE_LABEL[i.match_confidence] ?? i.match_confidence})`
+                                : i.match_status === "ignored"
+                                  ? "Lämnad okopplad"
+                                  : "Ingen kandidat"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm max-w-xs">{i.candidate_label ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-md">{i.match_reason}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-1 justify-end">
+                              {i.match_status === "proposed" && i.candidate_order_id && (
+                                <Button
+                                  size="sm"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    invoiceAction.mutate({
+                                      action: "invoice_link",
+                                      documentNumber: i.document_number,
+                                      orderId: i.candidate_order_id,
+                                    })
+                                  }
+                                >
+                                  <Check className="size-4 mr-1" /> Bekräfta
+                                </Button>
+                              )}
+                              {i.match_status !== "ignored" && (
+                                <>
+                                  <Button size="sm" variant="outline" disabled={busy} onClick={() => setInvoicePicker(i)}>
+                                    <Link2 className="size-4 mr-1" /> Koppla till order…
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={busy}
+                                    onClick={() =>
+                                      invoiceAction.mutate({ action: "invoice_ignore", documentNumber: i.document_number })
+                                    }
+                                  >
+                                    <EyeOff className="size-4 mr-1" /> Lämna okopplad
+                                  </Button>
+                                </>
+                              )}
+                              {i.match_status === "ignored" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    invoiceAction.mutate({ action: "invoice_reset", documentNumber: i.document_number })
+                                  }
+                                >
+                                  <RotateCcw className="size-4 mr-1" /> Ta upp igen
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {data.invoices.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
+                            {data.health.invoices_total === 0
+                              ? "Inga fakturor lästa ännu – kör Synka nu"
+                              : "Alla fakturor i Fortnox är kopplade till en order"}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </Card>
+                <GoogleSheetCard health={data.health} busy={busy} onChanged={invalidate} />
+              </TabsContent>
 
               <TabsContent value="kunder" className="pt-4">
                 <Card className="overflow-hidden">
@@ -555,6 +766,7 @@ function FortnoxKopplingPage() {
                         <TableHead>Kopplade</TableHead>
                         <TableHead>Skapade</TableHead>
                         <TableHead>Avvikelser</TableHead>
+                        <TableHead>Fakturor</TableHead>
                         <TableHead>Fel</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -588,6 +800,10 @@ function FortnoxKopplingPage() {
                             {r.customers_created} kunder · {r.projects_created} skärmar
                           </TableCell>
                           <TableCell>{r.mismatches_found}</TableCell>
+                          <TableCell className="text-xs whitespace-nowrap">
+                            {r.invoices_read} lästa · {r.invoices_matched} kopplade · {r.invoices_proposed} förslag ·{" "}
+                            {r.invoices_unmatched} okopplade
+                          </TableCell>
                           <TableCell className="text-xs text-destructive max-w-md">
                             {r.error}
                           </TableCell>
@@ -596,7 +812,7 @@ function FortnoxKopplingPage() {
                       {data.runs.length === 0 && (
                         <TableRow>
                           <TableCell
-                            colSpan={8}
+                            colSpan={9}
                             className="text-center text-sm text-muted-foreground py-8"
                           >
                             Ingen körning ännu
@@ -622,7 +838,171 @@ function FortnoxKopplingPage() {
           }
         />
       )}
+      {invoicePicker && (
+        <InvoiceOrderPicker
+          invoice={invoicePicker}
+          onClose={() => setInvoicePicker(null)}
+          busy={invoiceAction.isPending}
+          onLink={(orderId) =>
+            invoiceAction.mutate({ action: "invoice_link", documentNumber: invoicePicker.document_number, orderId })
+          }
+        />
+      )}
     </>
+  );
+}
+
+/** Koppla till order…: the bookings, the invoice's own customer first, with a text filter. */
+function InvoiceOrderPicker({
+  invoice,
+  onClose,
+  onLink,
+  busy,
+}: {
+  invoice: InvoiceRow;
+  onClose: () => void;
+  onLink: (orderId: string) => void;
+  busy: boolean;
+}) {
+  const [orderId, setOrderId] = useState<string>(invoice.candidate_order_id ?? "");
+  const [filter, setFilter] = useState("");
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["fortnox-order-candidates"],
+    queryFn: () => callFortnox<{ orders: OrderCandidate[] }>({ action: "order_candidates" }),
+  });
+  const q = filter.trim().toLowerCase();
+  const options = (data?.orders ?? [])
+    .filter((o) => !q || `${o.label} ${o.screens.join(" ")}`.toLowerCase().includes(q))
+    .sort((a, b) => {
+      const am = a.customer_id && a.customer_id === invoice.customer_id ? 0 : 1;
+      const bm = b.customer_id && b.customer_id === invoice.customer_id ? 0 : 1;
+      return am - bm || a.label.localeCompare(b.label, "sv");
+    });
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            Koppla faktura #{invoice.document_number} ({invoice.fakturadatum.slice(0, 10)}, {SEK2(invoice.belopp_ex_moms)} kr) till order…
+          </DialogTitle>
+        </DialogHeader>
+        <div className="text-xs text-muted-foreground">
+          {invoice.kundnamn ?? invoice.fortnox_customer_name} · {invoice.projekt ?? "inget projekt"} · {invoice.match_reason}
+        </div>
+        <Input placeholder="Sök kund, skärm eller belopp…" value={filter} onChange={(e) => setFilter(e.target.value)} />
+        {isLoading && <div className="text-sm text-muted-foreground">Hämtar ordrar…</div>}
+        {error && <div className="text-sm text-destructive">{(error as Error).message}</div>}
+        {data && (
+          <Select value={orderId} onValueChange={setOrderId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Välj order" />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.customer_id && o.customer_id === invoice.customer_id ? "★ " : ""}
+                  {o.label}
+                  {o.screens.length ? ` · ${o.screens.join(", ")}` : ""}
+                </SelectItem>
+              ))}
+              {options.length === 0 && (
+                <SelectItem value="__none" disabled>
+                  Inga bokningar matchar sökningen
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={busy}>
+            Avbryt
+          </Button>
+          <Button onClick={() => orderId && onLink(orderId)} disabled={busy || !orderId}>
+            {busy ? <Loader2 className="size-4 mr-1 animate-spin" /> : <Link2 className="size-4 mr-1" />} Koppla
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** The Google Sheet section: create / rotate / revoke the feed URL; the URL is shown exactly once. */
+function GoogleSheetCard({ health, busy, onChanged }: { health: Health; busy: boolean; onChanged: () => void }) {
+  const [shown, setShown] = useState<{ url: string; formula: string } | null>(null);
+  const rotate = useMutation({
+    mutationFn: () => callFortnox<{ url: string; formula: string }>({ action: "feed_rotate" }),
+    onSuccess: (r) => {
+      setShown({ url: r.url, formula: r.formula });
+      onChanged();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const revoke = useMutation({
+    mutationFn: () => callFortnox<{ ok: boolean }>({ action: "feed_revoke" }),
+    onSuccess: () => {
+      setShown(null);
+      toast.success("Länken är återkallad – den gamla adressen svarar 403 från och med nu");
+      onChanged();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Kopierat");
+    } catch {
+      toast.error("Kunde inte kopiera – markera texten och kopiera för hand");
+    }
+  };
+  const has = Boolean(health.feed_rotated_at);
+  return (
+    <Card className="p-4 space-y-3 text-sm">
+      <div className="flex items-center gap-2 font-medium">
+        <Sheet className="size-4" /> Google Sheet – kundreskontran som länk
+      </div>
+      <p className="text-muted-foreground">
+        En adress som ger reskontran som CSV med Filips elva kolumner, uppdaterad varje timme av synken. Klistras in en
+        gång i Google Sheets; pivoten på fliken Budget läser sedan som förut. Adressen är själva nyckeln: den visas bara
+        här, en gång, och kan alltid bytas ut eller återkallas.
+        {has ? ` Nuvarande länk skapad ${when(health.feed_rotated_at)}.` : " Ingen länk finns ännu."}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={() => rotate.mutate()} disabled={busy || rotate.isPending}>
+          {rotate.isPending ? <Loader2 className="size-4 mr-1 animate-spin" /> : <RefreshCw className="size-4 mr-1" />}
+          {has ? "Skapa ny länk (den gamla slutar gälla)" : "Skapa länk"}
+        </Button>
+        {has && (
+          <Button size="sm" variant="outline" onClick={() => revoke.mutate()} disabled={busy || revoke.isPending}>
+            <EyeOff className="size-4 mr-1" /> Återkalla länk
+          </Button>
+        )}
+      </div>
+      {shown && (
+        <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+          <div className="text-xs font-medium">Visas bara nu – kopiera direkt.</div>
+          <div className="flex gap-2 items-center">
+            <code className="text-xs break-all flex-1">{shown.url}</code>
+            <Button size="sm" variant="outline" onClick={() => copy(shown.url)}>
+              <Copy className="size-4" />
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            1. Öppna fliken <b>Kundreskontra</b> i Google Sheets. 2. Klistra in formeln nedan i cell <b>A2</b> (rad 1 är
+            tom idag, rubrikerna står på rad 2, så pivoten på Budget och rad-referenserna behåller sina platser). Töm
+            först raderna nedanför, annars skriver formeln inte över dem.
+          </div>
+          <div className="flex gap-2 items-center">
+            <code className="text-xs break-all flex-1">{shown.formula}</code>
+            <Button size="sm" variant="outline" onClick={() => copy(shown.formula)}>
+              <Copy className="size-4" />
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Lägg till <code>?year=2025</code> före slutet för ett annat år, eller <code>?sep=;</code> för att öppna filen i svensk Excel.
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -661,6 +1041,11 @@ function HealthCard({ data }: { data: StatusResponse }) {
         </div>
         <div className="text-xs text-muted-foreground mt-1">
           {h.mismatch_count} avvikelser mot Fortnox
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          Fakturor: {h.invoices_linked} kopplade · {h.invoices_proposed} förslag · {h.invoices_unmatched} okopplade ·{" "}
+          {h.invoices_paid} betalda · {h.invoices_overdue} förfallna
+          {h.dev_fake_payments ? " · DEV: fejkade betalningar" : ""}
         </div>
       </div>
     </Card>

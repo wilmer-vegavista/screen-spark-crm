@@ -10,6 +10,9 @@
  *   3. the natural key — a Fortnox customer with the same org number, or a project
  *      whose ProjectNumber is the screen's four-digit code, is linked, not duplicated.
  * A second run with nothing new therefore creates nothing.
+ *
+ * Round one adds the invoice step at the end of the run (invoices-step.ts): read the
+ * customer invoices, match each to an order, refresh the ledger snapshot. Reads only.
  */
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.108.1";
 import {
@@ -35,6 +38,7 @@ import {
   redact,
   similarity,
 } from "../_fortnox/mod.ts";
+import { type InvoiceStepResult, syncInvoices } from "./invoices-step.ts";
 
 export type Trigger = "manual" | "cron" | "cli";
 
@@ -44,6 +48,8 @@ export interface SyncOptions {
   dryRun?: boolean;
   /** false = proposals only; the rows with no candidate are left for a later run. */
   createMissing?: boolean;
+  /** false = skip the invoice step (round one); default true. */
+  invoices?: boolean;
 }
 
 export interface SyncDeps {
@@ -70,6 +76,12 @@ export interface SyncSummary {
   projectsCreated: number;
   mismatchesFound: number;
   claudeUsed: boolean;
+  /** Round one: the invoice step's counters (zero when the step did not run). */
+  invoicesRead: number;
+  invoicesMatched: number;
+  invoicesProposed: number;
+  invoicesUnmatched: number;
+  invoices?: InvoiceStepResult;
   error?: string;
   log: string[];
 }
@@ -607,6 +619,10 @@ export async function runSync(deps: SyncDeps, opts: SyncOptions): Promise<SyncSu
     projectsCreated: 0,
     mismatchesFound: 0,
     claudeUsed: false,
+    invoicesRead: 0,
+    invoicesMatched: 0,
+    invoicesProposed: 0,
+    invoicesUnmatched: 0,
     log: lines,
   };
 
@@ -822,6 +838,22 @@ export async function runSync(deps: SyncDeps, opts: SyncOptions): Promise<SyncSu
     // ---- mismatches: Fortnox rows changed since the cursor whose link no longer holds
     summary.mismatchesFound = await findMismatches(deps, ctx, cursor, dryRun, linkedThisRun, log);
 
+    // ---- round one: the invoices (kundreskontran) — read, match, snapshot
+    if (opts.invoices !== false) {
+      log("Invoices:");
+      const inv = await syncInvoices(
+        { db: deps.db, fortnox: deps.fortnox, now: ctx.now },
+        dryRun,
+        summary.runId,
+        log,
+      );
+      summary.invoices = inv;
+      summary.invoicesRead = inv.read;
+      summary.invoicesMatched = inv.matched;
+      summary.invoicesProposed = inv.proposed;
+      summary.invoicesUnmatched = inv.unmatched;
+    }
+
     if (!dryRun) {
       must(
         await fx
@@ -836,14 +868,19 @@ export async function runSync(deps: SyncDeps, opts: SyncOptions): Promise<SyncSu
             customers_created: summary.customersCreated,
             projects_created: summary.projectsCreated,
             mismatches_found: summary.mismatchesFound,
-            log: lines.slice(0, 200),
+            invoices_read: summary.invoicesRead,
+            invoices_matched: summary.invoicesMatched,
+            invoices_proposed: summary.invoicesProposed,
+            invoices_unmatched: summary.invoicesUnmatched,
+            claude_used: summary.claudeUsed,
+            log: lines.slice(0, 400),
           })
           .eq("id", summary.runId),
         "close run",
       );
     }
     log(
-      `Done: ${summary.proposalsWritten} proposals, ${summary.autoLinked} auto-linked, ${summary.customersCreated} customers + ${summary.projectsCreated} projects created, ${summary.mismatchesFound} mismatches${summary.claudeUsed ? ", Claude used for the fuzzy rest" : ", rules only"}`,
+      `Done: ${summary.proposalsWritten} proposals, ${summary.autoLinked} auto-linked, ${summary.customersCreated} customers + ${summary.projectsCreated} projects created, ${summary.mismatchesFound} mismatches; invoices ${summary.invoicesRead} read, ${summary.invoicesMatched} matched, ${summary.invoicesProposed} proposed, ${summary.invoicesUnmatched} unmatched${summary.claudeUsed ? ", Claude used for the fuzzy rest" : ", rules only"}`,
     );
   } catch (e) {
     const msg = redact((e as Error).message ?? String(e));
@@ -857,7 +894,8 @@ export async function runSync(deps: SyncDeps, opts: SyncOptions): Promise<SyncSu
           status: "error",
           error: msg.slice(0, 2000),
           finished_at: new Date().toISOString(),
-          log: lines.slice(0, 200),
+          claude_used: summary.claudeUsed,
+          log: lines.slice(0, 400),
         })
         .eq("id", summary.runId);
     }
