@@ -8,6 +8,8 @@
  *     lives in Supabase Vault, verified by fortnox.verify_cron_token). Cron may only sync.
  *
  * Body: { action: "status" | "sync" | "propose" | "confirm" | "link" | "create" | "candidates", ... }
+ * Round one adds: "order_candidates" | "invoice_link" | "invoice_ignore" | "invoice_reset" |
+ * "feed_rotate" | "feed_revoke" — database-only, none of them touches Fortnox.
  *
  * Runs unchanged in two places: deployed as a Supabase edge function, and locally with
  * `deno run --env-file=<fortnox-agent .env> index.ts` (scripts/fortnox-dev.ps1 serve),
@@ -34,6 +36,14 @@ import {
   linkTo,
   status,
 } from "./actions.ts";
+import {
+  feedRevoke,
+  feedRotate,
+  invoiceIgnore,
+  invoiceLink,
+  invoiceReset,
+  orderCandidates,
+} from "./invoice-actions.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -193,6 +203,22 @@ export async function handle(req: Request): Promise<Response> {
         });
       case "candidates":
         return json(200, await candidates(deps().fortnox));
+      // ---- round one (database only; Fortnox credentials not needed)
+      case "order_candidates":
+        return json(200, { orders: await orderCandidates(db) });
+      case "invoice_link":
+        return json(
+          200,
+          await invoiceLink(db, body.documentNumber, body.orderId, (actor as { userId: string }).userId),
+        );
+      case "invoice_ignore":
+        return json(200, await invoiceIgnore(db, body.documentNumber, (actor as { userId: string }).userId));
+      case "invoice_reset":
+        return json(200, await invoiceReset(db, body.documentNumber));
+      case "feed_rotate":
+        return json(200, await feedRotate(db, `${url}/functions/v1/fortnox-ledger-feed`));
+      case "feed_revoke":
+        return json(200, await feedRevoke(db));
       default:
         return json(400, { error: `Okänd action: ${action}` });
     }
