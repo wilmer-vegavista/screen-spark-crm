@@ -19,6 +19,8 @@ import { generateScreenReportPdf, generateOwnerReportPdf, generateScreenMonthlyR
 import { format, parseISO, addMonths, addWeeks, addQuarters, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfISOWeek, endOfISOWeek, setISOWeek, setISOWeekYear, min as dmin, max as dmax } from "date-fns";
 import { sv } from "date-fns/locale";
 import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/lib/billing";
+import { RevenueSourceSwitch } from "@/components/fortnox/revenue-source";
+import { useRevenueSource } from "@/lib/fortnox/revenue";
 
 export const Route = createFileRoute("/_authenticated/rapport-ekonomi")({
   head: () => ({
@@ -286,7 +288,7 @@ function ReportView() {
   const [detail, setDetail] = useState<any | null>(null);
   const [ownerDetail, setOwnerDetail] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data: crmData, isLoading } = useQuery({
     queryKey: ["rapport-ekonomi"],
     queryFn: async () => {
       const [{ data: products }, { data: orders }, { data: items }] = await Promise.all([
@@ -301,6 +303,10 @@ function ReportView() {
       };
     },
   });
+  // Erik (Fortnox, runda 1): källa planerat / fakturerat / betalt. "Planerat" är CRM-datan ovan, orörd;
+  // de andra två ger samma vy med Fortnox-fakturor som underlag. Abonnemang-fliken visar alltid planen.
+  const fortnox = useRevenueSource(crmData);
+  const data = fortnox.data;
 
   const { from, to } = periodRange(granularity, year, granularity === "ar" ? 0 : periodIdx);
 
@@ -342,7 +348,7 @@ function ReportView() {
             <TabsTrigger value="abonnemang">Abonnemang</TabsTrigger>
           </TabsList>
           <TabsContent value="abonnemang" className="space-y-5">
-            <SubscriptionTab data={data} year={year} setYear={setYear} years={years} />
+            <SubscriptionTab data={crmData} year={year} setYear={setYear} years={years} />
           </TabsContent>
           <TabsContent value="skarmar" className="space-y-5">
         <Card className="p-4 flex flex-wrap items-end gap-3">
@@ -386,6 +392,7 @@ function ReportView() {
               </SelectContent>
             </Select>
           </div>
+          <RevenueSourceSwitch state={fortnox} from={from} to={to} />
           <div className="ml-auto flex items-end gap-3">
             <div className="text-xs text-muted-foreground pb-2">
               {format(from, "d MMM yyyy", { locale: sv })} – {format(to, "d MMM yyyy", { locale: sv })}

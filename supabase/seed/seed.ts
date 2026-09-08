@@ -466,13 +466,17 @@ for (const o of ORDERS) {
     notes: `Seed: ledgerrad ${o.n} (${s.name})`,
   };
   fail(`order ${o.n}`, (await db.from("orders").upsert(row)).error);
+  // The CRM's convention: the line total is unit_price × weeks, and the revenue report
+  // spreads that total over the schedule — so the per-week price is the order total / weeks
+  // (round zero stored the total as unit_price, which made "planerat" 48× the invoices).
+  const weeks = o.freq === "engang" ? 4 : o.months * 4;
   const line = {
     id: item(o.n),
     order_id: order(o.n),
     product_id: prod(o.screen),
     product_name: s.name,
-    unit_price: o.amount,
-    weeks: o.freq === "engang" ? 4 : o.months * 4,
+    unit_price: Math.round((o.amount / weeks) * 100) / 100,
+    weeks,
     period_unit: "veckor",
     position: 1,
     commission_pct: 10,
