@@ -231,6 +231,19 @@ export async function syncLedger(
       must(await fx.from("supplier_invoices").upsert(payload.slice(i, i + CHUNK), { onConflict: "given_number" }), "write supplier_invoices");
     }
   }
+  // DEV ONLY: the fake list is the truth for every row it names, listed this run or not.
+  if (!dryRun && fake.size) {
+    for (const [given, paidAt] of fake) {
+      must(
+        await fx
+          .from("supplier_invoices")
+          .update({ balance: 0, ...(paidAt ? { final_pay_date: paidAt } : {}) })
+          .eq("given_number", given)
+          .eq("cancelled", false),
+        `apply fake supplier payment ${given}`,
+      );
+    }
+  }
   const open = listed.filter((r) => !r.cancelled && r.balance !== 0).length;
   log(`Supplier invoices done: ${listed.length} read in full, ${listed.length - open} paid, ${open} open${result.fakeSupplierPaymentsApplied ? `, ${result.fakeSupplierPaymentsApplied} DEV fake payment(s) applied` : ""}`);
 

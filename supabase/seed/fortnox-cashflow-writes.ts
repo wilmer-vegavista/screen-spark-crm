@@ -50,7 +50,7 @@ export const MAX_DESCRIPTION_LENGTH = 200;
 // The literal hyphen is LAST in the class on purpose (anywhere else it forms a range).
 // U+00A0 non-breaking space, U+2013 en dash, U+2019 curly apostrophe are spelled out so
 // nothing in this line is invisible. À-ÿ is the Latin-1 letter block (åäöÅÄÖ, é, ü).
-const ALLOWED_DESCRIPTION_CHARS = /[^0-9A-Za-zÀ-ÿ  –’§°€'"(){}#*:/\\_.+=@%&,;!?-]/g;
+const ALLOWED_DESCRIPTION_CHARS = /[^0-9A-Za-zÀ-ÿ \u00a0–’§°€'"(){}#*:/\\_.+=@%&,;!?-]/g;
 const TYPOGRAPHIC: Array<[RegExp, string]> = [
   [/[—―]/g, "-"],
   [/…/g, "..."],
@@ -70,6 +70,34 @@ export function taggedDescription(key: string, text: string): string {
   const tag = voucherMarkerFor(key);
   const room = MAX_DESCRIPTION_LENGTH - tag.length - 1;
   return `${tag} ${sanitizeDescription(text).slice(0, Math.max(0, room))}`.trim();
+}
+
+// ---------------------------------------------------------------- accounts
+
+/**
+ * Activate the BAS accounts the seed posts to. A Fortnox chart carries every BAS account
+ * but only a few hundred are active; a booking on an inactive one is refused ("Konto 5011
+ * är inte aktivt", seen 2026-09-09). Accounts are per financial year, so every year the
+ * seed writes in is handled. A write class the seed discloses (sandbox only, through the guard).
+ */
+export async function activateAccounts(
+  g: GuardedFortnox,
+  financialYearIds: number[],
+  numbers: number[],
+  log: (s: string) => void,
+): Promise<number> {
+  let activated = 0;
+  for (const fy of financialYearIds) {
+    for (const n of numbers) {
+      const res = await g.get<{ Account?: { Active?: boolean; Description?: string } }>(`/accounts/${n}?financialyear=${fy}`);
+      if (!res?.Account) throw new Error(`Account ${n} is not in the chart of financial year ${fy}.`);
+      if (res.Account.Active === true) continue;
+      await g.write("PUT", `/accounts/${n}?financialyear=${fy}`, { Account: { Active: true } });
+      activated++;
+      log(`  account ${n} "${res.Account.Description ?? ""}" activated in financial year ${fy}`);
+    }
+  }
+  return activated;
 }
 
 // ---------------------------------------------------------------- suppliers

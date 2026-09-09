@@ -292,6 +292,19 @@ export async function syncInvoices(
       await fx.from("settings").upsert({ key: CURSOR_KEY, value: seenAt }, { onConflict: "key" }),
       "write invoices_cursor",
     );
+    // DEV ONLY: the fake-payment table is the truth for every row it names, not only the rows
+    // this run listed — round two's seed re-dates the payments to the bank vouchers it booked,
+    // and an incremental run must carry that onto rows Fortnox did not change.
+    for (const [doc, paidAt] of fake) {
+      must(
+        await fx
+          .from("invoices")
+          .update({ balance: 0, ...(paidAt ? { final_pay_date: paidAt } : {}) })
+          .eq("document_number", doc)
+          .eq("cancelled", false),
+        `apply fake payment ${doc}`,
+      );
+    }
     // ---- 5. the feed's snapshot
     for (const year of snapshotYears(now)) {
       const snap = await refreshLedgerSnapshot(db, year, runId, now);

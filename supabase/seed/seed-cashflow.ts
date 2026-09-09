@@ -23,7 +23,8 @@
  *
  * The test company refuses supplier payments (payment scope), so paid supplier invoices
  * are listed in fortnox.settings.dev_fake_supplier_payments with their pay date, exactly
- * as round one does for customer invoices; the page says so in red.
+ * as round one does for customer invoices; the page says so in red. The BAS accounts the
+ * seed posts to are activated first (a Fortnox chart has every account, few are active).
  */
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.108.1";
 import {
@@ -38,6 +39,7 @@ import {
   redact,
 } from "../functions/_fortnox/mod.ts";
 import {
+  activateAccounts,
   bankLegs,
   bookkeepSupplierInvoice,
   createSupplier,
@@ -49,6 +51,9 @@ import {
   supplierMarkerIn,
   voucherMarkerIn,
 } from "./fortnox-cashflow-writes.ts";
+
+/** Every account the seed posts to; activated in every financial year first. */
+const ACCOUNTS_USED = [1510, 1930, 2091, 2440, 2611, 2641, 2710, 2731, 5010, 5011, 5012, 5020, 5490, 5500, 5615, 5910, 6310, 6540, 6570, 6950, 7010, 7510, 8410];
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const addDays = (iso: string, n: number): string =>
@@ -139,6 +144,9 @@ function planSupplierInvoices(today: string, months: string[]): PlannedSupplierI
       add(`hyra-boras-rorlig-${m}`, "hyra-boras", monthDay(m, 20), 9000 + (i % 3) * 2500, `Rorlig hyra Storknallen kvartal`, 5012);
     }
   });
+  // The very first supplier invoice in the test company (9 Sept, the live shape experiment): a third
+  // leasing invoice for August, kept as the seed's own so its bank payment (A 104) reconciles.
+  add("leasing-2026-08", "leasing", "2026-08-01", 9500, "Leasing skarm 1101, augusti 2026");
   // media: five campaigns over the year; service: four calls; the permit once; screen parts twice
   add("media-2025-10", "media", "2025-10-14", 18500, "Kampanj oktober");
   add("media-2026-01", "media", "2026-01-20", 24000, "Kampanj januari");
@@ -181,9 +189,13 @@ export async function seedCashflow(input: SeedCashflowInput): Promise<void> {
   if (years.length === 0) throw new Error("The test company has no financial years.");
   const first = years[0];
   const yearFor = (date: string) => years.find((y) => y.from <= date && date <= y.to);
-  const counts = { suppliersCreated: 0, suppliersFound: 0, invoicesCreated: 0, invoicesFound: 0, booked: 0, vouchersCreated: 0, vouchersFound: 0, failed: 0 };
+  const counts = { accountsActivated: 0, suppliersCreated: 0, suppliersFound: 0, invoicesCreated: 0, invoicesFound: 0, booked: 0, vouchersCreated: 0, vouchersFound: 0, failed: 0 };
   const failures: string[] = [];
   const report: string[] = [];
+
+  // ---- the accounts: a Fortnox chart has every BAS account, few are active
+  counts.accountsActivated = await activateAccounts(g, years.map((y) => y.id), ACCOUNTS_USED, (s) => console.log(s));
+  console.log(`  accounts: ${counts.accountsActivated} activated now (${ACCOUNTS_USED.length} checked in ${years.length} financial year(s))`);
 
   // ---- suppliers: marker in Comments (a detail read each), created when missing
   const supplierNumbers = new Map<string, string>();
@@ -236,7 +248,7 @@ export async function seedCashflow(input: SeedCashflowInput): Promise<void> {
       failures.push(`invoice ${p.key}: supplier ${p.supplier} missing`);
       continue;
     }
-    let existing = invoiceByKey.get(p.key);
+    const existing = invoiceByKey.get(p.key);
     let givenNumber = existing ? String(existing.GivenNumber) : "";
     if (!existing) {
       try {
@@ -306,6 +318,9 @@ export async function seedCashflow(input: SeedCashflowInput): Promise<void> {
 
   // ---- vouchers: opening balance, payroll, tax, VAT, customer receipts, bank fees, direct purchase, interest
   const vouchers: NewVoucher[] = [];
+  // Opening cash on the previous fiscal year's first day, in two vouchers (the first run
+  // booked 420 000; the workbook-sized costs against the sandbox's small invoiced revenue
+  // need about seven million for the cash row to stay above zero through the year).
   vouchers.push({
     key: "opening-1930",
     series: "A",
@@ -314,6 +329,16 @@ export async function seedCashflow(input: SeedCashflowInput): Promise<void> {
     legs: [
       { account: 1930, debit: 420000, credit: 0 },
       { account: 2091, debit: 0, credit: 420000 },
+    ],
+  });
+  vouchers.push({
+    key: "opening-1930-b",
+    series: "A",
+    date: first.from,
+    text: "Ingaende kassa, del 2 (seed)",
+    legs: [
+      { account: 1930, debit: 6580000, credit: 0 },
+      { account: 2091, debit: 0, credit: 6580000 },
     ],
   });
   for (const m of months) {
@@ -458,7 +483,7 @@ export async function seedCashflow(input: SeedCashflowInput): Promise<void> {
   console.log(`\nVouchers by kind (found already / created now / failed):`);
   for (const [kind, k] of [...byKind].sort()) console.log(`  ${kind.padEnd(10)} ${String(k.found).padStart(3)} / ${String(k.created).padStart(3)} / ${k.failed}`);
   console.log(
-    `\nLedger seed done: suppliers ${counts.suppliersFound} found + ${counts.suppliersCreated} created; supplier invoices ${counts.invoicesFound} found + ${counts.invoicesCreated} created (${counts.booked} bookkept now); vouchers ${counts.vouchersFound} found + ${counts.vouchersCreated} created; ${counts.failed} failure(s). Payroll per month: gross ${GROSS}, tax ${PRELIMINARY_TAX}, employer contributions ${EMPLOYER_CONTRIBUTIONS}, net ${NET_SALARY}.${paymentsRefused ? ` Supplier payments refused: ${paymentsRefused}` : ""}`,
+    `\nLedger seed done: accounts ${counts.accountsActivated} activated; suppliers ${counts.suppliersFound} found + ${counts.suppliersCreated} created; supplier invoices ${counts.invoicesFound} found + ${counts.invoicesCreated} created (${counts.booked} bookkept now); vouchers ${counts.vouchersFound} found + ${counts.vouchersCreated} created; ${counts.failed} failure(s). Payroll per month: gross ${GROSS}, tax ${PRELIMINARY_TAX}, employer contributions ${EMPLOYER_CONTRIBUTIONS}, net ${NET_SALARY}.${paymentsRefused ? ` Supplier payments refused: ${paymentsRefused}` : ""}`,
   );
   if (failures.length) {
     console.log(`\nWhat the test company refused (goes to KNOWN-ISSUES):`);
