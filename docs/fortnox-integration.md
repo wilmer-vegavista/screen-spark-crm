@@ -227,11 +227,16 @@ ingenting om det), och det finns en väljare för år.
   raden, momsen på *Ingående moms*) plus alla andra bankrörelser i huvudboken: lönekörningens
   bankrad blir *Löner exkl arbetsgivaravgifter & skatt*, skattebetalningen *Arbetsgivaravgifter
   & skatt*, momsavstämningen *Moms att betala*, och allt annat går rad för rad via kontomappningen.
+  Bär en in- eller utbetalning en extra rad utöver kund- eller leverantörsfordran — öresavrundning,
+  en bankavgift, en kassarabatt — går även den via kontomappningen, och saknar kontot regel listas
+  den bland de okopplade kontona. Ingen rad försvinner tyst.
 - **Månader framåt** är kursiva och byggs så: planen är golvet; kända fakturor på förfallodatum
   (kundfakturor och leverantörsfakturor) och orderbokens planerade delfakturor (ljusare – inte
   fakturerade ännu) höjer siffran. *Arbetsgivaravgifter & skatt* bär det Bron bokade månaden
   före; *Moms att betala* bär momsperiodens netto i sin betalmånad.
-- **Innevarande månad** är utfall hittills + prognos för resten, och kolumnen säger det.
+- **Innevarande månad** är utfall hittills + prognos för resten, och kolumnen säger det. Har Bron
+  redan betalat (han betalar den 12:e) minskas den bokade skulden med det som betalats, så samma
+  pengar aldrig räknas två gånger — precis som *Moms att betala* alltid gjort.
 - **Momsraderna**: verklig moms i passerade månader, 25 % av raderna i prognosen – exakt som
   arbetsbokens formler (rad 16 läser intäktsraderna, rad 42 läser rad 24, 25, 29–35, 37–41).
 - **Kassaraderna** räknas som i arbetsboken: *Kontanta medel* i första månaden = startkolumnens
