@@ -17,6 +17,8 @@
   ./scripts/fortnox-dev.ps1 serve    the fortnox-sync function on http://localhost:8000
   ./scripts/fortnox-dev.ps1 feed     the fortnox-ledger-feed function on http://localhost:8001 (round one)
   ./scripts/fortnox-dev.ps1 crm      the CRM (vite dev) against the dev project and the local function
+  ./scripts/fortnox-dev.ps1 read "v_cashflow?row_key=eq.ag_skatt"
+                                     one read of the dev project over PostgREST (schema fortnox)
 
   Credentials: Fortnox comes from the env file named by FORTNOX_ENV_FILE (default: the
   fortnox-agent repo's .env), passed to Deno by path and never read here. Supabase keys
@@ -28,8 +30,10 @@
 #>
 param(
   [Parameter(Position = 0)]
-  [ValidateSet("refuse", "probe", "seed", "sync", "serve", "feed", "crm")]
+  [ValidateSet("refuse", "probe", "seed", "sync", "serve", "feed", "crm", "read")]
   [string]$Command = "probe",
+  [Parameter(Position = 1)]
+  [string]$Path,
   [switch]$Dry,
   [switch]$Fortnox,
   [switch]$Invoices,
@@ -105,6 +109,27 @@ switch ($Command) {
     $env:PORT = "8001"
     Write-Host "fortnox-ledger-feed listening on http://localhost:8001/<token> (Ctrl+C stops it)"
     deno run --allow-env --allow-net "$Fx/fortnox-ledger-feed/index.ts"
+  }
+  "read" {
+    # One read of the dev project over PostgREST - the same route the browser uses.
+    # This COMPLEMENTS `npx supabase db query --linked --project-ref <ref> "<sql>"`, which runs
+    # as `postgres` over the Management API and therefore hides two failures this verb catches:
+    # a schema that is not exposed to PostgREST, and a missing grant or RLS policy.
+    # On that command: BOTH flags are required. `--linked` alone falls back to
+    # supabase/config.toml, which names Vega Vista's OWN project (llpribdacnlejtefnvtm), and
+    # then dies on a direct, IPv6-only connection. $ProjectRef above is a constant, so this
+    # verb can only ever read the dev project. GET only.
+    if (-not $Path) {
+      throw 'Usage: ./scripts/fortnox-dev.ps1 read "v_cashflow?row_key=eq.ag_skatt&select=month,value" - a PostgREST path, schema fortnox.'
+    }
+    Load-SupabaseKeys
+    $headers = @{
+      apikey           = $env:SUPABASE_SERVICE_ROLE_KEY
+      Authorization    = "Bearer $($env:SUPABASE_SERVICE_ROLE_KEY)"
+      "Accept-Profile" = "fortnox"
+    }
+    $uri = "$($env:SUPABASE_URL)/rest/v1/" + $Path.TrimStart('/')
+    Invoke-RestMethod -Method Get -Uri $uri -Headers $headers | ConvertTo-Json -Depth 6
   }
   "crm" {
     Load-SupabaseKeys
