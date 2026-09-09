@@ -224,8 +224,14 @@ export async function syncInvoices(
     `Match index: ${index.customerIdByNumber.size} linked customers, ${index.productIdByProject.size} linked screens, ${index.orders.length} bookings, ${linkedRows.length} invoices already linked, ${index.originalOfCreditNote.size} credit note(s) known`,
   );
 
+  // Round one wrote a list of document numbers; round two's seed writes objects with the pay
+  // date of the bank voucher it booked, so the ledger and the fake-payment table agree.
   const fakeRaw = await readSetting(db, FAKE_KEY);
-  const fake = new Set<string>(fakeRaw ? (JSON.parse(fakeRaw) as string[]) : []);
+  const fake = new Map<string, string | null>();
+  for (const f of fakeRaw ? (JSON.parse(fakeRaw) as Array<string | { document_number?: string; paid_at?: string }>) : []) {
+    if (typeof f === "string") fake.set(f, null);
+    else if (f.document_number) fake.set(String(f.document_number), f.paid_at ? String(f.paid_at).slice(0, 10) : null);
+  }
   if (fake.size) log(`DEV ONLY: ${fake.size} fake payment(s) configured in fortnox.settings.${FAKE_KEY}`);
 
   const seenAt = now.toISOString();
@@ -237,7 +243,7 @@ export async function syncInvoices(
   for (const r of rows) {
     if (fake.has(r.document_number) && !r.cancelled) {
       r.balance = 0;
-      r.final_pay_date = r.final_pay_date ?? r.due_date ?? r.invoice_date;
+      r.final_pay_date = fake.get(r.document_number) ?? r.final_pay_date ?? r.due_date ?? r.invoice_date;
       result.fakePaymentsApplied++;
     }
     const prev = existing.get(r.document_number);

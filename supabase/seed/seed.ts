@@ -8,6 +8,8 @@
  *   ./scripts/fortnox-dev.ps1 seed -Fortnox   CRM side + the Fortnox side
  *   ./scripts/fortnox-dev.ps1 seed -Invoices  round one: a year of invoices in the test company
  *                                             (add -FakePayments if the company refuses to bookkeep payments)
+ *   ./scripts/fortnox-dev.ps1 seed -Cashflow  round two: the ledger — suppliers, a year of supplier
+ *                                             invoices, salary / tax / VAT vouchers, bank payments
  *
  * Idempotent: fixed ids, upserts, existing users get a fresh password. Company names
  * are made up; none is a real Vega Vista customer. Screens carry four-digit codes in the
@@ -38,6 +40,7 @@ import {
   payInvoice,
   setProjectStartDate,
 } from "./fortnox-invoice-writes.ts";
+import { seedCashflow } from "./seed-cashflow.ts";
 
 const url = Deno.env.get("SUPABASE_URL");
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -54,6 +57,7 @@ const db = createClient(url, serviceKey, {
 const withFortnox = Deno.args.includes("--fortnox");
 const withInvoices = Deno.args.includes("--invoices");
 const fakePayments = Deno.args.includes("--fake-payments");
+const withCashflow = Deno.args.includes("--cashflow");
 /** "Today" for the seed: instalments dated after it are not invoiced yet. */
 const TODAY = (Deno.env.get("SEED_TODAY") ?? new Date().toISOString()).slice(0, 10);
 
@@ -892,4 +896,61 @@ if (withInvoices) {
   console.log(
     `\nPlanned ${planned.length}: created ${created} now, bookkept ${bookedNow} now, paid ${paidNow} now${fakePayments ? ` (+${fakeList.length} FAKE)` : ""}, credited ${creditedNow} now, cancelled ${cancelledNow} now; leftovers L1 (amount 999 matches no instalment) and L2 (project 9999 is not a screen in the CRM); C1 booked and credited, C2 cancelled.${paymentsRefused ? ` Payments refused by the test company: ${paymentsRefused}` : ""}`,
   );
+}
+
+// ---------------------------------------------------------------- the ledger (round two, optional)
+//
+// Suppliers, a year of supplier invoices, the salary / tax / VAT vouchers, a bank voucher per
+// customer invoice the dev project marks paid, and an opening balance — seed-cashflow.ts.
+// Needs the invoices of round one in the test company (the customer receipts follow them).
+
+if (withCashflow) {
+  const g = guardedFortnoxFromEnv();
+  const { data: custLinks, error: e1 } = await db
+    .schema("fortnox")
+    .from("customer_links")
+    .select("customer_id, fortnox_customer_number")
+    .eq("status", "linked");
+  fail("read customer_links", e1);
+  const { data: projLinks, error: e2 } = await db
+    .schema("fortnox")
+    .from("project_links")
+    .select("product_id, fortnox_project_number")
+    .eq("status", "linked");
+  fail("read project_links", e2);
+  const customerNumberOf = (n: number) =>
+    (custLinks ?? []).find((l) => l.customer_id === cust(n))?.fortnox_customer_number ?? undefined;
+  const projectNumberOf = (n: number) =>
+    (projLinks ?? []).find((l) => l.product_id === prod(n))?.fortnox_project_number ?? undefined;
+  const sellerName = (email: string) => USERS.find((u) => u.email === email)?.full_name ?? email;
+  const { planned } = planInvoices(customerNumberOf, projectNumberOf, sellerName);
+  const existing = (await listInvoices(g, { fromDate: "2020-01-01", toDate: "2030-12-31" })).rows;
+  const byMarker = new Map<string, (typeof existing)[number]>();
+  for (const inv of existing) {
+    const key = invoiceMarkerIn(inv.ExternalInvoiceReference1);
+    if (key && (!byMarker.has(key) || num(inv.Total) > 0)) byMarker.set(key, inv);
+  }
+  // The customer invoices the dev project marks paid, with the day the money "arrived":
+  // due date minus two days once due, else the invoice date — the same rule round one uses.
+  const paidInvoices = planned
+    .filter((p) => p.paid && !p.cancel && !p.credit && byMarker.has(p.key))
+    .map((p) => {
+      const inv = byMarker.get(p.key)!;
+      const pay = p.dueDate <= TODAY ? addDays(p.dueDate, -2) : p.invoiceDate;
+      return {
+        documentNumber: String(inv.DocumentNumber),
+        total: num(inv.Total) || round2(p.amount * 1.25),
+        paidAt: pay < p.invoiceDate ? p.invoiceDate : pay,
+        vat: round2(p.amount * 0.25),
+        invoiceDate: p.invoiceDate,
+      };
+    });
+  await seedCashflow({
+    g,
+    db,
+    today: TODAY,
+    paidInvoices,
+    // Every live customer invoice's VAT feeds the output side of the VAT settlements.
+    allInvoices: planned.filter((p) => !p.cancel && byMarker.has(p.key)).map((p) => ({ invoiceDate: p.invoiceDate, vat: round2(p.amount * 0.25) })),
+  });
 }

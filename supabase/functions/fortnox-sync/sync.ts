@@ -13,6 +13,8 @@
  *
  * Round one adds the invoice step at the end of the run (invoices-step.ts): read the
  * customer invoices, match each to an order, refresh the ledger snapshot. Reads only.
+ * Round two adds the ledger step after it (ledger-step.ts): suppliers, supplier invoices,
+ * the postings from the SIE export, the recurring plan's prefill. Reads only.
  */
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.108.1";
 import {
@@ -39,6 +41,7 @@ import {
   similarity,
 } from "../_fortnox/mod.ts";
 import { type InvoiceStepResult, syncInvoices } from "./invoices-step.ts";
+import { type LedgerStepResult, syncLedger } from "./ledger-step.ts";
 
 export type Trigger = "manual" | "cron" | "cli";
 
@@ -50,6 +53,8 @@ export interface SyncOptions {
   createMissing?: boolean;
   /** false = skip the invoice step (round one); default true. */
   invoices?: boolean;
+  /** false = skip the ledger step (round two); default true. */
+  ledger?: boolean;
 }
 
 export interface SyncDeps {
@@ -82,6 +87,11 @@ export interface SyncSummary {
   invoicesProposed: number;
   invoicesUnmatched: number;
   invoices?: InvoiceStepResult;
+  /** Round two: the ledger step's counters (zero when the step did not run). */
+  supplierInvoicesRead: number;
+  postingsRead: number;
+  ledgerSyncedTo: string | null;
+  ledger?: LedgerStepResult;
   error?: string;
   log: string[];
 }
@@ -623,6 +633,9 @@ export async function runSync(deps: SyncDeps, opts: SyncOptions): Promise<SyncSu
     invoicesMatched: 0,
     invoicesProposed: 0,
     invoicesUnmatched: 0,
+    supplierInvoicesRead: 0,
+    postingsRead: 0,
+    ledgerSyncedTo: null,
     log: lines,
   };
 
@@ -854,6 +867,16 @@ export async function runSync(deps: SyncDeps, opts: SyncOptions): Promise<SyncSu
       summary.invoicesUnmatched = inv.unmatched;
     }
 
+    // ---- round two: the ledger (suppliers, supplier invoices, postings, the plan's prefill)
+    if (opts.ledger !== false) {
+      log("Ledger:");
+      const led = await syncLedger({ db: deps.db, fortnox: deps.fortnox, now: ctx.now }, dryRun, log);
+      summary.ledger = led;
+      summary.supplierInvoicesRead = led.supplierInvoicesRead;
+      summary.postingsRead = led.postingsRead;
+      summary.ledgerSyncedTo = led.syncedTo;
+    }
+
     if (!dryRun) {
       must(
         await fx
@@ -872,6 +895,9 @@ export async function runSync(deps: SyncDeps, opts: SyncOptions): Promise<SyncSu
             invoices_matched: summary.invoicesMatched,
             invoices_proposed: summary.invoicesProposed,
             invoices_unmatched: summary.invoicesUnmatched,
+            supplier_invoices_read: summary.supplierInvoicesRead,
+            postings_read: summary.postingsRead,
+            ledger_synced_to: summary.ledgerSyncedTo,
             claude_used: summary.claudeUsed,
             log: lines.slice(0, 400),
           })
@@ -880,7 +906,7 @@ export async function runSync(deps: SyncDeps, opts: SyncOptions): Promise<SyncSu
       );
     }
     log(
-      `Done: ${summary.proposalsWritten} proposals, ${summary.autoLinked} auto-linked, ${summary.customersCreated} customers + ${summary.projectsCreated} projects created, ${summary.mismatchesFound} mismatches; invoices ${summary.invoicesRead} read, ${summary.invoicesMatched} matched, ${summary.invoicesProposed} proposed, ${summary.invoicesUnmatched} unmatched${summary.claudeUsed ? ", Claude used for the fuzzy rest" : ", rules only"}`,
+      `Done: ${summary.proposalsWritten} proposals, ${summary.autoLinked} auto-linked, ${summary.customersCreated} customers + ${summary.projectsCreated} projects created, ${summary.mismatchesFound} mismatches; invoices ${summary.invoicesRead} read, ${summary.invoicesMatched} matched, ${summary.invoicesProposed} proposed, ${summary.invoicesUnmatched} unmatched; ledger ${summary.supplierInvoicesRead} supplier invoices, ${summary.postingsRead} postings, synced to ${summary.ledgerSyncedTo ?? "–"}${summary.claudeUsed ? ", Claude used for the fuzzy rest" : ", rules only"}`,
     );
   } catch (e) {
     const msg = redact((e as Error).message ?? String(e));

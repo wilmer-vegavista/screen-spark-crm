@@ -9,7 +9,9 @@
   ./scripts/fortnox-dev.ps1 seed     fill the dev project with the synthetic customers/screens/orders
                                      (add -Fortnox to also plant the hand-made-looking rows in the test company;
                                       add -Invoices for round one's year of invoices in the test company, and
-                                      -FakePayments if the company refuses to bookkeep payments)
+                                      -FakePayments if the company refuses to bookkeep payments;
+                                      add -Cashflow for round two's ledger: suppliers, supplier invoices,
+                                      salary / tax / VAT vouchers and bank payments in the test company)
   ./scripts/fortnox-dev.ps1 sync     one sync run from the command line (add -Dry to write nothing)
   ./scripts/fortnox-dev.ps1 serve    the fortnox-sync function on http://localhost:8000
   ./scripts/fortnox-dev.ps1 feed     the fortnox-ledger-feed function on http://localhost:8001 (round one)
@@ -30,7 +32,8 @@ param(
   [switch]$Dry,
   [switch]$Fortnox,
   [switch]$Invoices,
-  [switch]$FakePayments
+  [switch]$FakePayments,
+  [switch]$Cashflow
 )
 
 $ErrorActionPreference = "Stop"
@@ -78,6 +81,7 @@ switch ($Command) {
     if ($Fortnox) { $flags += "--fortnox" }
     if ($Invoices) { $flags += "--invoices" }
     if ($FakePayments) { $flags += "--fake-payments" }
+    if ($Cashflow) { $flags += "--cashflow" }
     deno run --allow-env --allow-net @EnvFiles "$Root/supabase/seed/seed.ts" @flags
   }
   "sync" {

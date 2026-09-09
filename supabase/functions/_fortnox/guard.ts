@@ -67,6 +67,11 @@ export class GuardedFortnox {
     return this.api.request<T>("GET", path);
   }
 
+  /** A read whose answer is bytes (the SIE export). Reads only; the write flag is never set. */
+  getRaw(path: string): Promise<Uint8Array> {
+    return this.api.requestRaw(path);
+  }
+
   /** The connected company, fetched once per run and checked against the constant. */
   company(): Promise<CompanyInfo> {
     this.companyChecked ??= this.fetchAndGuard();
