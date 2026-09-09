@@ -45,6 +45,8 @@ export interface LedgerStepDeps {
   db: SupabaseClient;
   fortnox: GuardedFortnox;
   now: Date;
+  /** Re-read the previous financial year's SIE too (a voucher was added to a closed month, or on request). */
+  fullLedger?: boolean;
 }
 
 export interface LedgerStepResult {
@@ -249,7 +251,7 @@ export async function syncLedger(
 
   // ---- 4. postings (SIE per financial year)
   const yearsReadBefore = new Set<number>(JSON.parse((await readSetting(db, YEARS_READ_KEY)) ?? "[]") as number[]);
-  const toRead = yearsToRead(years, now, firstRun || yearsReadBefore.size === 0);
+  const toRead = yearsToRead(years, now, firstRun || yearsReadBefore.size === 0 || deps.fullLedger === true);
   // A year never read before is read now even on an incremental run (a company that opens
   // a new financial year mid-way).
   for (const y of yearsToRead(years, now, true)) if (!yearsReadBefore.has(y.id) && !toRead.some((t) => t.id === y.id)) toRead.push(y);

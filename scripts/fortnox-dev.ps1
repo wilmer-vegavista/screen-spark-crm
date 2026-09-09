@@ -12,7 +12,8 @@
                                       -FakePayments if the company refuses to bookkeep payments;
                                       add -Cashflow for round two's ledger: suppliers, supplier invoices,
                                       salary / tax / VAT vouchers and bank payments in the test company)
-  ./scripts/fortnox-dev.ps1 sync     one sync run from the command line (add -Dry to write nothing)
+  ./scripts/fortnox-dev.ps1 sync     one sync run from the command line (add -Dry to write nothing;
+                                     -FullLedger to re-read the previous financial year's ledger too)
   ./scripts/fortnox-dev.ps1 serve    the fortnox-sync function on http://localhost:8000
   ./scripts/fortnox-dev.ps1 feed     the fortnox-ledger-feed function on http://localhost:8001 (round one)
   ./scripts/fortnox-dev.ps1 crm      the CRM (vite dev) against the dev project and the local function
@@ -33,7 +34,8 @@ param(
   [switch]$Fortnox,
   [switch]$Invoices,
   [switch]$FakePayments,
-  [switch]$Cashflow
+  [switch]$Cashflow,
+  [switch]$FullLedger
 )
 
 $ErrorActionPreference = "Stop"
@@ -88,11 +90,13 @@ switch ($Command) {
     Load-SupabaseKeys
     $flags = @()
     if ($Dry) { $flags += "--dry" }
+    if ($FullLedger) { $flags += "--full-ledger" }
     deno run --allow-env --allow-net @EnvFiles "$Fx/fortnox-sync/cli.ts" @flags
   }
   "serve" {
     Load-SupabaseKeys
-    Write-Host "fortnox-sync listening on http://localhost:8000 (Ctrl+C stops it)"
+    if (-not $env:PORT) { $env:PORT = "8000" }
+    Write-Host "fortnox-sync listening on http://localhost:$($env:PORT) (Ctrl+C stops it; set PORT for another port)"
     deno run --allow-env --allow-net @EnvFiles "$Fx/fortnox-sync/index.ts"
   }
   "feed" {
@@ -110,7 +114,7 @@ switch ($Command) {
     $env:VITE_SUPABASE_PUBLISHABLE_KEY = $env:SUPABASE_ANON_KEY
     $env:SUPABASE_PROJECT_ID = $ProjectRef
     $env:SUPABASE_PUBLISHABLE_KEY = $env:SUPABASE_ANON_KEY
-    $env:VITE_FORTNOX_FUNCTIONS_URL = "http://localhost:8000"
+    if (-not $env:VITE_FORTNOX_FUNCTIONS_URL) { $env:VITE_FORTNOX_FUNCTIONS_URL = "http://localhost:8000" }
     Set-Location $Root
     npm run dev
   }

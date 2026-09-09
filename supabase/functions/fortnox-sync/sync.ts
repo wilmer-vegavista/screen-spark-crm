@@ -55,6 +55,8 @@ export interface SyncOptions {
   invoices?: boolean;
   /** false = skip the ledger step (round two); default true. */
   ledger?: boolean;
+  /** true = re-read the SIE of every financial year the first run reads (current + previous), not only the current month's. */
+  fullLedger?: boolean;
 }
 
 export interface SyncDeps {
@@ -870,7 +872,7 @@ export async function runSync(deps: SyncDeps, opts: SyncOptions): Promise<SyncSu
     // ---- round two: the ledger (suppliers, supplier invoices, postings, the plan's prefill)
     if (opts.ledger !== false) {
       log("Ledger:");
-      const led = await syncLedger({ db: deps.db, fortnox: deps.fortnox, now: ctx.now }, dryRun, log);
+      const led = await syncLedger({ db: deps.db, fortnox: deps.fortnox, now: ctx.now, fullLedger: opts.fullLedger === true }, dryRun, log);
       summary.ledger = led;
       summary.supplierInvoicesRead = led.supplierInvoicesRead;
       summary.postingsRead = led.postingsRead;

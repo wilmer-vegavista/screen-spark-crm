@@ -261,4 +261,5 @@ export async function handle(req: Request): Promise<Response> {
   }
 }
 
-Deno.serve(handle);
+// Locally the port follows PORT (default 8000) so two checkouts can serve side by side; deployed, the runtime ignores it.
+Deno.serve({ port: Number(Deno.env.get("PORT") ?? 8000) }, handle);
