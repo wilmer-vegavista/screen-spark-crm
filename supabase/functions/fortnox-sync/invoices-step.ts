@@ -224,8 +224,14 @@ export async function syncInvoices(
     `Match index: ${index.customerIdByNumber.size} linked customers, ${index.productIdByProject.size} linked screens, ${index.orders.length} bookings, ${linkedRows.length} invoices already linked, ${index.originalOfCreditNote.size} credit note(s) known`,
   );
 
+  // Round one wrote a list of document numbers; round two's seed writes objects with the pay
+  // date of the bank voucher it booked, so the ledger and the fake-payment table agree.
   const fakeRaw = await readSetting(db, FAKE_KEY);
-  const fake = new Set<string>(fakeRaw ? (JSON.parse(fakeRaw) as string[]) : []);
+  const fake = new Map<string, string | null>();
+  for (const f of fakeRaw ? (JSON.parse(fakeRaw) as Array<string | { document_number?: string; paid_at?: string }>) : []) {
+    if (typeof f === "string") fake.set(f, null);
+    else if (f.document_number) fake.set(String(f.document_number), f.paid_at ? String(f.paid_at).slice(0, 10) : null);
+  }
   if (fake.size) log(`DEV ONLY: ${fake.size} fake payment(s) configured in fortnox.settings.${FAKE_KEY}`);
 
   const seenAt = now.toISOString();
@@ -237,7 +243,7 @@ export async function syncInvoices(
   for (const r of rows) {
     if (fake.has(r.document_number) && !r.cancelled) {
       r.balance = 0;
-      r.final_pay_date = r.final_pay_date ?? r.due_date ?? r.invoice_date;
+      r.final_pay_date = fake.get(r.document_number) ?? r.final_pay_date ?? r.due_date ?? r.invoice_date;
       result.fakePaymentsApplied++;
     }
     const prev = existing.get(r.document_number);
@@ -286,6 +292,19 @@ export async function syncInvoices(
       await fx.from("settings").upsert({ key: CURSOR_KEY, value: seenAt }, { onConflict: "key" }),
       "write invoices_cursor",
     );
+    // DEV ONLY: the fake-payment table is the truth for every row it names, not only the rows
+    // this run listed — round two's seed re-dates the payments to the bank vouchers it booked,
+    // and an incremental run must carry that onto rows Fortnox did not change.
+    for (const [doc, paidAt] of fake) {
+      must(
+        await fx
+          .from("invoices")
+          .update({ balance: 0, ...(paidAt ? { final_pay_date: paidAt } : {}) })
+          .eq("document_number", doc)
+          .eq("cancelled", false),
+        `apply fake payment ${doc}`,
+      );
+    }
     // ---- 5. the feed's snapshot
     for (const year of snapshotYears(now)) {
       const snap = await refreshLedgerSnapshot(db, year, runId, now);

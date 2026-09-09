@@ -1,7 +1,8 @@
 /**
  * One sync run from the command line, against the dev project and the test company.
- *   ./scripts/fortnox-dev.ps1 sync        (writes: links, creates, sync_runs)
- *   ./scripts/fortnox-dev.ps1 sync -Dry   (computes and prints, writes nothing)
+ *   ./scripts/fortnox-dev.ps1 sync             (writes: links, creates, sync_runs)
+ *   ./scripts/fortnox-dev.ps1 sync -Dry        (computes and prints, writes nothing)
+ *   ./scripts/fortnox-dev.ps1 sync -FullLedger (round two: re-read the previous financial year's SIE too)
  */
 import { createClient } from "npm:@supabase/supabase-js@2.108.1";
 import { guardedFortnoxFromEnv } from "../_fortnox/mod.ts";
@@ -22,7 +23,7 @@ const summary = await runSync(
     anthropicModel: Deno.env.get("ANTHROPIC_MODEL") || undefined,
     log: (line) => console.log(line),
   },
-  { triggeredBy: "cli", dryRun: Deno.args.includes("--dry") },
+  { triggeredBy: "cli", dryRun: Deno.args.includes("--dry"), fullLedger: Deno.args.includes("--full-ledger") },
 );
 
 const { log: _log, ...rest } = summary;

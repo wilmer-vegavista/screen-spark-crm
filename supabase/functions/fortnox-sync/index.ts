@@ -10,6 +10,9 @@
  * Body: { action: "status" | "sync" | "propose" | "confirm" | "link" | "create" | "candidates", ... }
  * Round one adds: "order_candidates" | "invoice_link" | "invoice_ignore" | "invoice_reset" |
  * "feed_rotate" | "feed_revoke" — database-only, none of them touches Fortnox.
+ * Round two adds the cash-flow page's edits: "cashflow_plan_set_row" | "cashflow_plan_set_month" |
+ * "cashflow_opening_set" | "cashflow_rule_save" | "cashflow_rule_delete" | "account_map_save" |
+ * "account_map_delete" | "cashflow_setting_set" — database-only too.
  *
  * Runs unchanged in two places: deployed as a Supabase edge function, and locally with
  * `deno run --env-file=<fortnox-agent .env> index.ts` (scripts/fortnox-dev.ps1 serve),
@@ -44,6 +47,16 @@ import {
   invoiceReset,
   orderCandidates,
 } from "./invoice-actions.ts";
+import {
+  accountMapDelete,
+  accountMapSave,
+  openingSet,
+  planSetMonth,
+  planSetRow,
+  ruleDelete,
+  ruleSave,
+  settingSet,
+} from "./cashflow-actions.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -219,6 +232,23 @@ export async function handle(req: Request): Promise<Response> {
         return json(200, await feedRotate(db, `${url}/functions/v1/fortnox-ledger-feed`));
       case "feed_revoke":
         return json(200, await feedRevoke(db));
+      // ---- round two (database only)
+      case "cashflow_plan_set_row":
+        return json(200, await planSetRow(db, body, (actor as { userId: string }).userId));
+      case "cashflow_plan_set_month":
+        return json(200, await planSetMonth(db, body, (actor as { userId: string }).userId));
+      case "cashflow_opening_set":
+        return json(200, await openingSet(db, body, (actor as { userId: string }).userId));
+      case "cashflow_rule_save":
+        return json(200, await ruleSave(db, body, (actor as { userId: string }).userId));
+      case "cashflow_rule_delete":
+        return json(200, await ruleDelete(db, body));
+      case "account_map_save":
+        return json(200, await accountMapSave(db, body, (actor as { userId: string }).userId));
+      case "account_map_delete":
+        return json(200, await accountMapDelete(db, body));
+      case "cashflow_setting_set":
+        return json(200, await settingSet(db, body));
       default:
         return json(400, { error: `Okänd action: ${action}` });
     }
@@ -231,4 +261,5 @@ export async function handle(req: Request): Promise<Response> {
   }
 }
 
-Deno.serve(handle);
+// Locally the port follows PORT (default 8000) so two checkouts can serve side by side; deployed, the runtime ignores it.
+Deno.serve({ port: Number(Deno.env.get("PORT") ?? 8000) }, handle);

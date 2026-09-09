@@ -17,6 +17,10 @@
  *   invoice-matcher.ts  the four-rule invoice → order matcher and the admin-wins merge
  *   ledger-csv.ts       Filip's eleven columns as CSV for the Google Sheet feed
  *   ledger-snapshot.ts  the per-year snapshot the feed serves
+ *
+ *   round two:
+ *   ledger.ts           the general ledger: SIE type-4 export (CP437) → postings and balances,
+ *                       suppliers, supplier invoices, voucher headers, financial-year clamping
  */
 export * from "./client.ts";
 export * from "./errors.ts";
@@ -32,4 +36,5 @@ export * from "./invoices.ts";
 export * from "./invoice-matcher.ts";
 export * from "./ledger-csv.ts";
 export * from "./ledger-snapshot.ts";
+export * from "./ledger.ts";
 export { redact } from "./redact.ts";

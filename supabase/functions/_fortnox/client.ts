@@ -27,6 +27,11 @@ export interface RequestOpts {
 /** The narrow contract the read layer, the guard and the tests depend on. */
 export interface FortnoxApi {
   request<T>(method: HttpMethod, path: string, body?: unknown, opts?: RequestOpts): Promise<T>;
+  // Round two: a GET whose answer is bytes, not JSON — the SIE export. Fortnox refuses the
+  // Accept header that describes the payload (application/octet-stream → 400 "Invalid
+  // response type"), so this sends the wildcard Accept (verified live in the fortnox-agent,
+  // 2026-08-06).
+  requestRaw(path: string): Promise<Uint8Array>;
 }
 
 export interface FortnoxCcOptions {
@@ -179,5 +184,41 @@ export class FortnoxCcClient implements FortnoxApi {
     } catch {
       return text as unknown as T;
     }
+  }
+
+  async requestRaw(path: string): Promise<Uint8Array> {
+    const attempt = async (): Promise<Response> => {
+      const token = await this.accessToken();
+      return this.fetchFn(`${FORTNOX_API_BASE}${path}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}`, Accept: "*/*" },
+      });
+    };
+    let res = await attempt();
+    if (res.status === 401) {
+      this.token = null;
+      res = await attempt();
+    }
+    if (res.status === 429) {
+      const raw = Number(res.headers.get("retry-after") ?? "5");
+      const wait = Math.min(Number.isFinite(raw) && raw > 0 ? raw : 5, 30);
+      await this.sleep(wait * 1000);
+      res = await attempt();
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (!res.ok) {
+      const text = decode(bytes);
+      let code: number | undefined;
+      let message = `GET ${path} → ${res.status}`;
+      try {
+        const err = (JSON.parse(text) as ErrorEnvelope).ErrorInformation;
+        code = err?.Code ?? err?.code;
+        message += `: ${err?.Message ?? err?.message ?? text}`;
+      } catch {
+        message += `: ${text.slice(0, 300)}`;
+      }
+      throw new FortnoxApiError(res.status, code, redact(message));
+    }
+    return bytes;
   }
 }
