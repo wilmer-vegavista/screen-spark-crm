@@ -8,6 +8,15 @@
  * Deployed with --no-verify-jwt, the same reason as fortnox-ledger-feed: the browser
  * arrives with no Supabase headers, so JWT verification would 401 before the handler runs.
  *
+ * WHY PLAIN TEXT AND NOT A STYLED PAGE (verified against the live project 2026-09-09):
+ * Supabase's gateway refuses to let a function on *.supabase.co serve renderable HTML. A
+ * `text/html` response comes back rewritten to `Content-Type: text/plain` with
+ * `X-Content-Type-Options: nosniff` and `Content-Security-Policy: default-src 'none';
+ * sandbox` bolted on, so the browser shows the markup as source instead of rendering it.
+ * The first version of this file was an HTML card and looked exactly that bad. Plain text
+ * is what the platform will actually serve, so plain text is what this writes -- with an
+ * explicit charset, which the gateway does preserve, or the å/ä/ö arrive as mojibake.
+ *
  * What it deliberately does NOT do: exchange the authorization code for a token. For a
  * service-account integration Fortnox records the consent at approval, and the exchange
  * would need the client secret, which belongs to Vega Vista and is not held here. If the
@@ -19,45 +28,26 @@
  * consent can be told apart from one that never reached this point.
  */
 
-const PAGE = (title: string, body: string, tone: "ok" | "bad") => `<!doctype html>
-<html lang="sv">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${title}</title>
-<style>
-  :root { color-scheme: light dark; }
-  body {
-    margin: 0; min-height: 100vh; display: grid; place-items: center;
-    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: #f6f7f9; color: #16181d;
-  }
-  .card {
-    max-width: 32rem; margin: 1.5rem; padding: 2rem 2.25rem;
-    background: #fff; border-radius: 12px; border: 1px solid #e3e6ea;
-    box-shadow: 0 1px 3px rgba(0,0,0,.06);
-  }
-  .mark { font-size: 2rem; line-height: 1; margin-bottom: .75rem; }
-  h1 { font-size: 1.25rem; margin: 0 0 .75rem; }
-  p { margin: 0 0 .75rem; }
-  p:last-child { margin-bottom: 0; }
-  .muted { color: #5c6370; font-size: .9375rem; }
-  .bad h1 { color: #a3341f; }
-  @media (prefers-color-scheme: dark) {
-    body { background: #14161a; color: #e8eaed; }
-    .card { background: #1c1f24; border-color: #2c3037; }
-    .muted { color: #9aa1ab; }
-    .bad h1 { color: #f0917a; }
-  }
-</style>
-</head>
-<body>
-  <div class="card ${tone === "bad" ? "bad" : ""}">
-    <div class="mark">${tone === "ok" ? "✅" : "⚠️"}</div>
-    ${body}
-  </div>
-</body>
-</html>`;
+const OK = `Klart — kopplingen är godkänd.
+
+Du kan stänga det här fönstret.
+
+Kopplingen syns nu under era integrationsinställningar i Fortnox,
+och kan stängas av därifrån när ni vill.
+`;
+
+const IDLE = `Inget att göra här.
+
+Den här adressen är slutstationen för Fortnox godkännande-flöde.
+Kom du hit av misstag kan du bara stänga fönstret.
+`;
+
+const failed = (reason: string) => `Kopplingen blev inte godkänd.
+
+Fortnox svarade: ${reason}
+
+Ingenting har ändrats. Hör av dig till Erik så tar vi det tillsammans.
+`;
 
 function handler(req: Request): Response {
   const url = new URL(req.url);
@@ -70,58 +60,17 @@ function handler(req: Request): Response {
     `fortnox-oauth-callback: code=${hasCode ? "present" : "absent"} error=${error ?? "none"}`,
   );
 
-  if (error) {
-    return new Response(
-      PAGE(
-        "Kopplingen godkändes inte",
-        `<h1>Kopplingen blev inte godkänd</h1>
-         <p>Fortnox svarade: <strong>${escapeHtml(errorDescription ?? error)}</strong></p>
-         <p class="muted">Ingenting har ändrats. Hör av dig till Erik så tar vi det tillsammans.</p>`,
-        "bad",
-      ),
-      { status: 200, headers: htmlHeaders() },
-    );
-  }
+  const body = error ? failed(errorDescription ?? error) : hasCode ? OK : IDLE;
 
-  if (!hasCode) {
-    return new Response(
-      PAGE(
-        "Fortnox-koppling",
-        `<h1>Inget att göra här</h1>
-         <p>Den här sidan är slutstationen för Fortnox godkännande-flöde.</p>
-         <p class="muted">Kom du hit av misstag kan du bara stänga fönstret.</p>`,
-        "ok",
-      ),
-      { status: 200, headers: htmlHeaders() },
-    );
-  }
-
-  return new Response(
-    PAGE(
-      "Kopplingen är godkänd",
-      `<h1>Klart — kopplingen är godkänd</h1>
-       <p>Du kan stänga det här fönstret.</p>
-       <p class="muted">Kopplingen syns nu under era integrationsinställningar i Fortnox,
-       och kan stängas av därifrån när ni vill.</p>`,
-      "ok",
-    ),
-    { status: 200, headers: htmlHeaders() },
-  );
-}
-
-function htmlHeaders(): HeadersInit {
-  return {
-    "content-type": "text/html; charset=utf-8",
-    "cache-control": "no-store",
-    // The URL carries an authorization code; keep it out of any referred-to site's logs.
-    "referrer-policy": "no-referrer",
-  };
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!)
-  );
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "no-store",
+      // The URL carries an authorization code; keep it out of any onward referrer.
+      "referrer-policy": "no-referrer",
+    },
+  });
 }
 
 Deno.serve({ port: Number(Deno.env.get("PORT") ?? "8003") }, handler);
