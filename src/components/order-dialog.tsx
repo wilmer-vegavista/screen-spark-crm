@@ -155,20 +155,23 @@ export function OrderDialog({
       }));
     },
   });
-  const { data: sellerComp } = useQuery({
-    queryKey: ["my-compensation"],
-    queryFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return null;
-      const { data } = await supabase.from("seller_compensation").select("*").eq("user_id", u.user.id).maybeSingle();
-      return data;
-    },
-  });
   const { data: currentUserId } = useQuery({
     queryKey: ["current-user-id"],
     queryFn: async () => {
       const { data } = await supabase.auth.getUser();
       return data.user?.id ?? null;
+    },
+  });
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+  // Commission must follow the order's seller (owner), not whoever is logged in —
+  // an admin re-saving a seller's order must not switch the rates to their own.
+  const effectiveOwnerId = ownerId ?? currentUserId ?? null;
+  const { data: ownerCompType } = useQuery({
+    queryKey: ["compensation-type", effectiveOwnerId],
+    enabled: !!effectiveOwnerId,
+    queryFn: async () => {
+      const { data } = await (supabase.rpc as any)("get_compensation_type", { _user_id: effectiveOwnerId });
+      return (data as string | null) ?? null;
     },
   });
   const { data: sellers = [] } = useQuery({
@@ -184,7 +187,7 @@ export function OrderDialog({
 
   const commissionPctFor = (p: any): number => {
     if (!p) return 0;
-    const type = sellerComp?.compensation_type;
+    const type = ownerCompType;
     if (type === "endast_provision" && p.commission_pct_provision_only != null) return Number(p.commission_pct_provision_only);
     if (type === "med_grundlon" && p.commission_pct_with_base != null) return Number(p.commission_pct_with_base);
     return Number(p.default_commission_pct ?? 0);
@@ -207,7 +210,7 @@ export function OrderDialog({
       return { ...it, commission_pct: pct };
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sellerComp?.compensation_type, products]);
+  }, [ownerCompType, products]);
 
 
 
@@ -243,7 +246,6 @@ export function OrderDialog({
   const [selectedWeeks, setSelectedWeeks] = useState<number[]>([]);
   const [campaignPeriods, setCampaignPeriods] = useState<CampaignPeriod[]>([]);
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>();
-  const [ownerId, setOwnerId] = useState<string | null>(null);
   const [splits, setSplits] = useState<Array<{ user_id: string; share_pct: string }>>([]);
 
 
