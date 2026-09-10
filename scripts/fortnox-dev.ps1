@@ -6,6 +6,10 @@
 .DESCRIPTION
   ./scripts/fortnox-dev.ps1 refuse   the guard refusing tenant 1030384 before any request
   ./scripts/fortnox-dev.ps1 probe    company name, DatabaseNumber, counts in the test company
+  ./scripts/fortnox-dev.ps1 writerefuse
+                                     proof (c): 1848969 as a read-only tenant (WRITE_TENANT
+                                     forced elsewhere for this run only) -- one write refused,
+                                     then a read still succeeds
   ./scripts/fortnox-dev.ps1 seed     fill the dev project with the synthetic customers/screens/orders
                                      (add -Fortnox to also plant the hand-made-looking rows in the test company;
                                       add -Invoices for round one's year of invoices in the test company, and
@@ -30,7 +34,7 @@
 #>
 param(
   [Parameter(Position = 0)]
-  [ValidateSet("refuse", "probe", "seed", "sync", "serve", "feed", "crm", "read")]
+  [ValidateSet("refuse", "probe", "writerefuse", "seed", "sync", "serve", "feed", "crm", "read")]
   [string]$Command = "probe",
   [Parameter(Position = 1)]
   [string]$Path,
@@ -80,6 +84,12 @@ switch ($Command) {
   }
   "probe" {
     deno run --allow-env --allow-net @EnvFiles "$Fx/_fortnox/probe.ts"
+  }
+  "writerefuse" {
+    # A number that is never WRITE_TENANT, for this proof run only -- read solely by
+    # probe.ts's "writerefuse" mode; guard.ts and env.ts never consult it.
+    $env:PROBE_FORCE_WRITE_TENANT = "1030384"
+    deno run --allow-env --allow-net @EnvFiles "$Fx/_fortnox/probe.ts" writerefuse
   }
   "seed" {
     Load-SupabaseKeys
