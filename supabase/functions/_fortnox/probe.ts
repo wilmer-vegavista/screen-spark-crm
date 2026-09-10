@@ -15,8 +15,12 @@
  *       process environment, connects to 1848969 as GuardedFortnox would once Vega Vista's
  *       DatabaseNumber joins READ_TENANTS without being WRITE_TENANT. Attempts one write
  *       (refused, message printed), then a read (succeeds) -- the exact posture Vega Vista
- *       will be in. PROBE_FORCE_WRITE_TENANT is read only here; guard.ts and env.ts never
- *       consult it, and it narrows the write target rather than widening it.
+ *       will be in. PROBE_FORCE_WRITE_TENANT is read only here, and only to pass this run's
+ *       forced number into GuardedFortnox's constructor as `writeTenant` -- guard.ts never
+ *       reads the variable itself. That constructor slot cannot be used to widen what a run
+ *       may write to: guard.ts's company check refuses unless the connected company equals
+ *       BOTH the `WRITE_TENANT` constant AND this run's `writeTenant`, so setting this
+ *       variable to any number other than 1848969 can only add a refusal, never remove one.
  *
  * Normally run through scripts/fortnox-dev.ps1, which sets FORTNOX_TENANT_ID=1848969
  * in the process environment (the read/write constants' shared test company) before

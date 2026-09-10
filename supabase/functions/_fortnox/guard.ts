@@ -98,7 +98,7 @@ export class GuardedFortnox {
       organizationNumber: res.CompanyInformation?.OrganizationNumber ?? "",
       databaseNumber: raw === undefined || raw === null ? undefined : Number(raw),
     };
-    if (info.databaseNumber !== this.writeTenant) {
+    if (info.databaseNumber !== WRITE_TENANT || info.databaseNumber !== this.writeTenant) {
       throw new TenantGuardError(
         `REFUSING to write: connected company is "${info.name}" with DatabaseNumber ` +
           `${info.databaseNumber ?? "unknown"}. Writes are locked to the test company ` +

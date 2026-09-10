@@ -122,6 +122,41 @@ Deno.test(
   },
 );
 
+Deno.test(
+  "an override cannot widen the write tenant: forcing both the connected company and " +
+    "the override to the same non-WRITE_TENANT number still refuses",
+  async () => {
+    const f = mockFetch([
+      ["POST", "oauth-v1/token", TOKEN_OK],
+      [
+        "GET",
+        "/companyinformation",
+        () =>
+          json(200, {
+            CompanyInformation: { CompanyName: "Live AB", DatabaseNumber: 7777777 },
+          }),
+      ],
+      ["POST", "/customers", () => json(201, { Customer: { CustomerNumber: "1" } })],
+    ]);
+    const g = new GuardedFortnox(
+      new FortnoxCcClient({
+        clientId: "id",
+        clientSecret: "s",
+        tenantId: "1848969",
+        fetchFn: f.fetch,
+        sleep: noSleep,
+      }),
+      7777777,
+    );
+    const err = await assertRejects(
+      () => g.write("POST", "/customers", { Customer: { Name: "X" } }),
+      TenantGuardError,
+    );
+    assertStringIncludes(err.message, "7777777");
+    assertEquals(f.to("/customers").length, 0, "the POST never left");
+  },
+);
+
 Deno.test("a write against 1848969 passes, and the company check runs once per run", async () => {
   const f = mockFetch([
     ["POST", "oauth-v1/token", TOKEN_OK],

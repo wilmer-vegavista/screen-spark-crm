@@ -87,7 +87,10 @@ switch ($Command) {
   }
   "writerefuse" {
     # A number that is never WRITE_TENANT, for this proof run only -- read solely by
-    # probe.ts's "writerefuse" mode; guard.ts and env.ts never consult it.
+    # probe.ts's "writerefuse" mode, which passes it into GuardedFortnox's constructor.
+    # guard.ts's company check still requires the connected company to equal the
+    # WRITE_TENANT constant as well, so this variable can only narrow the write target,
+    # never widen it -- see guard.ts's fetchAndGuard.
     $env:PROBE_FORCE_WRITE_TENANT = "1030384"
     deno run --allow-env --allow-net @EnvFiles "$Fx/_fortnox/probe.ts" writerefuse
   }
