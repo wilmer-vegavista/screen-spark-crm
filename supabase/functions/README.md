@@ -139,7 +139,9 @@ linked to the order's customer; (2) its Project is linked to one of the order's 
 date to **31 days after** the last. Fewer → a proposal with a reason for an admin (high /
 medium / low as above). No customer link → unmatched. Two orders passing all four → a
 proposal, never a link. A credit note goes to the same order as the invoice it credits.
-Cancelled invoices are matched (so the row says where they belonged) but excluded from every
+An invoice that is not linked yet is judged again by every run, also when Fortnox did not
+change it — so a customer or screen linked today lifts yesterday's invoices at the next sync
+(database only; an admin's choice is never re-judged). Cancelled invoices are matched (so the row says where they belonged) but excluded from every
 count, sum, the leftover list and the feed. The constants live at the top of
 `_fortnox/invoice-matcher.ts`; the tolerances are guesses until Filip's real invoices say
 otherwise.
