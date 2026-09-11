@@ -108,13 +108,23 @@ Column vocabulary on the link tables:
 
 ## The guard
 
-`_fortnox/guard.ts`: the integration may talk to exactly one Fortnox company, DatabaseNumber
-**1848969** (Erik's test company). The tenant id from the environment is checked before a
-client is constructed (any other number refuses with zero requests sent), and
-`/3/companyinformation` is checked before the first write of every run. Every write goes
-through `GuardedFortnox.write`; the general client refuses any non-GET without it. No
-environment variable widens this: going live is a reviewed change of the constant, with
-Vega Vista's own integration and client id.
+`_fortnox/guard.ts`: one constant used to be two questions — which company the integration may
+talk to at all, and which company it may write to. Moving it to Vega Vista's DatabaseNumber to
+enable reads would have simultaneously authorised writes against their live books, since
+Fortnox grants read and write together as one scope set. So it is two constants:
+
+- `READ_TENANTS` — DatabaseNumbers the integration may talk to at all. Today just **1848969**
+  (Erik's test company). The tenant id from the environment is checked against this list before
+  a client is constructed (a number not in the list refuses with zero requests sent).
+- `WRITE_TENANT` — the single DatabaseNumber the integration may write to: **1848969**, and
+  nothing else, ever, by design (a scalar, not a list). `/3/companyinformation` is checked
+  against it before the first write of every run, so a tenant can be in `READ_TENANTS` and
+  still have every write refused.
+
+Every write goes through `GuardedFortnox.write`; the general client refuses any non-GET without
+it. No environment variable widens either constant: going live means adding Vega Vista's
+DatabaseNumber to `READ_TENANTS` in a reviewed pull request, with their own integration and
+client id — `WRITE_TENANT` does not move.
 
 Why DatabaseNumber and not the organisation number: a Fortnox test company carries the same
 orgnr as the live company it was created from.

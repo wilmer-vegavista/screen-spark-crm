@@ -6,6 +6,10 @@
 .DESCRIPTION
   ./scripts/fortnox-dev.ps1 refuse   the guard refusing tenant 1030384 before any request
   ./scripts/fortnox-dev.ps1 probe    company name, DatabaseNumber, counts in the test company
+  ./scripts/fortnox-dev.ps1 writerefuse
+                                     proof (c): 1848969 as a read-only tenant (WRITE_TENANT
+                                     forced elsewhere for this run only) -- one write refused,
+                                     then a read still succeeds
   ./scripts/fortnox-dev.ps1 seed     fill the dev project with the synthetic customers/screens/orders
                                      (add -Fortnox to also plant the hand-made-looking rows in the test company;
                                       add -Invoices for round one's year of invoices in the test company, and
@@ -17,6 +21,8 @@
   ./scripts/fortnox-dev.ps1 serve    the fortnox-sync function on http://localhost:8000
   ./scripts/fortnox-dev.ps1 feed     the fortnox-ledger-feed function on http://localhost:8001 (round one)
   ./scripts/fortnox-dev.ps1 crm      the CRM (vite dev) against the dev project and the local function
+  ./scripts/fortnox-dev.ps1 read "v_cashflow?row_key=eq.ag_skatt"
+                                     one read of the dev project over PostgREST (schema fortnox)
 
   Credentials: Fortnox comes from the env file named by FORTNOX_ENV_FILE (default: the
   fortnox-agent repo's .env), passed to Deno by path and never read here. Supabase keys
@@ -28,8 +34,10 @@
 #>
 param(
   [Parameter(Position = 0)]
-  [ValidateSet("refuse", "probe", "seed", "sync", "serve", "feed", "crm")]
+  [ValidateSet("refuse", "probe", "writerefuse", "seed", "sync", "serve", "feed", "crm", "read")]
   [string]$Command = "probe",
+  [Parameter(Position = 1)]
+  [string]$Path,
   [switch]$Dry,
   [switch]$Fortnox,
   [switch]$Invoices,
@@ -61,8 +69,10 @@ function Load-SupabaseKeys {
   }
 }
 
-# The guard's constant. The env file's own tenant id is never used.
-$env:FORTNOX_TENANT_ID = "1848969"
+# Default to the test company. A tenant already set in the process environment wins, so a
+# run against Vega Vista is `$env:FORTNOX_TENANT_ID = "1571636"` before the call. The env
+# file's own tenant line is never used (Deno does not override a set variable).
+if (-not $env:FORTNOX_TENANT_ID) { $env:FORTNOX_TENANT_ID = "1848969" }
 
 # Optional local values (ANTHROPIC_API_KEY, ANTHROPIC_MODEL) from .env.local, when present.
 $EnvFiles = @("--env-file=$EnvFile")
@@ -76,6 +86,15 @@ switch ($Command) {
   }
   "probe" {
     deno run --allow-env --allow-net @EnvFiles "$Fx/_fortnox/probe.ts"
+  }
+  "writerefuse" {
+    # A number that is never WRITE_TENANT, for this proof run only -- read solely by
+    # probe.ts's "writerefuse" mode, which passes it into GuardedFortnox's constructor.
+    # guard.ts's company check still requires the connected company to equal the
+    # WRITE_TENANT constant as well, so this variable can only narrow the write target,
+    # never widen it -- see guard.ts's fetchAndGuard.
+    $env:PROBE_FORCE_WRITE_TENANT = "1030384"
+    deno run --allow-env --allow-net @EnvFiles "$Fx/_fortnox/probe.ts" writerefuse
   }
   "seed" {
     Load-SupabaseKeys
@@ -105,6 +124,27 @@ switch ($Command) {
     $env:PORT = "8001"
     Write-Host "fortnox-ledger-feed listening on http://localhost:8001/<token> (Ctrl+C stops it)"
     deno run --allow-env --allow-net "$Fx/fortnox-ledger-feed/index.ts"
+  }
+  "read" {
+    # One read of the dev project over PostgREST - the same route the browser uses.
+    # This COMPLEMENTS `npx supabase db query --linked --project-ref <ref> "<sql>"`, which runs
+    # as `postgres` over the Management API and therefore hides two failures this verb catches:
+    # a schema that is not exposed to PostgREST, and a missing grant or RLS policy.
+    # On that command: BOTH flags are required. `--linked` alone falls back to
+    # supabase/config.toml, which names Vega Vista's OWN project (llpribdacnlejtefnvtm), and
+    # then dies on a direct, IPv6-only connection. $ProjectRef above is a constant, so this
+    # verb can only ever read the dev project. GET only.
+    if (-not $Path) {
+      throw 'Usage: ./scripts/fortnox-dev.ps1 read "v_cashflow?row_key=eq.ag_skatt&select=month,value" - a PostgREST path, schema fortnox.'
+    }
+    Load-SupabaseKeys
+    $headers = @{
+      apikey           = $env:SUPABASE_SERVICE_ROLE_KEY
+      Authorization    = "Bearer $($env:SUPABASE_SERVICE_ROLE_KEY)"
+      "Accept-Profile" = "fortnox"
+    }
+    $uri = "$($env:SUPABASE_URL)/rest/v1/" + $Path.TrimStart('/')
+    Invoke-RestMethod -Method Get -Uri $uri -Headers $headers | ConvertTo-Json -Depth 6
   }
   "crm" {
     Load-SupabaseKeys

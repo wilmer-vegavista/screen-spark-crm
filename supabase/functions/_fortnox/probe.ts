@@ -1,5 +1,5 @@
 /**
- * The guard probe (user-seat proof b).
+ * The guard probe (user-seat proofs b and c).
  *
  *   deno run --allow-env --env-file=<fortnox-agent .env> probe.ts refuse 1030384
  *     → the tenant pointed at another number refuses before a single request
@@ -10,11 +10,26 @@
  *       invoices; round two the suppliers, supplier invoices, vouchers and the SIE export
  *       per financial year. Nothing secret is printed; the org number is left out on
  *       purpose (a test company carries the live company's).
+ *   deno run --allow-env --allow-net --env-file=<fortnox-agent .env> probe.ts writerefuse
+ *     → proof (c): with PROBE_FORCE_WRITE_TENANT set to a number other than 1848969 in the
+ *       process environment, connects to 1848969 as GuardedFortnox would once Vega Vista's
+ *       DatabaseNumber joins READ_TENANTS without being WRITE_TENANT. Attempts one write
+ *       (refused, message printed), then a read (succeeds) -- the exact posture Vega Vista
+ *       will be in. PROBE_FORCE_WRITE_TENANT is read only here, and only to pass this run's
+ *       forced number into GuardedFortnox's constructor as `writeTenant` -- guard.ts never
+ *       reads the variable itself. That constructor slot cannot be used to widen what a run
+ *       may write to: guard.ts's company check refuses unless the connected company equals
+ *       BOTH the `WRITE_TENANT` constant AND this run's `writeTenant`, so setting this
+ *       variable to any number other than 1848969 can only add a refusal, never remove one.
  *
  * Normally run through scripts/fortnox-dev.ps1, which sets FORTNOX_TENANT_ID=1848969
- * in the process environment (the guard's constant) before loading the env file.
+ * in the process environment (the read/write constants' shared test company) before
+ * loading the env file.
  */
 import {
+  ccOptionsFromEnv,
+  FortnoxCcClient,
+  GuardedFortnox,
   guardedFortnoxFromEnv,
   isCancelled,
   listArticles,
@@ -27,9 +42,34 @@ import {
   listVouchers,
   num,
   sieForYear,
+  WRITE_TENANT,
 } from "./mod.ts";
 
 const [mode, tenantArg] = Deno.args;
+
+if (mode === "writerefuse") {
+  const forced = Number(Deno.env.get("PROBE_FORCE_WRITE_TENANT") ?? "");
+  if (!Number.isFinite(forced) || forced <= 0 || forced === WRITE_TENANT) {
+    console.log("Set PROBE_FORCE_WRITE_TENANT to a number other than 1848969 before this mode.");
+    Deno.exit(1);
+  }
+  const g = new GuardedFortnox(new FortnoxCcClient(ccOptionsFromEnv()), forced);
+  try {
+    await g.write("POST", "/customers", {
+      Customer: { Name: "WO-114 guard proof -- must never reach Fortnox" },
+    });
+    console.log("UNEXPECTED: the write was not refused");
+    Deno.exit(1);
+  } catch (e) {
+    console.log(`Write REFUSED: ${(e as Error).message}`);
+  }
+  const customers = await listCustomers(g);
+  console.log(
+    `Read after the refusal still works: Customers ${customers.rows.length} ` +
+      `(pages read: ${customers.read.pages}, Fortnox reported: ${customers.read.reportedTotal})`,
+  );
+  Deno.exit(0);
+}
 
 if (mode === "refuse") {
   let requests = 0;

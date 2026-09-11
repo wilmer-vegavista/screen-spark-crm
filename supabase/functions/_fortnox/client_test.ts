@@ -69,7 +69,61 @@ Deno.test("a second 401 surfaces as a FortnoxApiError instead of looping", async
   assertEquals(f.to("/customers").length, 2);
 });
 
-Deno.test("backs off once on 429 honouring Retry-After, capped at 30 s", async () => {
+Deno.test("paces requests: the second of two back-to-back GETs waits out the gap", async () => {
+  const slept: number[] = [];
+  let clock = 1_000_000;
+  const f = mockFetch([
+    ["POST", "oauth-v1/token", TOKEN_OK],
+    ["GET", "/projects", () => json(200, { Projects: [] })],
+    ["GET", "/articles", () => json(200, { Articles: [] })],
+  ]);
+  const client = new FortnoxCcClient({
+    ...opts,
+    fetchFn: f.fetch,
+    now: () => clock,
+    minGapMs: 210,
+    sleep: (ms) => {
+      slept.push(ms);
+      clock += ms;
+      return Promise.resolve();
+    },
+  });
+  await client.request("GET", "/projects");
+  clock += 50; // the next call starts 50 ms later: 160 ms of the gap is left to wait out
+  await client.request("GET", "/articles");
+  assertEquals(slept, [160]);
+});
+
+Deno.test("survives repeated 429s up to the retry cap, then fails", async () => {
+  const slept: number[] = [];
+  const f = mockFetch([
+    ["POST", "oauth-v1/token", TOKEN_OK],
+    [
+      "GET",
+      "/customers/1",
+      (_c, nth) => (nth <= 3 ? json(429, {}, { "retry-after": "1" }) : json(200, { Customer: {} })),
+    ],
+    ["GET", "/customers/2", () => json(429, {}, { "retry-after": "1" })],
+  ]);
+  const client = new FortnoxCcClient({
+    ...opts,
+    fetchFn: f.fetch,
+    minGapMs: 0,
+    max429Retries: 6,
+    sleep: (ms) => {
+      slept.push(ms);
+      return Promise.resolve();
+    },
+  });
+  await client.request("GET", "/customers/1");
+  assertEquals(slept, [1000, 1000, 1000], "three 429s, three waits, then the 200");
+  assertEquals(f.to("/customers/1").length, 4);
+  const err = await assertRejects(() => client.request("GET", "/customers/2"), FortnoxApiError);
+  assertEquals(err.status, 429);
+  assertEquals(f.to("/customers/2").length, 7, "one try plus six retries, then it gives up");
+});
+
+Deno.test("backs off on 429 honouring Retry-After, capped at 30 s", async () => {
   const slept: number[] = [];
   const f = mockFetch([
     ["POST", "oauth-v1/token", TOKEN_OK],
@@ -89,6 +143,7 @@ Deno.test("backs off once on 429 honouring Retry-After, capped at 30 s", async (
   const client = new FortnoxCcClient({
     ...opts,
     fetchFn: f.fetch,
+    minGapMs: 0,
     sleep: (ms) => {
       slept.push(ms);
       return Promise.resolve();
