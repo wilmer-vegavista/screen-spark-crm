@@ -1021,7 +1021,9 @@ function HealthCard({ data }: { data: StatusResponse }) {
         <div className="text-xs text-muted-foreground mt-1">
           Fortnox:{" "}
           {data.fortnoxConfigured
-            ? "testbolag 1848969 nås"
+            ? (data.runs.find((r) => r.company_name)?.company_name
+              ? `ansluten till ${data.runs.find((r) => r.company_name)!.company_name} (senaste körningen)`
+              : "ansluten – ingen körning ännu")
             : "inga uppgifter i den här miljön – synk avstängd"}{" "}
           · Otydliga namn: {data.claudeConfigured ? "Claude + regler" : "enbart regler"}
         </div>
