@@ -24,6 +24,7 @@ import {
   Contact,
   TrendingUp,
   FileSpreadsheet,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,13 @@ const nav: NavItem[] = [
     to: "/rapport-ekonomi",
     label: "Rapport ekonomi",
     icon: TrendingUp,
+    group: "admin",
+    adminOnly: true,
+  },
+  {
+    to: "/fortnox-koppling",
+    label: "Fortnox-koppling",
+    icon: Link2,
     group: "admin",
     adminOnly: true,
   },

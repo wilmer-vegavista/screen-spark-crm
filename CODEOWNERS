@@ -1,0 +1,8 @@
+# The Fortnox seam: Erik reviews changes to his folder and schema while the packages are
+# in warranty. Everything not listed here is Vega Vista's as before.
+/supabase/functions/                                   @ErikAarup
+/supabase/migrations/*fortnox*                         @ErikAarup
+/supabase/seed/                                        @ErikAarup
+/scripts/fortnox-dev.ps1                               @ErikAarup
+/src/routes/_authenticated/fortnox-koppling.tsx        @ErikAarup
+/docs/fortnox-integration.md                           @ErikAarup
