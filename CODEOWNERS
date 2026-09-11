@@ -4,6 +4,7 @@
 /supabase/migrations/*fortnox*                         @ErikAarup
 /supabase/seed/                                        @ErikAarup
 /scripts/fortnox-dev.ps1                               @ErikAarup
+/scripts/preview/                                      @ErikAarup
 /src/routes/_authenticated/fortnox-koppling.tsx        @ErikAarup
 /src/routes/_authenticated/kundreskontra.tsx           @ErikAarup
 /src/components/fortnox/                               @ErikAarup
