@@ -12,13 +12,13 @@ is **not** their CRM and not part of go-live:
 
 Nothing here touches Vega Vista's own Supabase project, their Lovable/Vercel deploys or `main`.
 
-| Script                       | What it does                                                                                                           | Run by                                    |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `copy-crm.mjs`               | `counts` / `plan` / `copy --login <email>[=<name>] …`: production row counts, a schema comparison, and the copy itself | the build; again only to refresh the data |
-| `supabase-token.ps1`         | puts the Supabase CLI's own token into the process for `copy-crm.mjs` (dot-source it)                                  | with `copy-crm.mjs`                       |
-| `deploy.ps1`                 | builds with the dev project's public values and deploys the Worker — **the redeploy command**                          | anyone with Erik's CLI logins             |
-| `set-fortnox-secrets.ps1`    | the three Fortnox function secrets on the dev project (tenant 1571636)                                                 | Erik                                      |
-| `set-passwords.ps1 -Email …` | a generated password per preview login, printed once to that terminal                                                  | Erik                                      |
+| Script                       | What it does                                                                                                                                  | Run by                                    |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `copy-crm.mjs`               | `counts` / `plan` / `copy --login <email>[=<name>] …`: production row counts, a schema comparison, and the copy itself                        | the build; again only to refresh the data |
+| `supabase-token.ps1`         | puts the Supabase CLI's own token into the process for `copy-crm.mjs` (dot-source it)                                                         | with `copy-crm.mjs`                       |
+| `deploy.ps1 [-Ref <ref>]`    | builds with the dev project's public values and deploys the Worker — **the redeploy command**; `-Ref` builds a pushed tip from a clean export | anyone with Erik's CLI logins             |
+| `set-fortnox-secrets.ps1`    | the three Fortnox function secrets on the dev project (tenant 1571636)                                                                        | Erik                                      |
+| `set-passwords.ps1 -Email …` | a generated password per preview login, printed once to that terminal                                                                         | Erik                                      |
 
 ## What holds, and what holds it
 

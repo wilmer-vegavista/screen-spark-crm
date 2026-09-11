@@ -1,10 +1,11 @@
 <#
 .SYNOPSIS
   Builds the CRM against Erik's dev Supabase project and deploys it as the Cloudflare Worker
-  "vega-vista-preview" (WO-124). Windows PowerShell 5.1, from the root of a checkout of the
-  tip to preview:
+  "vega-vista-preview" (WO-124). Windows PowerShell 5.1:
 
-    ./scripts/preview/deploy.ps1
+    ./scripts/preview/deploy.ps1                                         this checkout as it is
+    ./scripts/preview/deploy.ps1 -Ref origin/erik/fortnox-preview-fixes  a pushed tip (fetched,
+                                                                         exported, built clean)
 
 .DESCRIPTION
   Needs the Supabase CLI logged in (npx supabase login) and CLOUDFLARE_API_TOKEN in the
@@ -13,16 +14,21 @@
   own project; Vite lets variables already in the process win over it, and this script
   refuses to deploy a build that still names their project anywhere.
 
+  With -Ref the tree of that commit is exported (git archive) into a temporary folder, built
+  there with a fresh `npm ci`, deployed, and the folder removed; this checkout is not touched.
+  The Worker version is tagged with the commit it was built from.
+
   The pages call the dev project's functions (VITE_FORTNOX_FUNCTIONS_URL is cleared). The
   Worker gets the dev project's URL and publishable key as plain vars for the server
   functions; no service-role key and no Slack token, so user administration and the Slack
   post answer with an error in the preview instead of acting.
 #>
+param([string]$Ref)
 $env:npm_config_loglevel = "error"
 $ProjectRef = "fcxmtlbrwfbbjudjmloh"  # Erik's vega-vista-dev
 $Theirs = "llpribdacnlejtefnvtm"      # Vega Vista's own project: must not appear in the build
 $Worker = "vega-vista-preview"
-Set-Location (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+$Repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 
 # Native tools write progress to stderr; judge them by exit code, not by stderr (PowerShell 5.1
 # turns redirected stderr lines into errors).
@@ -36,6 +42,27 @@ $keys = npx supabase projects api-keys --project-ref $ProjectRef --output json 2
 $anon = ($keys | Where-Object { $_.name -eq "anon" }).api_key
 Remove-Variable keys
 if (-not $anon) { throw "Could not fetch the dev project's publishable key. Is the Supabase CLI logged in?" }
+
+$work = $null
+if ($Ref) {
+  Invoke-Native "git fetch" { git -C $Repo fetch --quiet origin }
+  $sha = (git -C $Repo rev-parse --verify "$Ref^{commit}") | Select-Object -First 1
+  if ($LASTEXITCODE -ne 0 -or -not $sha) { throw "Unknown ref $Ref." }
+  $work = Join-Path $env:TEMP "vega-vista-preview-$($sha.Substring(0, 12))"
+  if (Test-Path $work) { Remove-Item -Recurse -Force $work }
+  New-Item -ItemType Directory $work | Out-Null
+  Invoke-Native "git archive" { git -C $Repo archive --format=tar -o "$work.tar" $sha }
+  Invoke-Native "tar" { tar -xf "$work.tar" -C $work }
+  Remove-Item "$work.tar"
+  Set-Location $work
+  Invoke-Native "npm ci" { npm ci --no-audit --no-fund }
+  $label = "$Ref @ $($sha.Substring(0, 7))"
+} else {
+  Set-Location $Repo
+  $sha = git rev-parse HEAD
+  $dirty = if (git status --porcelain --untracked-files=no) { " + uncommitted changes" } else { "" }
+  $label = "$(git rev-parse --abbrev-ref HEAD) @ $($sha.Substring(0, 7))$dirty"
+}
 
 $env:VITE_SUPABASE_URL = "https://$ProjectRef.supabase.co"
 $env:VITE_SUPABASE_PROJECT_ID = $ProjectRef
@@ -53,11 +80,18 @@ if ($hits) { throw "Refusing to deploy: the build names Vega Vista's own project
 if (-not ($built | Select-String -SimpleMatch $ProjectRef -List)) {
   throw "Refusing to deploy: the build does not name the dev project, so the VITE_ variables did not reach it."
 }
-Write-Host "Build checked: 0 files name $Theirs; the dev project $ProjectRef is baked in."
+Write-Host "Build of $label checked: 0 files name $Theirs; the dev project $ProjectRef is baked in."
 
 Invoke-Native "wrangler deploy" {
   npx --yes wrangler@4 deploy --name $Worker `
     --var "SUPABASE_URL:$($env:SUPABASE_URL)" `
     --var "SUPABASE_PROJECT_ID:$ProjectRef" `
-    --var "SUPABASE_PUBLISHABLE_KEY:$anon"
+    --var "SUPABASE_PUBLISHABLE_KEY:$anon" `
+    --tag $sha.Substring(0, 7) --message $label
+}
+Write-Host "Deployed $label as $Worker."
+
+if ($work) {
+  Set-Location $Repo
+  Remove-Item -Recurse -Force $work
 }
