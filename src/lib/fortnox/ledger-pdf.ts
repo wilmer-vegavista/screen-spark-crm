@@ -7,7 +7,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format as fmtDate } from "date-fns";
 import { sv } from "date-fns/locale";
-import { installmentLabel, type LedgerRow, SEK2 } from "./ledger";
+import { installmentLabel, type LedgerRow, SEK2, SOURCE_MISSING, SOURCE_MISSING_HINT } from "./ledger";
 
 export interface LedgerPdfInput {
   title: string;
@@ -36,6 +36,9 @@ export function generateLedgerPdf(input: LedgerPdfInput) {
     M,
     y,
   );
+  y += 12;
+  // Paper has no hover: the page's tooltip on Såld / Inlagd i rapport is this line.
+  doc.text(`Såld och Inlagd i rapport: ${SOURCE_MISSING} = ${SOURCE_MISSING_HINT}`, M, y);
 
   const live = input.rows.filter((r) => !r.cancelled);
   const sum = (f: (r: LedgerRow) => number) => live.reduce((s, r) => s + f(r), 0);
@@ -71,8 +74,8 @@ export function generateLedgerPdf(input: LedgerPdfInput) {
       SEK2(r.moms),
       SEK2(r.totalt),
       r.cancelled ? "Makulerad" : ja(r.betald),
-      ja(r.sald),
-      ja(r.inlagd_i_rapport),
+      SOURCE_MISSING,
+      SOURCE_MISSING,
       r.cancelled ? "" : SEK2(r.kvar_att_betala),
       installmentLabel(r),
       r.document_number,

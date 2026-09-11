@@ -160,6 +160,15 @@ export async function fetchLedgerHealth(): Promise<LedgerHealth | null> {
 
 // ---------------------------------------------------------------- labels
 
+/**
+ * Såld and Inlagd i rapport have no source yet. The view sends them as the constant true
+ * ("nothing in the workbook reads Såld"), which on real data says Ja on every row — false:
+ * Filip factors some invoices. Until a source is agreed with him, the page, the XLSX and the
+ * PDF show this instead. The Google Sheet feed keeps its TRUE (assumption 19, question 14).
+ */
+export const SOURCE_MISSING = "–";
+export const SOURCE_MISSING_HINT = "källa saknas ännu — fråga Filip";
+
 export const SEK0 = (n: number) =>
   new Intl.NumberFormat("sv-SE", {
     style: "currency",
