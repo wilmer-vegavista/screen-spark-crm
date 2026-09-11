@@ -9,6 +9,8 @@ import {
   mergeMatch,
   orderLabel,
   plannedSchedule,
+  rejudge,
+  type StoredInvoice,
 } from "./invoice-matcher.ts";
 
 const monthly: MatchOrder = {
@@ -125,6 +127,30 @@ Deno.test("customer not linked → unmatched with a reason; customer without ord
   assertStringIncludes(matchInvoice(inv({}), ix).reason, "ingen order");
 });
 
+Deno.test("a customer number that is an organisation number (556527-5590, invoice 85) is an opaque string", () => {
+  // One of Vega Vista's customers has its organisation number as CustomerNumber in Fortnox (invoice 85).
+  const orgLike = "556527-5590";
+  const unlinked = matchInvoice(
+    inv({ document_number: "85", customer_number: orgLike, customer_name: "Exempelkund med org.nr AB" }),
+    index(),
+  );
+  assertEquals(unlinked.status, "unmatched");
+  assertEquals(
+    unlinked.reason,
+    "Fortnox-kund 556527-5590 (Exempelkund med org.nr AB) är inte kopplad till någon kund i CRM:et",
+  );
+  // Linked like any other: the link table's key is the number exactly as Fortnox sends it.
+  const ix = index();
+  ix.customerIdByNumber = new Map([[orgLike, "cust-1"]]);
+  const linked = matchInvoice(inv({ customer_number: orgLike }), ix);
+  assertEquals(linked.status, "linked");
+  assertEquals(linked.orderId, "order-1");
+  // No reshaping: the digits alone, or a number, are other customers.
+  for (const other of ["5565275590", "556527", "556527-559"]) {
+    assertEquals(matchInvoice(inv({ customer_number: other }), ix).status, "unmatched", other);
+  }
+});
+
 Deno.test("two orders passing all four → a proposal, never a link", () => {
   const twin: MatchOrder = { ...monthly, id: "order-2", created_at: "2026-01-21T10:00:00Z" };
   const ix = index();
@@ -170,6 +196,40 @@ Deno.test("a credit note follows the invoice it credits, whatever its own amount
 Deno.test("orderLabel names the plan", () => {
   assertEquals(orderLabel(oneOff), "Exempel Handel AB · 4 500 kr engångsfaktura från 2026-03-15");
   assertStringIncludes(orderLabel(monthly), "× 12 månadsvis från 2026-02-01");
+});
+
+Deno.test("rejudge: an invoice read before its customer was linked is matched once the link exists; nothing new writes nothing", () => {
+  const now = new Date("2026-09-11T14:00:00Z");
+  const stale = (over: Partial<StoredInvoice>): StoredInvoice => ({
+    ...inv({}),
+    match_status: "unmatched",
+    matched_by: null,
+    order_id: null,
+    candidate_order_id: null,
+    match_confidence: "none",
+    match_method: "none",
+    match_reason: "Fortnox-kund 1 är inte kopplad till någon kund i CRM:et",
+    ...over,
+  });
+  const noLinks: MatchIndex = { ...index(), customerIdByNumber: new Map() };
+  // Before the link: the stored verdict still holds, so nothing is written.
+  const before = stale({});
+  assertEquals(rejudge([before], noLinks, now), []);
+  // After the link: the same row is linked (all four rules), and a credit note on it follows.
+  const ix = index();
+  ix.orderIdByDocument = new Map();
+  ix.originalOfCreditNote = new Map([["8", "7"]]);
+  const note = stale({ document_number: "8", credit: true, amount_excl_vat: -1127.92, invoice_date: "2026-05-20" });
+  const updates = rejudge([note, before], ix, now);
+  assertEquals(updates.map((u) => [u.document_number, u.match_status, u.order_id]), [
+    ["7", "linked", "order-1"],
+    ["8", "linked", "order-1"],
+  ]);
+  // Run it again on what was written: no changes, no writes.
+  const written = updates.map((u) => ({ ...(u.document_number === "7" ? before : note), ...u }) as StoredInvoice);
+  assertEquals(rejudge(written, ix, now), []);
+  // An admin's "Lämna okopplad" / choice is never re-judged.
+  assertEquals(rejudge([stale({ match_status: "proposed", matched_by: "admin:abc" })], ix, now), []);
 });
 
 Deno.test("mergeMatch: an admin's choice is never overwritten, a sync link is kept, the rest is re-judged", () => {

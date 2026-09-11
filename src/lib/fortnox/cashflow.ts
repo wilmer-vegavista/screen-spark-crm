@@ -166,7 +166,6 @@ export interface CashflowHealth {
   vat_period: "monthly" | "quarterly" | "yearly";
   vat_lag_months: number;
   cash_accounts: string;
-  unmapped_accounts: number;
   suppliers_total: number;
   supplier_invoices_total: number;
   supplier_invoices_open: number;
@@ -302,11 +301,18 @@ export async function fetchAccounts(): Promise<AccountRow[]> {
   return (data ?? []) as AccountRow[];
 }
 
+/**
+ * The status line's figures. Not unmapped_accounts: that column re-runs v_unmapped_accounts
+ * (~2.5 s on the real ledger, 8 201 postings) and made this read ~20 times slower (2.8 s vs
+ * 0.15 s as the admin). Next to the page's other heavy reads it then passed the database's 8 s
+ * statement timeout, the read failed, and the line said "Synkstatus okänd" (11 Sept 2026).
+ * The page counts the unmapped accounts from its own v_unmapped_accounts read instead.
+ */
 export async function fetchCashflowHealth(): Promise<CashflowHealth | null> {
   const { data, error } = await fortnoxSchema()
     .from("health")
     .select(
-      "last_run_at, last_run_status, invoices_synced_at, ledger_synced_at, ledger_synced_to, dev_fake_payments, dev_fake_supplier_payments, vat_period, vat_lag_months, cash_accounts, unmapped_accounts, suppliers_total, supplier_invoices_total, supplier_invoices_open, supplier_invoices_overdue, postings_total, postings_first_date, postings_last_date, financial_years_total, cashflow_plan_edited_at",
+      "last_run_at, last_run_status, invoices_synced_at, ledger_synced_at, ledger_synced_to, dev_fake_payments, dev_fake_supplier_payments, vat_period, vat_lag_months, cash_accounts, suppliers_total, supplier_invoices_total, supplier_invoices_open, supplier_invoices_overdue, postings_total, postings_first_date, postings_last_date, financial_years_total, cashflow_plan_edited_at",
     )
     .maybeSingle();
   fail(error);

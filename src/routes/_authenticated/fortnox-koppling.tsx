@@ -75,6 +75,33 @@ export const Route = createFileRoute("/_authenticated/fortnox-koppling")({
 const FUNCTIONS_BASE: string =
   import.meta.env.VITE_FORTNOX_FUNCTIONS_URL || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
+// Writes off (the connected company is not the write tenant — the preview reads Vega Vista's
+// books and creates nothing). The function answers a refused "Skapa i Fortnox" with the same
+// sentence (supabase/functions/_fortnox/posture.ts).
+const WRITES_OFF =
+  "Skapa i Fortnox är avstängt i förhandsvisningen — kopplingar och läsning fungerar, nya kunder skapas vid driftsättning";
+const CREATE_DEFERRED = "Skapas vid driftsättning";
+
+// The guard speaks English, to the logs. What of it reaches this page is said in Swedish:
+// rows the sync refused before 11 Sept still carry the guard's text as their reason.
+const GUARD_WRITE_REFUSAL = /REFUSING to write/;
+const GUARD_OTHER_REFUSAL = /REFUSING|Refusing rather than/;
+
+/** An error or run message as the page shows it. */
+function pageError(text: string): string {
+  if (GUARD_WRITE_REFUSAL.test(text)) return WRITES_OFF;
+  if (GUARD_OTHER_REFUSAL.test(text))
+    return "Fortnox-kopplingen är inte godkänd för det här bolaget – inget anrop skickades";
+  return text;
+}
+
+/** A row's reason as the page shows it; with writes off nothing is created "at the next sync". */
+function rowReason(text: string | null, writesEnabled: boolean): string | null {
+  if (text && GUARD_WRITE_REFUSAL.test(text)) return CREATE_DEFERRED;
+  if (text && !writesEnabled) return text.replace(/skapas vid nästa synk$/, "skapas vid driftsättning");
+  return text;
+}
+
 async function callFortnox<T>(body: Record<string, unknown>): Promise<T> {
   const { data } = await supabase.auth.getSession();
   if (!data.session) throw new Error("Inte inloggad");
@@ -89,7 +116,7 @@ async function callFortnox<T>(body: Record<string, unknown>): Promise<T> {
   });
   const json = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
   if (!res.ok)
-    throw new Error(json.error ?? json.message ?? `Fortnox-funktionen svarade ${res.status}`);
+    throw new Error(pageError(json.error ?? json.message ?? `Fortnox-funktionen svarade ${res.status}`));
   return json as T;
 }
 
@@ -210,6 +237,8 @@ interface StatusResponse {
   invoices: InvoiceRow[];
   fortnoxConfigured: boolean;
   claudeConfigured: boolean;
+  /** The connected company is the write tenant; false = the preview's posture, creates off. */
+  writesEnabled: boolean;
 }
 
 interface SyncSummary {
@@ -295,7 +324,7 @@ function FortnoxKopplingPage() {
     mutationFn: (mode: "sync" | "propose") => callFortnox<SyncSummary>({ action: mode }),
     onSuccess: (s, mode) => {
       if (s.status !== "ok") {
-        toast.error(`Synken misslyckades: ${s.error ?? "okänt fel"}`);
+        toast.error(`Synken misslyckades: ${pageError(s.error ?? "okänt fel")}`);
       } else if (mode === "propose") {
         toast.success(
           `Förslag klara: ${s.proposalsWritten} förslag, ${s.autoLinked} kopplade automatiskt (${s.claudeUsed ? "Claude" : "regler"})`,
@@ -393,6 +422,11 @@ function FortnoxKopplingPage() {
         )}
         {data && (
           <>
+            {data.fortnoxConfigured && !data.writesEnabled && (
+              <Card className="p-3 text-sm" data-notice="writes-off">
+                {WRITES_OFF}
+              </Card>
+            )}
             <HealthCard data={data} />
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList>
@@ -571,19 +605,21 @@ function FortnoxKopplingPage() {
                               name={c.fortnox_name}
                               candidate={c.candidate_number}
                               candidateName={c.candidate_name}
+                              writesEnabled={data.writesEnabled}
                             />
                           </TableCell>
                           <TableCell>
                             <ConfidenceCell confidence={c.confidence} method={c.method} />
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground max-w-md">
-                            {c.reason ??
+                            {rowReason(c.reason, data.writesEnabled) ??
                               (c.proposed_at ? "" : "Inget förslag ännu – kör Föreslå kopplingar")}
                           </TableCell>
                           <TableCell className="text-right">
                             <RowActions
                               status={c.status}
                               busy={busy}
+                              writesEnabled={data.writesEnabled}
                               onConfirm={() =>
                                 rowAction.mutate({
                                   action: "confirm",
@@ -660,19 +696,21 @@ function FortnoxKopplingPage() {
                               name={s.fortnox_description}
                               candidate={s.candidate_number}
                               candidateName={s.candidate_name}
+                              writesEnabled={data.writesEnabled}
                             />
                           </TableCell>
                           <TableCell>
                             <ConfidenceCell confidence={s.confidence} method={s.method} />
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground max-w-md">
-                            {s.reason ??
+                            {rowReason(s.reason, data.writesEnabled) ??
                               (s.proposed_at ? "" : "Inget förslag ännu – kör Föreslå kopplingar")}
                           </TableCell>
                           <TableCell className="text-right">
                             <RowActions
                               status={s.status}
                               busy={busy}
+                              writesEnabled={data.writesEnabled}
                               onConfirm={() =>
                                 rowAction.mutate({
                                   action: "confirm",
@@ -805,7 +843,7 @@ function FortnoxKopplingPage() {
                             {r.invoices_unmatched} okopplade
                           </TableCell>
                           <TableCell className="text-xs text-destructive max-w-md">
-                            {r.error}
+                            {r.error ? pageError(r.error) : null}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1016,7 +1054,7 @@ function HealthCard({ data }: { data: StatusResponse }) {
       <div className="md:col-span-2">
         <div className="font-medium">{statusText}</div>
         <div className="text-xs text-muted-foreground mt-1">
-          {h.last_error ? `Senaste fel ${when(h.last_error_at)}: ${h.last_error}` : "Inga fel"}
+          {h.last_error ? `Senaste fel ${when(h.last_error_at)}: ${pageError(h.last_error)}` : "Inga fel"}
         </div>
         <div className="text-xs text-muted-foreground mt-1">
           Fortnox:{" "}
@@ -1059,11 +1097,13 @@ function FortnoxCell({
   name,
   candidate,
   candidateName,
+  writesEnabled,
 }: {
   number: string | null;
   name: string | null;
   candidate: string | null;
   candidateName: string | null;
+  writesEnabled: boolean;
 }) {
   if (number) {
     return (
@@ -1081,7 +1121,11 @@ function FortnoxCell({
       </div>
     );
   }
-  return <span className="text-xs text-muted-foreground">Ingen kandidat – skapas vid synk</span>;
+  return (
+    <span className="text-xs text-muted-foreground">
+      {writesEnabled ? "Ingen kandidat – skapas vid synk" : "Ingen kandidat – skapas vid driftsättning"}
+    </span>
+  );
 }
 
 function ConfidenceCell({ confidence, method }: { confidence: string; method: string }) {
@@ -1100,6 +1144,7 @@ function RowActions({
   status,
   busy,
   disabled,
+  writesEnabled,
   onConfirm,
   onPick,
   onCreate,
@@ -1107,6 +1152,7 @@ function RowActions({
   status: LinkStatus;
   busy: boolean;
   disabled: boolean;
+  writesEnabled: boolean;
   onConfirm: () => void;
   onPick: () => void;
   onCreate: () => void;
@@ -1121,11 +1167,19 @@ function RowActions({
       <Button size="sm" variant="outline" onClick={onPick} disabled={busy || disabled}>
         <Link2 className="size-4 mr-1" /> {status === "linked" ? "Koppla om" : "Koppla till…"}
       </Button>
-      {status !== "linked" && (
-        <Button size="sm" variant="outline" onClick={onCreate} disabled={busy || disabled}>
-          <Plus className="size-4 mr-1" /> Skapa i Fortnox
-        </Button>
-      )}
+      {status !== "linked" &&
+        (writesEnabled ? (
+          <Button size="sm" variant="outline" onClick={onCreate} disabled={busy || disabled}>
+            <Plus className="size-4 mr-1" /> Skapa i Fortnox
+          </Button>
+        ) : (
+          // A disabled button takes no pointer events, so the tooltip sits on a wrapper.
+          <span title={WRITES_OFF} data-create-off="" className="inline-flex cursor-not-allowed" tabIndex={0}>
+            <Button size="sm" variant="outline" disabled>
+              <Plus className="size-4 mr-1" /> Skapa i Fortnox
+            </Button>
+          </span>
+        ))}
     </div>
   );
 }

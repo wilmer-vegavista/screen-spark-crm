@@ -60,7 +60,13 @@ function cellXml<T>(col: XlsxColumn<T>, c: number, r: number, v: XlsxCell): stri
   }
 }
 
-export function buildXlsx<T>(rows: T[], columns: XlsxColumn<T>[], sheetName = "Blad1"): Uint8Array {
+/** `notes`: plain lines in column A below the rows, after one empty row (what a column means). */
+export function buildXlsx<T>(
+  rows: T[],
+  columns: XlsxColumn<T>[],
+  sheetName = "Blad1",
+  notes: string[] = [],
+): Uint8Array {
   const cols = columns
     .map((c, i) => `<col min="${i + 1}" max="${i + 1}" width="${c.width ?? 14}" customWidth="1"/>`)
     .join("");
@@ -76,11 +82,17 @@ export function buildXlsx<T>(rows: T[], columns: XlsxColumn<T>[], sheetName = "B
       return `<row r="${r}">${columns.map((c, ci) => cellXml(c, ci, r, c.value(row))).join("")}</row>`;
     })
     .join("");
+  const noteRows = notes
+    .map((text, i) => {
+      const r = rows.length + 3 + i;
+      return `<row r="${r}"><c r="${cellRef(0, r)}" t="inlineStr"><is><t xml:space="preserve">${esc(text)}</t></is></c></row>`;
+    })
+    .join("");
   const sheet =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
     `<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>` +
-    `<cols>${cols}</cols><sheetData><row r="1">${header}</row>${body}</sheetData></worksheet>`;
+    `<cols>${cols}</cols><sheetData><row r="1">${header}</row>${body}${noteRows}</sheetData></worksheet>`;
 
   const contentTypes =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
@@ -142,8 +154,9 @@ export function downloadXlsx<T>(
   rows: T[],
   columns: XlsxColumn<T>[],
   sheetName?: string,
+  notes?: string[],
 ) {
-  const bytes = buildXlsx(rows, columns, sheetName);
+  const bytes = buildXlsx(rows, columns, sheetName, notes);
   const blob = new Blob([bytes as BlobPart], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });

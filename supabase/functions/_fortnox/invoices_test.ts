@@ -59,6 +59,17 @@ Deno.test("parseInvoice reads Net, VAT, Total and Balance as numbers (Swedish st
   assertEquals(row.invoice_type, "INVOICE");
 });
 
+Deno.test("an organisation number as CustomerNumber is kept exactly (invoice 85)", () => {
+  const row = parseInvoice({
+    ...detail,
+    DocumentNumber: 85,
+    CustomerNumber: "556527-5590",
+    CustomerName: "Exempelkund med org.nr AB",
+  });
+  assertEquals(row.customer_number, "556527-5590");
+  assertEquals(row.customer_name, "Exempelkund med org.nr AB");
+});
+
 Deno.test("a missing Balance throws — it is never read as paid", () => {
   const { Balance: _b, ...noBalance } = detail;
   assertThrows(() => parseInvoice(noBalance), Error, "Balance is missing");

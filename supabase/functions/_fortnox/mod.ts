@@ -3,6 +3,7 @@
  *
  *   client.ts        token mint (client credentials + TenantId), 401 retry, 429 back-off
  *   guard.ts         the DatabaseNumber 1848969 guard; every write goes through it
+ *   posture.ts       the guard's write question asked ahead of time, for the page (decides nothing)
  *   env.ts           options from the environment, guard applied before construction
  *   paging.ts        the pagination walk that refuses truncated lists
  *   numbers.ts       Swedish number parsing
@@ -26,6 +27,7 @@ export * from "./client.ts";
 export * from "./errors.ts";
 export * from "./env.ts";
 export * from "./guard.ts";
+export * from "./posture.ts";
 export * from "./paging.ts";
 export * from "./numbers.ts";
 export * from "./reads.ts";

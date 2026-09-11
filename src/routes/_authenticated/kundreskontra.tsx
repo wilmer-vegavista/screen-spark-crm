@@ -34,6 +34,8 @@ import {
   installmentLabel,
   type LedgerRow,
   SEK2,
+  SOURCE_MISSING,
+  SOURCE_MISSING_HINT,
 } from "@/lib/fortnox/ledger";
 import { generateLedgerPdf } from "@/lib/fortnox/ledger-pdf";
 import { downloadXlsx, type XlsxColumn } from "@/lib/fortnox/xlsx";
@@ -83,8 +85,9 @@ const XLSX_COLUMNS: XlsxColumn<LedgerRow>[] = [
   { header: "Moms (SEK)", kind: "amount", width: 12, value: (r) => r.moms },
   { header: "Totalt belopp (SEK)", kind: "amount", width: 16, value: (r) => r.totalt },
   { header: "Betald", kind: "boolean", width: 8, value: (r) => r.betald },
-  { header: "Såld", kind: "boolean", width: 8, value: (r) => r.sald },
-  { header: "Inlagd i rapport", kind: "boolean", width: 14, value: (r) => r.inlagd_i_rapport },
+  // No source yet (the view's constant true is not a fact): "–", and a note under the rows says why.
+  { header: "Såld", kind: "text", width: 8, value: () => SOURCE_MISSING },
+  { header: "Inlagd i rapport", kind: "text", width: 14, value: () => SOURCE_MISSING },
   { header: "Kvar att betala (SEK)", kind: "amount", width: 18, value: (r) => r.kvar_att_betala },
   { header: "Delfaktura", kind: "text", width: 16, value: (r) => installmentLabel(r) },
   { header: "Makulerad", kind: "boolean", width: 10, value: (r) => r.cancelled },
@@ -170,7 +173,9 @@ function KundreskontraPage() {
   const h = health.data;
   const syncedLabel = h
     ? `Senast synkad från Fortnox: ${when(h.invoices_synced_at)} · Otydliga namn: ${h.last_run_claude_used ? "Claude + regler" : "enbart regler"}`
-    : "Synkstatus okänd";
+    : health.error
+      ? `Synkstatus kunde inte läsas: ${(health.error as Error).message}`
+      : "Hämtar synkstatus…";
 
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 3 + i);
 
@@ -181,6 +186,7 @@ function KundreskontraPage() {
         filtered,
         XLSX_COLUMNS,
         "Kundreskontra",
+        [`Såld och Inlagd i rapport: ${SOURCE_MISSING} = ${SOURCE_MISSING_HINT}`],
       );
     } catch (e) {
       toast.error((e as Error).message);
@@ -325,8 +331,8 @@ function KundreskontraPage() {
                     <TableHead className="text-right">Moms</TableHead>
                     <TableHead className="text-right">Totalt</TableHead>
                     <TableHead>Betald</TableHead>
-                    <TableHead>Såld</TableHead>
-                    <TableHead>Inlagd i rapport</TableHead>
+                    <TableHead title={SOURCE_MISSING_HINT}>Såld</TableHead>
+                    <TableHead title={SOURCE_MISSING_HINT}>Inlagd i rapport</TableHead>
                     <TableHead className="text-right">Kvar att betala</TableHead>
                     <TableHead>Delfaktura</TableHead>
                     <TableHead>Fortnox-nr</TableHead>
@@ -408,8 +414,12 @@ function KundreskontraPage() {
                           <Badge variant="secondary">Nej</Badge>
                         )}
                       </TableCell>
-                      <TableCell>{ja(r.sald)}</TableCell>
-                      <TableCell>{ja(r.inlagd_i_rapport)}</TableCell>
+                      <TableCell title={SOURCE_MISSING_HINT} data-source-missing="sald">
+                        {SOURCE_MISSING}
+                      </TableCell>
+                      <TableCell title={SOURCE_MISSING_HINT} data-source-missing="inlagd">
+                        {SOURCE_MISSING}
+                      </TableCell>
                       <TableCell className="text-right">
                         {r.cancelled ? "—" : SEK2(r.kvar_att_betala)}
                       </TableCell>
@@ -443,9 +453,9 @@ function KundreskontraPage() {
               </Table>
             </Card>
             <div className="text-xs text-muted-foreground">
-              {syncedLabel}. Betald = saldo noll i Fortnox. Såld och Inlagd i rapport är konstanter
-              (Ja) – se mötessidan. Makulerade fakturor visas överstrukna och räknas inte i
-              summorna.
+              {syncedLabel}. Betald = saldo noll i Fortnox. Såld och Inlagd i rapport visar{" "}
+              {SOURCE_MISSING}: {SOURCE_MISSING_HINT}. Makulerade fakturor visas överstrukna och
+              räknas inte i summorna.
             </div>
           </TabsContent>
 

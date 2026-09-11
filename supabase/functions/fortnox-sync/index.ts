@@ -28,6 +28,7 @@ import {
   hasFortnoxCredentials,
   redact,
   TenantGuardError,
+  writesEnabled,
 } from "../_fortnox/mod.ts";
 import { runSync, type SyncDeps } from "./sync.ts";
 import {
@@ -150,12 +151,27 @@ export async function handle(req: Request): Promise<Response> {
       };
     };
 
+    // Asked of Fortnox once per status read (one GET /settings/company), next to the database
+    // reads: no credentials, a tenant the startup guard refuses, or a failed read all answer
+    // false, and the page still renders.
+    const writesCheck = (): Promise<boolean> => {
+      if (!fortnoxConfigured) return Promise.resolve(false);
+      try {
+        return writesEnabled(guardedFortnoxFromEnv());
+      } catch {
+        return Promise.resolve(false);
+      }
+    };
+
     switch (action) {
-      case "status":
-        return json(
-          200,
-          await status(db, { fortnoxConfigured, claudeConfigured, functionUrl: null }),
-        );
+      case "status": {
+        const [writes, s] = await Promise.all([
+          writesCheck(),
+          status(db, { fortnoxConfigured, claudeConfigured, functionUrl: null }),
+        ]);
+        // writesEnabled: the connected company is WRITE_TENANT; false turns "Skapa i Fortnox" off on the page.
+        return json(200, { ...s, writesEnabled: writes });
+      }
       case "sync": {
         if (!fortnoxConfigured) {
           console.log(`sync skipped (${actor.kind}): fortnox-not-configured`);

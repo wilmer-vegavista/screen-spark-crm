@@ -51,7 +51,11 @@ export interface MatchOrder {
 
 export interface MatchInvoice {
   document_number: string;
+  /** Fortnox's CustomerNumber, an opaque string: Vega Vista has one that is an organisation
+   * number ("556527-5590", invoice 85). Compared as-is, never parsed or reshaped. */
   customer_number: string;
+  /** Fortnox's CustomerName, for the reason text only. */
+  customer_name?: string | null;
   project_number: string | null;
   amount_excl_vat: number;
   invoice_date: string;
@@ -237,7 +241,7 @@ export function matchInvoice(inv: MatchInvoice, index: MatchIndex): InvoiceMatch
       candidateOrderId: null,
       confidence: "none",
       method: "none",
-      reason: `Fortnox-kund ${inv.customer_number} är inte kopplad till någon kund i CRM:et`,
+      reason: `Fortnox-kund ${inv.customer_number}${inv.customer_name ? ` (${inv.customer_name})` : ""} är inte kopplad till någon kund i CRM:et`,
       rules: null,
     };
   }
@@ -304,6 +308,47 @@ export interface ExistingMatch {
   match_status: "unmatched" | "proposed" | "linked" | "ignored";
   matched_by: string | null;
   order_id: string | null;
+}
+
+/** A stored invoice as fortnox.invoices holds it: what the matcher reads plus its current verdict. */
+export interface StoredInvoice extends MatchInvoice, ExistingMatch {
+  candidate_order_id: string | null;
+  match_confidence: InvoiceConfidence;
+  match_method: "rules" | "manual" | "none";
+  match_reason: string | null;
+}
+
+export type MatchUpdate = { document_number: string } & NonNullable<ReturnType<typeof mergeMatch>>;
+
+/**
+ * The stored invoices a run did not read, judged again against today's links and bookings.
+ * An incremental run reads only what Fortnox changed, so an invoice read before its customer
+ * or screen was linked (or its order booked) would keep "Fortnox-kund … är inte kopplad" for
+ * good — on the first read of Vega Vista's books, every invoice was judged before any
+ * customer could be linked. Same rules as a fresh read (mergeMatch: an admin's choice and a
+ * standing sync link are never touched). Returns only the rows whose verdict changes, so a
+ * run with nothing new writes nothing. Ordinary invoices go first, so a credit note can
+ * follow an invoice linked in the same pass.
+ */
+export function rejudge(stored: StoredInvoice[], index: MatchIndex, now: Date): MatchUpdate[] {
+  const updates: MatchUpdate[] = [];
+  const ordered = [...stored].sort(
+    (a, b) => Number(a.credit) - Number(b.credit) || a.invoice_date.localeCompare(b.invoice_date),
+  );
+  for (const s of ordered) {
+    const merged = mergeMatch(s, matchInvoice(s, index), now);
+    if (!merged) continue;
+    if (merged.match_status === "linked" && merged.order_id) index.orderIdByDocument?.set(s.document_number, merged.order_id);
+    const same =
+      merged.match_status === s.match_status &&
+      merged.order_id === s.order_id &&
+      merged.candidate_order_id === s.candidate_order_id &&
+      merged.match_confidence === s.match_confidence &&
+      merged.match_method === s.match_method &&
+      merged.match_reason === s.match_reason;
+    if (!same) updates.push({ document_number: s.document_number, ...merged });
+  }
+  return updates;
 }
 
 export const isAdminDecision = (e: ExistingMatch | undefined | null): boolean =>

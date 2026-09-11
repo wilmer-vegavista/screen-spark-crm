@@ -55,6 +55,28 @@ Deno.test("an incremental read sends lastmodified widened by ten minutes", async
   assertStringIncludes(url, "/projects?lastmodified=2026-09-07 13:50&page=1&limit=500");
 });
 
+Deno.test("a customer number that is an organisation number reads and lists as the same string", async () => {
+  const f = mockFetch([
+    ["POST", "oauth-v1/token", TOKEN_OK],
+    [
+      "GET",
+      "/customers?page=1",
+      () =>
+        json(200, page("Customers", [{ CustomerNumber: "556527-5590", Name: "Exempelkund med org.nr AB" }], 1, 1, 1)),
+    ],
+    [
+      "GET",
+      "/customers/556527-5590",
+      () => json(200, { Customer: { CustomerNumber: "556527-5590", Name: "Exempelkund med org.nr AB" } }),
+    ],
+  ]);
+  const { rows } = await listCustomers(guarded(f));
+  assertEquals(rows[0].CustomerNumber, "556527-5590");
+  const c = await getCustomer(guarded(f), "556527-5590");
+  assertEquals(c.CustomerNumber, "556527-5590");
+  assertStringIncludes(f.to("/customers/")[0].url, "/3/customers/556527-5590");
+});
+
 Deno.test("getCustomer returns the full record with Comments", async () => {
   const f = mockFetch([
     ["POST", "oauth-v1/token", TOKEN_OK],

@@ -20,6 +20,7 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2.108.1";
 import {
   AUTO_LINK_CONFIDENCE,
   claudeFuzzy,
+  CREATE_DEFERRED_REASON,
   createCustomer,
   createProject,
   extractCode,
@@ -39,6 +40,7 @@ import {
   proposeProject,
   redact,
   similarity,
+  TenantGuardError,
 } from "../_fortnox/mod.ts";
 import { type InvoiceStepResult, syncInvoices } from "./invoices-step.ts";
 import { type LedgerStepResult, syncLedger } from "./ledger-step.ts";
@@ -434,6 +436,15 @@ export type CreateOutcome =
   | { kind: "created"; number: string }
   | { kind: "failed"; error: string };
 
+/** The row's reason after a failed create. The guard refusing a read-only company (the
+ * preview's posture) is not an error to the person reading the row — the row is created at
+ * go-live — so it reads Swedish; the run's log keeps the guard's own words. */
+export function createFailedReason(e: unknown, msg: string): string {
+  return e instanceof TenantGuardError
+    ? CREATE_DEFERRED_REASON
+    : `Kunde inte skapa i Fortnox: ${msg}`.slice(0, 500);
+}
+
 /** One CRM customer: marker → org number → create. Writes the link unless dryRun. */
 export async function ensureCustomerInFortnox(
   deps: SyncDeps,
@@ -518,7 +529,7 @@ export async function ensureCustomerInFortnox(
     await writeCustomerLink(fx, {
       customer_id: crm.id,
       status: "unmatched",
-      reason: `Kunde inte skapa i Fortnox: ${msg}`.slice(0, 500),
+      reason: createFailedReason(e, msg),
     });
     return { kind: "failed", error: msg };
   }
@@ -601,7 +612,7 @@ export async function ensureProjectInFortnox(
       product_id: crm.id,
       status: "unmatched",
       crm_code: code,
-      reason: `Kunde inte skapa i Fortnox: ${msg}`.slice(0, 500),
+      reason: createFailedReason(e, msg),
     });
     return { kind: "failed", error: msg };
   }
