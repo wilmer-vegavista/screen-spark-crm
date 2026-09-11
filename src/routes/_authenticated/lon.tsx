@@ -13,11 +13,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Wallet, Plus, Pencil, Trash2, UserCog } from "lucide-react";
-import { format, startOfMonth, endOfMonth, addMonths } from "date-fns";
+import { Wallet, Plus, Pencil, Trash2, UserCog, Thermometer } from "lucide-react";
+import { format, startOfMonth, endOfMonth, addMonths, subDays } from "date-fns";
 import { sv } from "date-fns/locale";
 import { TaxCalculator } from "@/components/tax-calculator";
+import { Calendar } from "@/components/ui/calendar";
 import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/lib/billing";
+import { computeSickDeduction } from "@/lib/sick";
 import { ORDER_SELECT } from "@/lib/order-columns";
 import { DealDialog } from "@/components/deal-dialog";
 import { OrderDialog } from "@/components/order-dialog";
@@ -65,6 +67,7 @@ function LonPage() {
           <Tabs defaultValue="min">
             <TabsList>
               <TabsTrigger value="min">Min lön</TabsTrigger>
+              <TabsTrigger value="sjuk">Sjukdagar</TabsTrigger>
               <TabsTrigger value="alla">Alla säljare</TabsTrigger>
               <TabsTrigger value="produkter">Produkter & provision</TabsTrigger>
               <TabsTrigger value="paket">Paket</TabsTrigger>
@@ -72,24 +75,12 @@ function LonPage() {
               <TabsTrigger value="skatt">Skatteberäkning</TabsTrigger>
             </TabsList>
             <TabsContent value="min" className="mt-4 space-y-4">
-              <Card className="p-4 flex items-center gap-3 flex-wrap">
-                <UserCog className="size-4 text-primary" />
-                <Label className="text-xs">Visa lön för säljare:</Label>
-                <Select value={effectiveUserId ?? ""} onValueChange={(v) => setViewUserId(v)}>
-                  <SelectTrigger className="w-72"><SelectValue placeholder="Välj säljare" /></SelectTrigger>
-                  <SelectContent>
-                    {(sellers ?? []).map(s => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.full_name || s.email}{s.id === user?.id ? " (jag)" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {viewUserId && viewUserId !== user?.id && (
-                  <Button variant="ghost" size="sm" onClick={() => setViewUserId(null)}>Återställ till mig</Button>
-                )}
-              </Card>
+              <SellerPicker sellers={sellers ?? []} value={effectiveUserId} meId={user?.id} viewUserId={viewUserId} onChange={setViewUserId} />
               {effectiveUserId && <SalaryCard userId={effectiveUserId} from={monthStart} to={monthEnd} />}
+            </TabsContent>
+            <TabsContent value="sjuk" className="mt-4 space-y-4">
+              <SellerPicker sellers={sellers ?? []} value={effectiveUserId} meId={user?.id} viewUserId={viewUserId} onChange={setViewUserId} />
+              {effectiveUserId && <SickDays userId={effectiveUserId} editable from={monthStart} to={monthEnd} />}
             </TabsContent>
             <TabsContent value="alla" className="mt-4">
               <AllSellers from={monthStart} to={monthEnd} />
@@ -111,10 +102,14 @@ function LonPage() {
           <Tabs defaultValue="min">
             <TabsList>
               <TabsTrigger value="min">Min lön</TabsTrigger>
+              <TabsTrigger value="sjuk">Sjukdagar</TabsTrigger>
               <TabsTrigger value="skatt">Skatteberäkning</TabsTrigger>
             </TabsList>
             <TabsContent value="min" className="mt-4">
               {user && <SalaryCard userId={user.id} from={monthStart} to={monthEnd} />}
+            </TabsContent>
+            <TabsContent value="sjuk" className="mt-4">
+              {user && <SickDays userId={user.id} editable={false} from={monthStart} to={monthEnd} />}
             </TabsContent>
             <TabsContent value="skatt" className="mt-4">
               <TaxCalculator />
@@ -123,6 +118,115 @@ function LonPage() {
         )}
       </div>
     </>
+  );
+}
+
+function SellerPicker({ sellers, value, meId, viewUserId, onChange }: {
+  sellers: { id: string; full_name: string | null; email: string | null }[];
+  value: string | null;
+  meId: string | undefined;
+  viewUserId: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  return (
+    <Card className="p-4 flex items-center gap-3 flex-wrap">
+      <UserCog className="size-4 text-primary" />
+      <Label className="text-xs">Visa säljare:</Label>
+      <Select value={value ?? ""} onValueChange={(v) => onChange(v)}>
+        <SelectTrigger className="w-72"><SelectValue placeholder="Välj säljare" /></SelectTrigger>
+        <SelectContent>
+          {sellers.map(s => (
+            <SelectItem key={s.id} value={s.id}>
+              {s.full_name || s.email}{s.id === meId ? " (jag)" : ""}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {viewUserId && viewUserId !== meId && (
+        <Button variant="ghost" size="sm" onClick={() => onChange(null)}>Återställ till mig</Button>
+      )}
+    </Card>
+  );
+}
+
+// ---------- Sjukdagar ----------
+function SickDays({ userId, editable, from, to }: { userId: string; editable: boolean; from: Date; to: Date }) {
+  const qc = useQueryClient();
+  const { data: days } = useQuery({
+    queryKey: ["sick-days", userId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("sick_days").select("day").eq("user_id", userId).order("day");
+      if (error) throw error;
+      return (data ?? []).map((r: any) => r.day as string);
+    },
+  });
+  const { data: comp } = useQuery({
+    queryKey: ["seller-comp", userId],
+    queryFn: async () => {
+      const { data } = await supabase.from("seller_compensation").select("compensation_type, base_salary").eq("user_id", userId).maybeSingle();
+      return data;
+    },
+  });
+  const baseSalary = comp?.compensation_type === "endast_provision" ? 0 : Number(comp?.base_salary ?? 0);
+  const summary = computeSickDeduction(baseSalary, days ?? [], from, to);
+  const selected = (days ?? []).map(d => new Date(`${d}T12:00:00`));
+
+  const toggle = async (day: Date) => {
+    if (!editable) return;
+    const iso = format(day, "yyyy-MM-dd");
+    const exists = (days ?? []).includes(iso);
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = exists
+      ? await (supabase as any).from("sick_days").delete().eq("user_id", userId).eq("day", iso)
+      : await (supabase as any).from("sick_days").insert({ user_id: userId, day: iso, created_by: u.user?.id ?? null });
+    if (error) return toast.error(error.message);
+    qc.invalidateQueries({ queryKey: ["sick-days", userId] });
+    qc.invalidateQueries({ predicate: q => {
+      const k = q.queryKey[0];
+      return k === "salary" || k === "all-sellers-salary";
+    } });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard label="Sjukdagar denna månad" value={String(summary.sickDaysInMonth)} />
+        <StatCard label="Karensavdrag" value={String(summary.karensCount)} sub="Antal nya sjukperioder i månaden" />
+        <StatCard label="Löneavdrag denna månad" value={summary.deduction > 0 ? `−${fmt(summary.deduction)}` : fmt(0)} highlight />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Thermometer className="size-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold">{editable ? "Kryssa i sjukdagar" : "Sjukdagar"}</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            {editable
+              ? "Klicka på en dag för att markera eller avmarkera den som sjukdag."
+              : "Dina registrerade sjukdagar. Kontakta admin om något är fel."}
+          </p>
+          <Calendar
+            key={from.toISOString()}
+            mode="multiple"
+            selected={selected}
+            onDayClick={toggle}
+            defaultMonth={from}
+            locale={sv}
+            className="mx-auto"
+          />
+        </Card>
+        <Card className="p-4 text-xs text-muted-foreground space-y-2">
+          <h3 className="text-sm font-semibold text-foreground">Så räknas avdraget (svensk lag, förenklad)</h3>
+          <p>• <b>Karensavdrag:</b> 20 % av en genomsnittlig veckas sjuklön (0,2 × 0,8 × månadslön × 12/52) dras en gång per sjukperiod.</p>
+          <p>• <b>Dag 1–14:</b> arbetsgivaren betalar sjuklön (80 %), så avdraget är 20 % av dagslönen (månadslön × 12/365) per sjukdag.</p>
+          <p>• <b>Från dag 15:</b> Försäkringskassan betalar sjukpenning i stället — hela dagslönen dras från lönen.</p>
+          <p>• <b>Återinsjuknande:</b> blir personen sjuk igen inom 5 kalenderdagar räknas det som samma sjukperiod, utan nytt karensavdrag.</p>
+          {baseSalary <= 0 && (
+            <p className="text-warning">Denna säljare har ingen grundlön (endast provision) — sjukdagar registreras men ger inget löneavdrag.</p>
+          )}
+        </Card>
+      </div>
+    </div>
   );
 }
 
@@ -185,7 +289,7 @@ function useSalary(userId: string, from: Date, to: Date) {
   return useQuery({
     queryKey: ["salary", userId, from.toISOString(), to.toISOString()],
     queryFn: async () => {
-      const [{ data: comp }, { data: deals }, { data: products }, { data: ownedOrders }, { data: commissionRows }] = await Promise.all([
+      const [{ data: comp }, { data: deals }, { data: products }, { data: ownedOrders }, { data: commissionRows }, { data: sickRows }] = await Promise.all([
         supabase.from("seller_compensation").select("*").eq("user_id", userId).maybeSingle(),
         supabase
           .from("deals")
@@ -195,6 +299,10 @@ function useSalary(userId: string, from: Date, to: Date) {
         supabase.from("products").select("*"),
         supabase.from("orders").select(ORDER_SELECT).eq("owner_id", userId),
         supabase.rpc("my_order_commissions"),
+        // 60 dagars historik före månaden behövs för korrekt sjukperiodindelning
+        (supabase as any).from("sick_days").select("day").eq("user_id", userId)
+          .gte("day", format(subDays(from, 60), "yyyy-MM-dd"))
+          .lte("day", format(to, "yyyy-MM-dd")),
       ]);
       const dealIds = (deals ?? []).map(d => d.id);
       const { data: orders } = dealIds.length
@@ -249,7 +357,8 @@ function useSalary(userId: string, from: Date, to: Date) {
       const allRows = [...rows, ...standaloneRows];
       const totalCommission = allRows.reduce((s, r) => s + r.commission, 0);
       const totalValue = allRows.reduce((s, r) => s + r.value, 0);
-      return { comp, compType, rows: allRows, baseSalary, defaultPct, totalCommission, totalValue, total: baseSalary + totalCommission };
+      const sick = computeSickDeduction(baseSalary, ((sickRows ?? []) as any[]).map(r => r.day as string), from, to);
+      return { comp, compType, rows: allRows, baseSalary, defaultPct, totalCommission, totalValue, sick, total: baseSalary + totalCommission - sick.deduction };
     },
   });
 }
@@ -294,9 +403,12 @@ function SalaryCard({ userId, from, to }: { userId: string; from: Date; to: Date
   if (isLoading || !data) return <Card className="p-6 text-sm text-muted-foreground">Laddar…</Card>;
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 gap-4 ${data.sick.deduction > 0 ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
         <StatCard label="Grundlön" value={fmt(data.baseSalary)} />
         <StatCard label="Provision" value={fmt(data.totalCommission)} sub={`${data.rows.length} vunna affärer · ${fmt(data.totalValue)}`} />
+        {data.sick.deduction > 0 && (
+          <StatCard label="Sjukavdrag" value={`−${fmt(data.sick.deduction)}`} sub={`${data.sick.sickDaysInMonth} sjukdagar · ${data.sick.karensCount} karensavdrag`} />
+        )}
         <StatCard label="Totalt denna månad" value={fmt(data.total)} highlight />
       </div>
       <Card>
@@ -372,7 +484,7 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
   const { data } = useQuery({
     queryKey: ["all-sellers-salary", from.toISOString(), to.toISOString()],
     queryFn: async () => {
-      const [{ data: comps }, { data: profiles }, { data: deals }, { data: products }, { data: allOrders }, { data: commissionRows }] = await Promise.all([
+      const [{ data: comps }, { data: profiles }, { data: deals }, { data: products }, { data: allOrders }, { data: commissionRows }, { data: sickRows }] = await Promise.all([
         supabase.from("seller_compensation").select("*"),
         supabase.from("profiles").select("id, full_name, email"),
         supabase
@@ -382,7 +494,16 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
         supabase.from("products").select("*"),
         supabase.from("orders").select(ORDER_SELECT),
         supabase.rpc("my_order_commissions"),
+        (supabase as any).from("sick_days").select("user_id, day")
+          .gte("day", format(subDays(from, 60), "yyyy-MM-dd"))
+          .lte("day", format(to, "yyyy-MM-dd")),
       ]);
+      const sickByUser = new Map<string, string[]>();
+      for (const r of (sickRows ?? []) as any[]) {
+        const arr = sickByUser.get(r.user_id) ?? [];
+        arr.push(r.day as string);
+        sickByUser.set(r.user_id, arr);
+      }
       const dealIds = (deals ?? []).map(d => d.id);
       const { data: orders } = dealIds.length
         ? await supabase.from("orders").select(ORDER_SELECT).in("deal_id", dealIds)
@@ -428,13 +549,15 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
         const p = profileMap.get(userId);
         const compType = c?.compensation_type ?? "med_grundlon";
         const base = compType === "endast_provision" ? 0 : Number(c?.base_salary ?? 0);
+        const sick = computeSickDeduction(base, sickByUser.get(userId) ?? [], from, to);
         return {
           userId,
           name: p?.full_name || p?.email || "Okänd",
           compType,
           base,
           commission: g.commission,
-          total: base + g.commission,
+          sickDeduction: sick.deduction,
+          total: base + g.commission - sick.deduction,
           count: g.count,
           value: g.value,
         };
@@ -452,6 +575,7 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
             <TableHead className="text-right">Försäljning</TableHead>
             <TableHead className="text-right">Grundlön</TableHead>
             <TableHead className="text-right">Provision</TableHead>
+            <TableHead className="text-right">Sjukavdrag</TableHead>
             <TableHead className="text-right">Totalt</TableHead>
           </TableRow>
         </TableHeader>
@@ -464,12 +588,13 @@ function AllSellers({ from, to }: { from: Date; to: Date }) {
               <TableCell className="text-right">{fmt(r.value)}</TableCell>
               <TableCell className="text-right">{fmt(r.base)}</TableCell>
               <TableCell className="text-right">{fmt(r.commission)}</TableCell>
+              <TableCell className="text-right text-destructive">{r.sickDeduction > 0 ? `−${fmt(r.sickDeduction)}` : "—"}</TableCell>
               <TableCell className="text-right font-semibold text-primary">{fmt(r.total)}</TableCell>
             </TableRow>
           ))}
           {(data ?? []).length === 0 && (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground py-6">Ingen data</TableCell>
+              <TableCell colSpan={8} className="text-center text-muted-foreground py-6">Ingen data</TableCell>
             </TableRow>
           )}
         </TableBody>
