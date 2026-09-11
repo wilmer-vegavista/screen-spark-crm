@@ -173,7 +173,9 @@ function KundreskontraPage() {
   const h = health.data;
   const syncedLabel = h
     ? `Senast synkad från Fortnox: ${when(h.invoices_synced_at)} · Otydliga namn: ${h.last_run_claude_used ? "Claude + regler" : "enbart regler"}`
-    : "Synkstatus okänd";
+    : health.error
+      ? `Synkstatus kunde inte läsas: ${(health.error as Error).message}`
+      : "Hämtar synkstatus…";
 
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 3 + i);
 

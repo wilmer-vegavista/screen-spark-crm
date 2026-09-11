@@ -44,13 +44,21 @@ function must<T>(res: { data: T | null; error: { message: string } | null }, wha
   return res.data as T;
 }
 
+/** The health columns the Fortnox-koppling page shows. Not `*`: unmapped_accounts alone costs
+ * ~2.5 s on the real ledger (8 201 postings, 11 Sept 2026) and this page never shows it. */
+const PAGE_HEALTH_COLUMNS =
+  "last_run_at, last_run_status, last_run_trigger, last_run_created, last_ok_at, last_error_at, last_error, " +
+  "mismatch_count, customers_linked, customers_proposed, customers_unlinked, projects_linked, projects_proposed, " +
+  "projects_unlinked, invoices_total, invoices_linked, invoices_proposed, invoices_unmatched, invoices_ignored, " +
+  "invoices_paid, invoices_overdue, invoices_synced_at, feed_rotated_at, dev_fake_payments";
+
 export async function status(
   db: SupabaseClient,
   flags: { fortnoxConfigured: boolean; claudeConfigured: boolean; functionUrl: string | null },
 ) {
   const fx = db.schema("fortnox");
   const [health, customers, screens, runs, invoices] = await Promise.all([
-    fx.from("health").select("*").single(),
+    fx.from("health").select(PAGE_HEALTH_COLUMNS).single(),
     fx.from("v_customer_numbers").select("*").order("company_name"),
     fx.from("v_project_numbers").select("*").order("name"),
     fx

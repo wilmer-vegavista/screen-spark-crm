@@ -75,17 +75,29 @@ function KassaflodePage() {
   }, [years.data, fyFrom]);
 
   const fy = years.data?.find((y) => y.from_date === fyFrom);
-  const cells = useQuery({ queryKey: ["fortnox-cashflow", fyFrom], queryFn: () => fetchCashflow(fyFrom), enabled: Boolean(fyFrom) });
-  const position = useQuery({ queryKey: ["fortnox-cash-position", fyFrom], queryFn: () => fetchCashPosition(fyFrom), enabled: Boolean(fyFrom) });
+  // The four heavy views (v_cashflow, v_cash_position, v_cashflow_items, v_unmapped_accounts:
+  // 1.4–2.5 s each on the real ledger) are read two at a time, never all at once. Side by side
+  // they passed the database's 8 s statement timeout on 11 Sept and came back 500 until a retry;
+  // a tab switch refetched them all together again, so they do not refetch on focus.
+  const heavy = { refetchOnWindowFocus: false } as const;
+  const cells = useQuery({ queryKey: ["fortnox-cashflow", fyFrom], queryFn: () => fetchCashflow(fyFrom), enabled: Boolean(fyFrom), ...heavy });
+  const position = useQuery({ queryKey: ["fortnox-cash-position", fyFrom], queryFn: () => fetchCashPosition(fyFrom), enabled: Boolean(fyFrom), ...heavy });
+  const gridRead = cells.isFetched && position.isFetched;
   const items = useQuery({
     queryKey: ["fortnox-cashflow-items", fyFrom],
     queryFn: () => fetchCashflowItems(fyFrom, fy?.to_date ?? fyFrom),
-    enabled: Boolean(fyFrom && fy),
+    enabled: Boolean(fyFrom && fy) && gridRead,
+    ...heavy,
   });
   const plan = useQuery({ queryKey: ["fortnox-cashflow-plan"], queryFn: fetchPlan });
   const accountMap = useQuery({ queryKey: ["fortnox-account-map"], queryFn: fetchAccountMap });
   const rules = useQuery({ queryKey: ["fortnox-revenue-rules"], queryFn: fetchRevenueRules });
-  const unmapped = useQuery({ queryKey: ["fortnox-unmapped-accounts"], queryFn: fetchUnmappedAccounts });
+  const unmapped = useQuery({
+    queryKey: ["fortnox-unmapped-accounts"],
+    queryFn: fetchUnmappedAccounts,
+    enabled: gridRead && items.isFetched,
+    ...heavy,
+  });
   const accounts = useQuery({ queryKey: ["fortnox-accounts"], queryFn: fetchAccounts });
 
   const grid = useMemo(
@@ -93,16 +105,21 @@ function KassaflodePage() {
     [rows.data, cells.data, position.data],
   );
 
-  const invalidateAll = () => {
-    for (const key of ["fortnox-cashflow", "fortnox-cash-position", "fortnox-cashflow-items", "fortnox-cashflow-plan", "fortnox-account-map", "fortnox-revenue-rules", "fortnox-unmapped-accounts", "fortnox-cashflow-health"]) {
-      qc.invalidateQueries({ queryKey: [key] });
-    }
+  // After an edit: the light reads together, then the heavy ones in the same pairs as on load.
+  const invalidateAll = async () => {
+    const refresh = (...keys: string[]) => Promise.all(keys.map((key) => qc.invalidateQueries({ queryKey: [key] })));
+    await refresh("fortnox-cashflow-plan", "fortnox-account-map", "fortnox-revenue-rules", "fortnox-cashflow-health");
+    await refresh("fortnox-cashflow", "fortnox-cash-position");
+    await refresh("fortnox-cashflow-items", "fortnox-unmapped-accounts");
   };
 
   const h = health.data;
+  const unmappedCount = unmapped.data?.length ?? 0;
   const syncedLabel = h
     ? `Huvudboken synkad ${when(h.ledger_synced_at)} (t.o.m. ${h.ledger_synced_to ?? "–"}) · kundfakturor ${when(h.invoices_synced_at)} · ${h.postings_total} verifikationsrader, ${h.supplier_invoices_total} leverantörsfakturor (${h.supplier_invoices_open} öppna, ${h.supplier_invoices_overdue} förfallna)`
-    : "Synkstatus okänd";
+    : health.error
+      ? `Synkstatus kunde inte läsas: ${(health.error as Error).message}`
+      : "Hämtar synkstatus…";
   const loading = years.isLoading || rows.isLoading || cells.isLoading || position.isLoading;
   const error = years.error ?? rows.error ?? cells.error ?? position.error;
   const months = position.data?.map((p) => p.month) ?? [];
@@ -150,9 +167,9 @@ function KassaflodePage() {
         )}
         <Card className="p-3 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 items-center" data-banner="sync">
           <span>{syncedLabel}</span>
-          {h && h.unmapped_accounts > 0 && (
+          {unmappedCount > 0 && (
             <Badge variant="outline" className="cursor-pointer" onClick={() => setTab("regler")}>
-              {h.unmapped_accounts} okopplade konton
+              {unmappedCount} okopplade konton
             </Badge>
           )}
           {h && (
@@ -179,7 +196,7 @@ function KassaflodePage() {
               <TabsTrigger value="kassaflode">Kassaflöde</TabsTrigger>
               <TabsTrigger value="plan">Plan</TabsTrigger>
               <TabsTrigger value="regler">
-                Regler &amp; konton{h && h.unmapped_accounts > 0 ? <Badge variant="secondary" className="ml-1">{h.unmapped_accounts}</Badge> : null}
+                Regler &amp; konton{unmappedCount > 0 ? <Badge variant="secondary" className="ml-1">{unmappedCount}</Badge> : null}
               </TabsTrigger>
             </TabsList>
             <TabsContent value="kassaflode" className="pt-4 space-y-3">
