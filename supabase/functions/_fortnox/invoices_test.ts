@@ -64,10 +64,10 @@ Deno.test("an organisation number as CustomerNumber is kept exactly (invoice 85)
     ...detail,
     DocumentNumber: 85,
     CustomerNumber: "556527-5590",
-    CustomerName: "Borås Energi och Miljö AB",
+    CustomerName: "Exempelkund med org.nr AB",
   });
   assertEquals(row.customer_number, "556527-5590");
-  assertEquals(row.customer_name, "Borås Energi och Miljö AB");
+  assertEquals(row.customer_name, "Exempelkund med org.nr AB");
 });
 
 Deno.test("a missing Balance throws — it is never read as paid", () => {

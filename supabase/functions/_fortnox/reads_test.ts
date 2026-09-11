@@ -62,12 +62,12 @@ Deno.test("a customer number that is an organisation number reads and lists as t
       "GET",
       "/customers?page=1",
       () =>
-        json(200, page("Customers", [{ CustomerNumber: "556527-5590", Name: "Borås Energi och Miljö AB" }], 1, 1, 1)),
+        json(200, page("Customers", [{ CustomerNumber: "556527-5590", Name: "Exempelkund med org.nr AB" }], 1, 1, 1)),
     ],
     [
       "GET",
       "/customers/556527-5590",
-      () => json(200, { Customer: { CustomerNumber: "556527-5590", Name: "Borås Energi och Miljö AB" } }),
+      () => json(200, { Customer: { CustomerNumber: "556527-5590", Name: "Exempelkund med org.nr AB" } }),
     ],
   ]);
   const { rows } = await listCustomers(guarded(f));

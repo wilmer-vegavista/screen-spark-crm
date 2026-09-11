@@ -45,15 +45,15 @@ const pool = [
 
 Deno.test("customer: a Fortnox number that is an organisation number is proposed as that string", () => {
   const p = proposeCustomer(
-    { id: "c9", company_name: "Borås Energi och Miljö AB", org_number: "556527-5590" },
-    [...pool, { number: "556527-5590", name: "Borås Energi och Miljö AB", orgNumber: "556527-5590" }],
+    { id: "c9", company_name: "Exempelkund med org.nr AB", org_number: "556527-5590" },
+    [...pool, { number: "556527-5590", name: "Exempelkund med org.nr AB", orgNumber: "556527-5590" }],
   );
   assertEquals(p.candidateNumber, "556527-5590");
   assertEquals(p.confidence, "exact");
   // Taken is keyed by the same string: once linked, it is not offered again.
   const again = proposeCustomer(
-    { id: "c10", company_name: "Borås Energi och Miljö AB", org_number: "556527-5590" },
-    [{ number: "556527-5590", name: "Borås Energi och Miljö AB", orgNumber: "556527-5590" }],
+    { id: "c10", company_name: "Exempelkund med org.nr AB", org_number: "556527-5590" },
+    [{ number: "556527-5590", name: "Exempelkund med org.nr AB", orgNumber: "556527-5590" }],
     new Set(["556527-5590"]),
   );
   assertEquals(again.candidateNumber, null);

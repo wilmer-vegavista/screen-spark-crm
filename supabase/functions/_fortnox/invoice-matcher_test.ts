@@ -128,16 +128,16 @@ Deno.test("customer not linked → unmatched with a reason; customer without ord
 });
 
 Deno.test("a customer number that is an organisation number (556527-5590, invoice 85) is an opaque string", () => {
-  // Vega Vista's Borås Energi och Miljö AB has CustomerNumber "556527-5590" in Fortnox.
+  // One of Vega Vista's customers has its organisation number as CustomerNumber in Fortnox (invoice 85).
   const orgLike = "556527-5590";
   const unlinked = matchInvoice(
-    inv({ document_number: "85", customer_number: orgLike, customer_name: "Borås Energi och Miljö AB" }),
+    inv({ document_number: "85", customer_number: orgLike, customer_name: "Exempelkund med org.nr AB" }),
     index(),
   );
   assertEquals(unlinked.status, "unmatched");
   assertEquals(
     unlinked.reason,
-    "Fortnox-kund 556527-5590 (Borås Energi och Miljö AB) är inte kopplad till någon kund i CRM:et",
+    "Fortnox-kund 556527-5590 (Exempelkund med org.nr AB) är inte kopplad till någon kund i CRM:et",
   );
   // Linked like any other: the link table's key is the number exactly as Fortnox sends it.
   const ix = index();
