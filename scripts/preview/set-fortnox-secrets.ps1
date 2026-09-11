@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Erik's hand (WO-124 §6, step 1): the three Fortnox function secrets on the DEV project, so
+  Erik's hand (WO-124 section 6, step 1): the three Fortnox function secrets on the DEV project, so
   the deployed fortnox-sync reads Vega Adscreens AB (tenant 1571636) every hour.
 
     ./scripts/preview/set-fortnox-secrets.ps1

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Erik's hand (WO-124 §6, step 2): a fresh generated password for each preview login in
+  Erik's hand (WO-124 section 6, step 2): a fresh generated password for each preview login in
   Erik's DEV project, printed ONCE to this terminal. Nothing is written to a file.
 
     ./scripts/preview/set-passwords.ps1 -Email <filip's address>, <wilmer's address>
