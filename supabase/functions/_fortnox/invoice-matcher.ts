@@ -51,7 +51,11 @@ export interface MatchOrder {
 
 export interface MatchInvoice {
   document_number: string;
+  /** Fortnox's CustomerNumber, an opaque string: Vega Vista has one that is an organisation
+   * number ("556527-5590", invoice 85). Compared as-is, never parsed or reshaped. */
   customer_number: string;
+  /** Fortnox's CustomerName, for the reason text only. */
+  customer_name?: string | null;
   project_number: string | null;
   amount_excl_vat: number;
   invoice_date: string;
@@ -237,7 +241,7 @@ export function matchInvoice(inv: MatchInvoice, index: MatchIndex): InvoiceMatch
       candidateOrderId: null,
       confidence: "none",
       method: "none",
-      reason: `Fortnox-kund ${inv.customer_number} är inte kopplad till någon kund i CRM:et`,
+      reason: `Fortnox-kund ${inv.customer_number}${inv.customer_name ? ` (${inv.customer_name})` : ""} är inte kopplad till någon kund i CRM:et`,
       rules: null,
     };
   }

@@ -251,6 +251,7 @@ export async function syncInvoices(
       {
         document_number: r.document_number,
         customer_number: r.customer_number,
+        customer_name: r.customer_name,
         project_number: r.project_number,
         amount_excl_vat: r.amount_excl_vat,
         invoice_date: r.invoice_date,

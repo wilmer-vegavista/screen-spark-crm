@@ -125,6 +125,30 @@ Deno.test("customer not linked → unmatched with a reason; customer without ord
   assertStringIncludes(matchInvoice(inv({}), ix).reason, "ingen order");
 });
 
+Deno.test("a customer number that is an organisation number (556527-5590, invoice 85) is an opaque string", () => {
+  // Vega Vista's Borås Energi och Miljö AB has CustomerNumber "556527-5590" in Fortnox.
+  const orgLike = "556527-5590";
+  const unlinked = matchInvoice(
+    inv({ document_number: "85", customer_number: orgLike, customer_name: "Borås Energi och Miljö AB" }),
+    index(),
+  );
+  assertEquals(unlinked.status, "unmatched");
+  assertEquals(
+    unlinked.reason,
+    "Fortnox-kund 556527-5590 (Borås Energi och Miljö AB) är inte kopplad till någon kund i CRM:et",
+  );
+  // Linked like any other: the link table's key is the number exactly as Fortnox sends it.
+  const ix = index();
+  ix.customerIdByNumber = new Map([[orgLike, "cust-1"]]);
+  const linked = matchInvoice(inv({ customer_number: orgLike }), ix);
+  assertEquals(linked.status, "linked");
+  assertEquals(linked.orderId, "order-1");
+  // No reshaping: the digits alone, or a number, are other customers.
+  for (const other of ["5565275590", "556527", "556527-559"]) {
+    assertEquals(matchInvoice(inv({ customer_number: other }), ix).status, "unmatched", other);
+  }
+});
+
 Deno.test("two orders passing all four → a proposal, never a link", () => {
   const twin: MatchOrder = { ...monthly, id: "order-2", created_at: "2026-01-21T10:00:00Z" };
   const ix = index();

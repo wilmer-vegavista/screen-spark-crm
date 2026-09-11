@@ -43,6 +43,22 @@ const pool = [
   { number: "12", name: "Kaffebaren i Stan AB", orgNumber: null },
 ];
 
+Deno.test("customer: a Fortnox number that is an organisation number is proposed as that string", () => {
+  const p = proposeCustomer(
+    { id: "c9", company_name: "Borås Energi och Miljö AB", org_number: "556527-5590" },
+    [...pool, { number: "556527-5590", name: "Borås Energi och Miljö AB", orgNumber: "556527-5590" }],
+  );
+  assertEquals(p.candidateNumber, "556527-5590");
+  assertEquals(p.confidence, "exact");
+  // Taken is keyed by the same string: once linked, it is not offered again.
+  const again = proposeCustomer(
+    { id: "c10", company_name: "Borås Energi och Miljö AB", org_number: "556527-5590" },
+    [{ number: "556527-5590", name: "Borås Energi och Miljö AB", orgNumber: "556527-5590" }],
+    new Set(["556527-5590"]),
+  );
+  assertEquals(again.candidateNumber, null);
+});
+
 Deno.test("customer: same org number wins, exact", () => {
   const p = proposeCustomer(
     { id: "c1", company_name: "Något Helt Annat", org_number: "5560001111" },
