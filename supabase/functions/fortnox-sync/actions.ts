@@ -12,6 +12,8 @@ import {
   type GuardedFortnox,
   listCustomers,
   listProjects,
+  writesEnabled,
+  WRITES_OFF_NOTICE,
 } from "../_fortnox/mod.ts";
 import {
   type CrmCustomerRow,
@@ -232,6 +234,9 @@ export async function createOne(
   adminId: string,
   log: (s: string) => void,
 ) {
+  // The page greys the button out when writes are off; this answers a click that got through
+  // anyway in Swedish, before a minute of marker reads the guard would refuse at the end of.
+  if (!(await writesEnabled(deps.fortnox))) throw new ActionError(403, WRITES_OFF_NOTICE);
   const ctx = await loadContext(deps, log);
   const linkedBy = `admin:${adminId}`;
   if (kind === "customer") {
