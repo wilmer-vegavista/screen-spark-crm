@@ -10,6 +10,8 @@
  *      requiredNum on Balance/Total/Net/TotalVAT — a malformed balance fails the run.
  *   3. Match every invoice to an order (invoice-matcher.ts). An admin's earlier choice
  *      and a standing sync link are kept; the rest take the fresh verdict.
+ *   3b. Judge again the stored unlinked / proposed invoices this run did not read — a link
+ *      or a booking made since can match them — and write only the verdicts that changed.
  *   4. Upsert by document number. Dev-only: document numbers listed in
  *      fortnox.settings.dev_fake_payments are stored with balance 0 (the seed writes that
  *      key when the test company refuses to bookkeep payments; the health row says so).
@@ -33,7 +35,9 @@ import {
   parseInvoice,
   redact,
   refreshLedgerSnapshot,
+  rejudge,
   snapshotYears,
+  type StoredInvoice,
 } from "../_fortnox/mod.ts";
 
 export interface InvoiceStepDeps {
@@ -53,6 +57,10 @@ export interface InvoiceStepResult {
   ignored: number;
   /** Rows whose match an admin had decided; left as they were. */
   adminKept: number;
+  /** Stored unlinked / proposed invoices this run did not read, judged again (step 3b). */
+  rejudged: number;
+  /** …of which the verdict changed and was written. */
+  rematched: number;
   fakePaymentsApplied: number;
   window: string;
   mode: "backfill" | "incremental";
@@ -157,6 +165,8 @@ export async function syncInvoices(
     unmatched: 0,
     ignored: 0,
     adminKept: 0,
+    rejudged: 0,
+    rematched: 0,
     fakePaymentsApplied: 0,
     window: "",
     mode: "incremental",
@@ -279,6 +289,30 @@ export async function syncInvoices(
     }
   }
 
+  // ---- 3b. the stored invoices this run did not read, judged again: a customer or screen
+  // linked since they were read (or an order booked since) can match them now, and nothing in
+  // Fortnox changed to bring them back through the incremental read. Database only.
+  const readNow = new Set(rows.map((r) => r.document_number));
+  const stored = (must(
+    await fx
+      .from("invoices")
+      .select(
+        "document_number, customer_number, customer_name, project_number, amount_excl_vat, invoice_date, credit, match_status, matched_by, order_id, candidate_order_id, match_confidence, match_method, match_reason",
+      )
+      .in("match_status", ["unmatched", "proposed"]),
+    "read unsettled invoices",
+  ) as (StoredInvoice & { amount_excl_vat: number | string })[])
+    .filter((s) => !readNow.has(s.document_number))
+    .map((s) => ({ ...s, amount_excl_vat: Number(s.amount_excl_vat), invoice_date: String(s.invoice_date).slice(0, 10) }));
+  const updates = rejudge(stored, index, now);
+  result.rejudged = stored.length;
+  result.rematched = updates.length;
+  for (const u of updates) {
+    log(
+      `  ${u.document_number} (not changed in Fortnox) → ${u.match_status}${u.match_status !== "unmatched" ? ` [${u.match_confidence}]` : ""}: ${u.match_reason}`,
+    );
+  }
+
   // ---- 4. upsert (columns not in the payload stay as they are — that is how a kept match survives)
   if (!dryRun) {
     for (const batch of [withMatch, withoutMatch]) {
@@ -288,6 +322,12 @@ export async function syncInvoices(
           "write invoices",
         );
       }
+    }
+    for (const { document_number, ...match } of updates) {
+      must(
+        await fx.from("invoices").update(match).eq("document_number", document_number),
+        `write invoice ${document_number}`,
+      );
     }
     must(
       await fx.from("settings").upsert({ key: CURSOR_KEY, value: seenAt }, { onConflict: "key" }),
@@ -313,7 +353,7 @@ export async function syncInvoices(
     }
   }
   log(
-    `Invoices done: ${result.read} read, ${result.matched} matched, ${result.proposed} proposed, ${result.unmatched} unmatched${result.ignored ? `, ${result.ignored} left unlinked by an admin` : ""}${result.adminKept ? `, ${result.adminKept} admin decision(s) kept` : ""}${result.fakePaymentsApplied ? `, ${result.fakePaymentsApplied} DEV fake payment(s) applied` : ""}${dryRun ? " (dry run — nothing written)" : ""}`,
+    `Invoices done: ${result.read} read, ${result.matched} matched, ${result.proposed} proposed, ${result.unmatched} unmatched${result.ignored ? `, ${result.ignored} left unlinked by an admin` : ""}${result.adminKept ? `, ${result.adminKept} admin decision(s) kept` : ""}; ${result.rejudged} stored invoice(s) judged again, ${result.rematched} changed${result.fakePaymentsApplied ? `, ${result.fakePaymentsApplied} DEV fake payment(s) applied` : ""}${dryRun ? " (dry run — nothing written)" : ""}`,
   );
   return result;
 }
