@@ -13,9 +13,10 @@
  * Two checks, in the order they can fail:
  *  1. `assertAllowedTenant` at startup — the tenant id from the environment must be in
  *     `READ_TENANTS`, or nothing is constructed and no request is sent.
- *  2. `GuardedFortnox.company()` before the first write of every run — GET
- *     /companyinformation must report `WRITE_TENANT`'s DatabaseNumber, or the write is
- *     refused. A tenant can be in `READ_TENANTS` and still fail this check.
+ *  2. `assertWriteTenant` before every write — GET /settings/company (fetched once per run
+ *     by `company()`, which only identifies and never refuses) must report `WRITE_TENANT`'s
+ *     DatabaseNumber, or the write is refused. A tenant can be in `READ_TENANTS` and still
+ *     fail this check; that is exactly Vega Vista's posture until go-live.
  * Every write goes through `GuardedFortnox.write`, which is the only code that sets the
  * client's `guardedWritePath` flag.
  *
@@ -28,9 +29,10 @@
 import type { FortnoxApi, HttpMethod } from "./client.ts";
 import { TenantGuardError } from "./errors.ts";
 
-/** DatabaseNumbers the integration may talk to at all. Vega Vista's joins this list once
- * Filip has consented and told us the number — in its own reviewed pull request. */
-export const READ_TENANTS: readonly number[] = [1848969];
+/** DatabaseNumbers the integration may talk to at all. 1848969 is the fortnox-agent's test
+ * company; 1571636 is Vega Vista, consented by Filip 10 Sept 2026 — read only, because
+ * WRITE_TENANT below still names the test company. */
+export const READ_TENANTS: readonly number[] = [1848969, 1571636];
 
 /** The single DatabaseNumber the integration may write to. Never a second entry. */
 export const WRITE_TENANT = 1848969;
@@ -41,9 +43,12 @@ export interface CompanyInfo {
   databaseNumber: number | undefined;
 }
 
-interface CompanyInformationResponse {
-  CompanyInformation?: {
-    CompanyName?: string;
+/** GET /settings/company. It sits under the `settings` scope, which every consent in this
+ * integration carries; /companyinformation needs a scope of its own that Vega Vista's
+ * consent (10 Sept 2026) does not include. */
+interface CompanySettingsResponse {
+  CompanySettings?: {
+    Name?: string;
     OrganizationNumber?: string;
     DatabaseNumber?: number | string;
   };
@@ -84,24 +89,38 @@ export class GuardedFortnox {
     return this.api.requestRaw(path);
   }
 
-  /** The connected company, fetched once per run and checked against `writeTenant`. */
+  /** The connected company, fetched once per run. Identification only — a read-only tenant
+   * (Vega Vista) must be able to say who it is without being refused. The refusal lives in
+   * `assertWriteTenant`, which every write runs first. */
   company(): Promise<CompanyInfo> {
-    this.companyChecked ??= this.fetchAndGuard();
+    this.companyChecked ??= this.fetchCompany();
     return this.companyChecked;
   }
 
-  private async fetchAndGuard(): Promise<CompanyInfo> {
-    const res = await this.api.request<CompanyInformationResponse>("GET", "/companyinformation");
-    const raw = res.CompanyInformation?.DatabaseNumber;
-    const info: CompanyInfo = {
-      name: res.CompanyInformation?.CompanyName ?? "(unknown)",
-      organizationNumber: res.CompanyInformation?.OrganizationNumber ?? "",
+  private async fetchCompany(): Promise<CompanyInfo> {
+    const res = await this.api.request<CompanySettingsResponse>("GET", "/settings/company");
+    const raw = res.CompanySettings?.DatabaseNumber;
+    return {
+      name: res.CompanySettings?.Name ?? "(unknown)",
+      organizationNumber: res.CompanySettings?.OrganizationNumber ?? "",
       databaseNumber: raw === undefined || raw === null ? undefined : Number(raw),
     };
-    if (info.databaseNumber !== WRITE_TENANT || info.databaseNumber !== this.writeTenant) {
+  }
+
+  /** The write check: the connected company must be `WRITE_TENANT` AND the instance's own
+   * write tenant (an override can only narrow, never widen). Memoised through `company()`,
+   * so a refused run asks Fortnox once. */
+  private async assertWriteTenant(): Promise<CompanyInfo> {
+    const info = await this.company();
+    if (
+      info.databaseNumber !== WRITE_TENANT ||
+      info.databaseNumber !== this.writeTenant
+    ) {
       throw new TenantGuardError(
         `REFUSING to write: connected company is "${info.name}" with DatabaseNumber ` +
-          `${info.databaseNumber ?? "unknown"}. Writes are locked to the test company ` +
+          `${
+            info.databaseNumber ?? "unknown"
+          }. Writes are locked to the test company ` +
           `${this.writeTenant}; this connection may only read.`,
       );
     }
@@ -109,8 +128,12 @@ export class GuardedFortnox {
   }
 
   /** A write: the company check runs first, every time, and the flag is set here only. */
-  async write<T>(method: Exclude<HttpMethod, "GET">, path: string, body: unknown): Promise<T> {
-    await this.company();
+  async write<T>(
+    method: Exclude<HttpMethod, "GET">,
+    path: string,
+    body: unknown,
+  ): Promise<T> {
+    await this.assertWriteTenant();
     return this.api.request<T>(method, path, body, { guardedWritePath: true });
   }
 }

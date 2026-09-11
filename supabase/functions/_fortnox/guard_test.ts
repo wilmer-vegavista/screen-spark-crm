@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects, assertStringIncludes, assertThrows } from "jsr:@std/assert@1";
+﻿import { assertEquals, assertRejects, assertStringIncludes, assertThrows } from "jsr:@std/assert@1";
 import { assertAllowedTenant, GuardedFortnox, READ_TENANTS, WRITE_TENANT } from "./guard.ts";
 import { TenantGuardError } from "./errors.ts";
 import { FortnoxCcClient } from "./client.ts";
@@ -6,7 +6,7 @@ import { ccOptionsFromEnv, guardedFortnoxFromEnv } from "./env.ts";
 import { json, mockFetch, noSleep, TOKEN_OK } from "./_test_helpers.ts";
 
 Deno.test("the constants are the test company and nothing else", () => {
-  assertEquals(READ_TENANTS, [1848969]);
+  assertEquals(READ_TENANTS, [1848969, 1571636]);
   assertEquals(WRITE_TENANT, 1848969);
 });
 
@@ -44,11 +44,11 @@ Deno.test(
       ["POST", "oauth-v1/token", TOKEN_OK],
       [
         "GET",
-        "/companyinformation",
+        "/settings/company",
         () =>
           json(200, {
-            CompanyInformation: {
-              CompanyName: "Live AB",
+            CompanySettings: {
+              Name: "Live AB",
               OrganizationNumber: "556714-7532",
               DatabaseNumber: 1030384,
             },
@@ -81,10 +81,10 @@ Deno.test(
       ["POST", "oauth-v1/token", TOKEN_OK],
       [
         "GET",
-        "/companyinformation",
+        "/settings/company",
         () =>
           json(200, {
-            CompanyInformation: { CompanyName: "Testbolaget", DatabaseNumber: 1848969 },
+            CompanySettings: { Name: "Testbolaget", DatabaseNumber: 1848969 },
           }),
       ],
       ["GET", "/customers", () => json(200, { Customers: [] })],
@@ -116,7 +116,7 @@ Deno.test(
       0,
       "no write ever left",
     );
-    assertEquals(f.to("/companyinformation").length, 1, "the failed check is memoised too");
+    assertEquals(f.to("/settings/company").length, 1, "the failed check is memoised too");
     const read = await g.get<{ Customers: unknown[] }>("/customers");
     assertEquals(read.Customers.length, 0);
   },
@@ -130,10 +130,10 @@ Deno.test(
       ["POST", "oauth-v1/token", TOKEN_OK],
       [
         "GET",
-        "/companyinformation",
+        "/settings/company",
         () =>
           json(200, {
-            CompanyInformation: { CompanyName: "Live AB", DatabaseNumber: 7777777 },
+            CompanySettings: { Name: "Live AB", DatabaseNumber: 7777777 },
           }),
       ],
       ["POST", "/customers", () => json(201, { Customer: { CustomerNumber: "1" } })],
@@ -162,10 +162,10 @@ Deno.test("a write against 1848969 passes, and the company check runs once per r
     ["POST", "oauth-v1/token", TOKEN_OK],
     [
       "GET",
-      "/companyinformation",
+      "/settings/company",
       () =>
         json(200, {
-          CompanyInformation: { CompanyName: "Testbolaget", DatabaseNumber: "1848969" },
+          CompanySettings: { Name: "Testbolaget", DatabaseNumber: "1848969" },
         }),
     ],
     ["POST", "/customers", () => json(201, { Customer: { CustomerNumber: "7", Name: "X" } })],
@@ -181,7 +181,7 @@ Deno.test("a write against 1848969 passes, and the company check runs once per r
   );
   await g.write("POST", "/customers", { Customer: { Name: "X" } });
   await g.write("POST", "/customers", { Customer: { Name: "Y" } });
-  assertEquals(f.to("/companyinformation").length, 1);
+  assertEquals(f.to("/settings/company").length, 1);
   assertEquals(f.to("/customers").length, 2);
   const company = await g.company();
   assertEquals(company.name, "Testbolaget");
@@ -191,7 +191,7 @@ Deno.test("a write against 1848969 passes, and the company check runs once per r
 Deno.test("a company response without a DatabaseNumber is refused (never assume)", async () => {
   const f = mockFetch([
     ["POST", "oauth-v1/token", TOKEN_OK],
-    ["GET", "/companyinformation", () => json(200, { CompanyInformation: { CompanyName: "?" } })],
+    ["GET", "/settings/company", () => json(200, { CompanySettings: { Name: "?" } })],
   ]);
   const g = new GuardedFortnox(
     new FortnoxCcClient({

@@ -5,7 +5,10 @@
  *
  * What it does: mints an access token with client id + secret and the `TenantId` header
  * (the header is what selects the company), caches it in memory, re-mints on expiry,
- * retries exactly once on 401, backs off once on 429 honouring Retry-After (capped at 30 s).
+ * retries exactly once on 401, paces requests so Fortnox's limit (25 per 5 s per company) is
+ * not hit in the first place, and on a 429 backs off honouring Retry-After (capped at 30 s)
+ * up to `max429Retries` times. The first real run against Vega Vista (237 customers, one
+ * detail read each) failed on the second 429 when this retried only once (11 Sept 2026).
  *
  * What it refuses: any non-GET request that does not carry `guardedWritePath` — the flag
  * only `GuardedFortnox` in guard.ts sets, after the company check. There is no other way
@@ -41,8 +44,12 @@ export interface FortnoxCcOptions {
   tenantId: string;
   fetchFn?: typeof fetch;
   now?: () => number;
-  /** Injected in tests so a 429 back-off does not really wait. */
+  /** Injected in tests so a 429 back-off (and the pacing gap) does not really wait. */
   sleep?: (ms: number) => Promise<void>;
+  /** Minimum gap between request starts. 210 ms keeps a sequential run under 25 per 5 s. */
+  minGapMs?: number;
+  /** How many 429s in a row one request survives before it fails. */
+  max429Retries?: number;
 }
 
 interface TokenResponse {
@@ -63,11 +70,45 @@ export class FortnoxCcClient implements FortnoxApi {
   private readonly sleep: (ms: number) => Promise<void>;
   private token: { value: string; expiresAt: number } | null = null;
   private minting: Promise<{ value: string; expiresAt: number }> | null = null;
+  private readonly minGapMs: number;
+  private readonly max429Retries: number;
+  private lastStartedAt = Number.NEGATIVE_INFINITY;
 
   constructor(private readonly opts: FortnoxCcOptions) {
     this.fetchFn = opts.fetchFn ?? fetch;
     this.now = opts.now ?? Date.now;
     this.sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    this.minGapMs = opts.minGapMs ?? 210;
+    this.max429Retries = opts.max429Retries ?? 6;
+  }
+
+  /** Waits until `minGapMs` has passed since the previous request started. */
+  private async pace(): Promise<void> {
+    const wait = this.lastStartedAt + this.minGapMs - this.now();
+    if (wait > 0) await this.sleep(wait);
+    this.lastStartedAt = this.now();
+  }
+
+  /** One paced request: retries once on 401 (stale token), and on 429 backs off honouring
+   * Retry-After (default 5 s, capped at 30 s) up to `max429Retries` times. */
+  private async send(attempt: () => Promise<Response>): Promise<Response> {
+    await this.pace();
+    let res = await attempt();
+    if (res.status === 401) {
+      // Token rejected mid-run (revoked consent, clock skew). Drop the cache and try
+      // exactly once more: a stale token self-heals, a real authorization failure surfaces.
+      this.token = null;
+      await this.pace();
+      res = await attempt();
+    }
+    for (let retry = 0; res.status === 429 && retry < this.max429Retries; retry++) {
+      const raw = Number(res.headers.get("retry-after") ?? "5");
+      const wait = Math.min(Number.isFinite(raw) && raw > 0 ? raw : 5, 30);
+      await this.sleep(wait * 1000);
+      await this.pace();
+      res = await attempt();
+    }
+    return res;
   }
 
   get tenantId(): string {
@@ -148,19 +189,7 @@ export class FortnoxCcClient implements FortnoxApi {
       });
     };
 
-    let res = await attempt();
-    if (res.status === 401) {
-      // Token rejected mid-run (revoked consent, clock skew). Drop the cache and try
-      // exactly once more: a stale token self-heals, a real authorization failure surfaces.
-      this.token = null;
-      res = await attempt();
-    }
-    if (res.status === 429) {
-      const raw = Number(res.headers.get("retry-after") ?? "5");
-      const wait = Math.min(Number.isFinite(raw) && raw > 0 ? raw : 5, 30);
-      await this.sleep(wait * 1000);
-      res = await attempt();
-    }
+    const res = await this.send(attempt);
 
     const bytes = new Uint8Array(await res.arrayBuffer());
     if (!res.ok) {
@@ -194,17 +223,7 @@ export class FortnoxCcClient implements FortnoxApi {
         headers: { Authorization: `Bearer ${token}`, Accept: "*/*" },
       });
     };
-    let res = await attempt();
-    if (res.status === 401) {
-      this.token = null;
-      res = await attempt();
-    }
-    if (res.status === 429) {
-      const raw = Number(res.headers.get("retry-after") ?? "5");
-      const wait = Math.min(Number.isFinite(raw) && raw > 0 ? raw : 5, 30);
-      await this.sleep(wait * 1000);
-      res = await attempt();
-    }
+    const res = await this.send(attempt);
     const bytes = new Uint8Array(await res.arrayBuffer());
     if (!res.ok) {
       const text = decode(bytes);

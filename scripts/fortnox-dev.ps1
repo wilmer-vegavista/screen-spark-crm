@@ -69,8 +69,10 @@ function Load-SupabaseKeys {
   }
 }
 
-# The guard's constant. The env file's own tenant id is never used.
-$env:FORTNOX_TENANT_ID = "1848969"
+# Default to the test company. A tenant already set in the process environment wins, so a
+# run against Vega Vista is `$env:FORTNOX_TENANT_ID = "1571636"` before the call. The env
+# file's own tenant line is never used (Deno does not override a set variable).
+if (-not $env:FORTNOX_TENANT_ID) { $env:FORTNOX_TENANT_ID = "1848969" }
 
 # Optional local values (ANTHROPIC_API_KEY, ANTHROPIC_MODEL) from .env.local, when present.
 $EnvFiles = @("--env-file=$EnvFile")

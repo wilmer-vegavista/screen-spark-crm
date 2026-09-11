@@ -77,8 +77,8 @@ Deno.test(
       ["POST", "oauth-v1/token", TOKEN_OK],
       [
         "GET",
-        "/companyinformation",
-        () => json(200, { CompanyInformation: { CompanyName: "Test", DatabaseNumber: 1848969 } }),
+        "/settings/company",
+        () => json(200, { CompanySettings: { Name: "Test", DatabaseNumber: 1848969 } }),
       ],
       [
         "POST",
@@ -91,7 +91,7 @@ Deno.test(
     assertEquals(created, { customerNumber: "42", name: "Exempel Handel AB" });
     assertEquals(
       f.calls.map((c) => c.method + " " + new URL(c.url).pathname),
-      ["POST /oauth-v1/token", "GET /3/companyinformation", "POST /3/customers"],
+      ["POST /oauth-v1/token", "GET /3/settings/company", "POST /3/customers"],
     );
   },
 );
@@ -101,8 +101,8 @@ Deno.test("createProject is refused when the connected company is wrong", async 
     ["POST", "oauth-v1/token", TOKEN_OK],
     [
       "GET",
-      "/companyinformation",
-      () => json(200, { CompanyInformation: { CompanyName: "Live", DatabaseNumber: 1030384 } }),
+      "/settings/company",
+      () => json(200, { CompanySettings: { Name: "Live", DatabaseNumber: 1030384 } }),
     ],
     ["POST", "/projects", () => json(201, { Project: { ProjectNumber: "1" } })],
   ]);
