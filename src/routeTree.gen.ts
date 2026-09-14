@@ -23,8 +23,11 @@ import { Route as AuthenticatedMaterialRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedLonRouteImport } from './routes/_authenticated/lon'
 import { Route as AuthenticatedListorRouteImport } from './routes/_authenticated/listor'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
+import { Route as AuthenticatedKundreskontraRouteImport } from './routes/_authenticated/kundreskontra'
 import { Route as AuthenticatedKunderRouteImport } from './routes/_authenticated/kunder'
+import { Route as AuthenticatedKassaflodeRouteImport } from './routes/_authenticated/kassaflode'
 import { Route as AuthenticatedKampanjerRouteImport } from './routes/_authenticated/kampanjer'
+import { Route as AuthenticatedFortnoxKopplingRouteImport } from './routes/_authenticated/fortnox-koppling'
 import { Route as AuthenticatedFakturaRouteImport } from './routes/_authenticated/faktura'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBudgetRouteImport } from './routes/_authenticated/budget'
@@ -105,9 +108,20 @@ const AuthenticatedLeadsRoute = AuthenticatedLeadsRouteImport.update({
   path: '/leads',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedKundreskontraRoute =
+  AuthenticatedKundreskontraRouteImport.update({
+    id: '/kundreskontra',
+    path: '/kundreskontra',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedKunderRoute = AuthenticatedKunderRouteImport.update({
   id: '/kunder',
   path: '/kunder',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedKassaflodeRoute = AuthenticatedKassaflodeRouteImport.update({
+  id: '/kassaflode',
+  path: '/kassaflode',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedKampanjerRoute = AuthenticatedKampanjerRouteImport.update({
@@ -115,6 +129,12 @@ const AuthenticatedKampanjerRoute = AuthenticatedKampanjerRouteImport.update({
   path: '/kampanjer',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFortnoxKopplingRoute =
+  AuthenticatedFortnoxKopplingRouteImport.update({
+    id: '/fortnox-koppling',
+    path: '/fortnox-koppling',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFakturaRoute = AuthenticatedFakturaRouteImport.update({
   id: '/faktura',
   path: '/faktura',
@@ -176,8 +196,11 @@ export interface FileRoutesByFullPath {
   '/budget': typeof AuthenticatedBudgetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/faktura': typeof AuthenticatedFakturaRoute
+  '/fortnox-koppling': typeof AuthenticatedFortnoxKopplingRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
+  '/kassaflode': typeof AuthenticatedKassaflodeRoute
   '/kunder': typeof AuthenticatedKunderRoute
+  '/kundreskontra': typeof AuthenticatedKundreskontraRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/listor': typeof AuthenticatedListorRoute
   '/lon': typeof AuthenticatedLonRoute
@@ -202,8 +225,11 @@ export interface FileRoutesByTo {
   '/budget': typeof AuthenticatedBudgetRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/faktura': typeof AuthenticatedFakturaRoute
+  '/fortnox-koppling': typeof AuthenticatedFortnoxKopplingRoute
   '/kampanjer': typeof AuthenticatedKampanjerRoute
+  '/kassaflode': typeof AuthenticatedKassaflodeRoute
   '/kunder': typeof AuthenticatedKunderRoute
+  '/kundreskontra': typeof AuthenticatedKundreskontraRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/listor': typeof AuthenticatedListorRoute
   '/lon': typeof AuthenticatedLonRoute
@@ -230,8 +256,11 @@ export interface FileRoutesById {
   '/_authenticated/budget': typeof AuthenticatedBudgetRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/faktura': typeof AuthenticatedFakturaRoute
+  '/_authenticated/fortnox-koppling': typeof AuthenticatedFortnoxKopplingRoute
   '/_authenticated/kampanjer': typeof AuthenticatedKampanjerRoute
+  '/_authenticated/kassaflode': typeof AuthenticatedKassaflodeRoute
   '/_authenticated/kunder': typeof AuthenticatedKunderRoute
+  '/_authenticated/kundreskontra': typeof AuthenticatedKundreskontraRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/listor': typeof AuthenticatedListorRoute
   '/_authenticated/lon': typeof AuthenticatedLonRoute
@@ -258,8 +287,11 @@ export interface FileRouteTypes {
     | '/budget'
     | '/dashboard'
     | '/faktura'
+    | '/fortnox-koppling'
     | '/kampanjer'
+    | '/kassaflode'
     | '/kunder'
+    | '/kundreskontra'
     | '/leads'
     | '/listor'
     | '/lon'
@@ -284,8 +316,11 @@ export interface FileRouteTypes {
     | '/budget'
     | '/dashboard'
     | '/faktura'
+    | '/fortnox-koppling'
     | '/kampanjer'
+    | '/kassaflode'
     | '/kunder'
+    | '/kundreskontra'
     | '/leads'
     | '/listor'
     | '/lon'
@@ -311,8 +346,11 @@ export interface FileRouteTypes {
     | '/_authenticated/budget'
     | '/_authenticated/dashboard'
     | '/_authenticated/faktura'
+    | '/_authenticated/fortnox-koppling'
     | '/_authenticated/kampanjer'
+    | '/_authenticated/kassaflode'
     | '/_authenticated/kunder'
+    | '/_authenticated/kundreskontra'
     | '/_authenticated/leads'
     | '/_authenticated/listor'
     | '/_authenticated/lon'
@@ -434,6 +472,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLeadsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/kundreskontra': {
+      id: '/_authenticated/kundreskontra'
+      path: '/kundreskontra'
+      fullPath: '/kundreskontra'
+      preLoaderRoute: typeof AuthenticatedKundreskontraRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/kunder': {
       id: '/_authenticated/kunder'
       path: '/kunder'
@@ -441,11 +486,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKunderRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/kassaflode': {
+      id: '/_authenticated/kassaflode'
+      path: '/kassaflode'
+      fullPath: '/kassaflode'
+      preLoaderRoute: typeof AuthenticatedKassaflodeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/kampanjer': {
       id: '/_authenticated/kampanjer'
       path: '/kampanjer'
       fullPath: '/kampanjer'
       preLoaderRoute: typeof AuthenticatedKampanjerRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/fortnox-koppling': {
+      id: '/_authenticated/fortnox-koppling'
+      path: '/fortnox-koppling'
+      fullPath: '/fortnox-koppling'
+      preLoaderRoute: typeof AuthenticatedFortnoxKopplingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/faktura': {
@@ -522,8 +581,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBudgetRoute: typeof AuthenticatedBudgetRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFakturaRoute: typeof AuthenticatedFakturaRoute
+  AuthenticatedFortnoxKopplingRoute: typeof AuthenticatedFortnoxKopplingRoute
   AuthenticatedKampanjerRoute: typeof AuthenticatedKampanjerRoute
+  AuthenticatedKassaflodeRoute: typeof AuthenticatedKassaflodeRoute
   AuthenticatedKunderRoute: typeof AuthenticatedKunderRoute
+  AuthenticatedKundreskontraRoute: typeof AuthenticatedKundreskontraRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
   AuthenticatedListorRoute: typeof AuthenticatedListorRoute
   AuthenticatedLonRoute: typeof AuthenticatedLonRoute
@@ -546,8 +608,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBudgetRoute: AuthenticatedBudgetRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFakturaRoute: AuthenticatedFakturaRoute,
+  AuthenticatedFortnoxKopplingRoute: AuthenticatedFortnoxKopplingRoute,
   AuthenticatedKampanjerRoute: AuthenticatedKampanjerRoute,
+  AuthenticatedKassaflodeRoute: AuthenticatedKassaflodeRoute,
   AuthenticatedKunderRoute: AuthenticatedKunderRoute,
+  AuthenticatedKundreskontraRoute: AuthenticatedKundreskontraRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
   AuthenticatedListorRoute: AuthenticatedListorRoute,
   AuthenticatedLonRoute: AuthenticatedLonRoute,

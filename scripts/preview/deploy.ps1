@@ -1,0 +1,122 @@
+<#
+.SYNOPSIS
+  Builds the CRM against Erik's dev Supabase project and deploys it as the Cloudflare Worker
+  "vega-vista-preview", with fortnox-sync and fortnox-ledger-feed from the same tree on the
+  dev project (WO-124). Windows PowerShell 5.1:
+
+    ./scripts/preview/deploy.ps1                                         this checkout as it is
+    ./scripts/preview/deploy.ps1 -Ref origin/erik/fortnox-preview-fixes  a pushed tip (fetched,
+                                                                         exported, built clean)
+
+.DESCRIPTION
+  Needs the Supabase CLI logged in (npx supabase login) and CLOUDFLARE_API_TOKEN in the
+  environment. The dev project's publishable key is fetched from the CLI at run time and set
+  in this process only; nothing is written to a file. The committed .env names Vega Vista's
+  own project; Vite lets variables already in the process win over it, and this script
+  refuses to deploy a build that still names their project anywhere.
+
+  With -Ref the tree of that commit is exported (git archive) into a temporary folder, built
+  there with a fresh `npm ci`, deployed, and the folder removed; this checkout is not touched.
+  The Worker version is tagged with the commit it was built from.
+
+  The two functions are deployed from the same tree before the Worker, so the hourly sync
+  runs the code the pages were built against (a site-only redeploy once left the preview on
+  WO-123's pages and WO-114's sync). A tree carrying a migration the dev project does not
+  have is refused before anything is built: its functions could expect tables that are not
+  there. Migrations are never applied from here.
+
+  The pages call the dev project's functions (VITE_FORTNOX_FUNCTIONS_URL is cleared). The
+  Worker gets the dev project's URL and publishable key as plain vars for the server
+  functions; no service-role key and no Slack token, so user administration and the Slack
+  post answer with an error in the preview instead of acting.
+#>
+param([string]$Ref)
+$env:npm_config_loglevel = "error"
+$ProjectRef = "fcxmtlbrwfbbjudjmloh"  # Erik's vega-vista-dev
+$Theirs = "llpribdacnlejtefnvtm"      # Vega Vista's own project: must not appear in the build
+$Worker = "vega-vista-preview"
+$Repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+
+# Native tools write progress to stderr; judge them by exit code, not by stderr (PowerShell 5.1
+# turns redirected stderr lines into errors).
+function Invoke-Native([string]$What, [scriptblock]$Command) {
+  & $Command
+  if ($LASTEXITCODE -ne 0) { throw "$What failed (exit $LASTEXITCODE)." }
+}
+
+if (-not $env:CLOUDFLARE_API_TOKEN) { throw "CLOUDFLARE_API_TOKEN is not set." }
+$keys = npx supabase projects api-keys --project-ref $ProjectRef --output json 2>$null | ConvertFrom-Json
+$anon = ($keys | Where-Object { $_.name -eq "anon" }).api_key
+Remove-Variable keys
+if (-not $anon) { throw "Could not fetch the dev project's publishable key. Is the Supabase CLI logged in?" }
+
+$work = $null
+if ($Ref) {
+  Invoke-Native "git fetch" { git -C $Repo fetch --quiet origin }
+  $sha = (git -C $Repo rev-parse --verify "$Ref^{commit}") | Select-Object -First 1
+  if ($LASTEXITCODE -ne 0 -or -not $sha) { throw "Unknown ref $Ref." }
+  $work = Join-Path $env:TEMP "vega-vista-preview-$($sha.Substring(0, 12))"
+  if (Test-Path $work) { Remove-Item -Recurse -Force $work }
+  New-Item -ItemType Directory $work | Out-Null
+  Invoke-Native "git archive" { git -C $Repo archive --format=tar -o "$work.tar" $sha }
+  Invoke-Native "tar" { tar -xf "$work.tar" -C $work }
+  Remove-Item "$work.tar"
+  Set-Location $work
+  Invoke-Native "npm ci" { npm ci --no-audit --no-fund }
+  $label = "$Ref @ $($sha.Substring(0, 7))"
+} else {
+  Set-Location $Repo
+  $sha = git rev-parse HEAD
+  $dirty = if (git status --porcelain --untracked-files=no) { " + uncommitted changes" } else { "" }
+  $label = "$(git rev-parse --abbrev-ref HEAD) @ $($sha.Substring(0, 7))$dirty"
+}
+
+$applied = npx supabase db query --linked --project-ref $ProjectRef --agent no -o json `
+  "select version from supabase_migrations.schema_migrations" 2>$null | Out-String | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0 -or -not $applied) { throw "Could not read the dev project's applied migrations." }
+$applied = $applied | ForEach-Object { $_.version }
+$missing = Get-ChildItem supabase/migrations -Filter *.sql | ForEach-Object { $_.Name -replace '_.*$', '' } |
+  Where-Object { $applied -notcontains $_ }
+if ($missing) {
+  throw "Refusing to deploy: $label carries migrations the dev project does not have ($($missing -join ', ')). Apply them to $ProjectRef first."
+}
+Write-Host "Migrations of $label are all on the dev project ($($applied.Count) applied)."
+
+$env:VITE_SUPABASE_URL = "https://$ProjectRef.supabase.co"
+$env:VITE_SUPABASE_PROJECT_ID = $ProjectRef
+$env:VITE_SUPABASE_PUBLISHABLE_KEY = $anon
+$env:SUPABASE_URL = $env:VITE_SUPABASE_URL
+$env:SUPABASE_PROJECT_ID = $ProjectRef
+$env:SUPABASE_PUBLISHABLE_KEY = $anon
+Remove-Item Env:VITE_FORTNOX_FUNCTIONS_URL -ErrorAction SilentlyContinue
+
+Invoke-Native "npm run build" { npm run build }
+
+$built = Get-ChildItem .output -Recurse -File
+$hits = $built | Select-String -SimpleMatch $Theirs -List
+if ($hits) { throw "Refusing to deploy: the build names Vega Vista's own project in $(($hits | ForEach-Object Path) -join ', ')." }
+if (-not ($built | Select-String -SimpleMatch $ProjectRef -List)) {
+  throw "Refusing to deploy: the build does not name the dev project, so the VITE_ variables did not reach it."
+}
+Write-Host "Build of $label checked: 0 files name $Theirs; the dev project $ProjectRef is baked in."
+
+foreach ($fn in "fortnox-sync", "fortnox-ledger-feed") {
+  Invoke-Native "functions deploy $fn" {
+    npx supabase functions deploy $fn --project-ref $ProjectRef --use-api --no-verify-jwt
+  }
+}
+Write-Host "Functions fortnox-sync and fortnox-ledger-feed of $label deployed to $ProjectRef."
+
+Invoke-Native "wrangler deploy" {
+  npx --yes wrangler@4 deploy --name $Worker `
+    --var "SUPABASE_URL:$($env:SUPABASE_URL)" `
+    --var "SUPABASE_PROJECT_ID:$ProjectRef" `
+    --var "SUPABASE_PUBLISHABLE_KEY:$anon" `
+    --tag $sha.Substring(0, 7) --message $label
+}
+Write-Host "Deployed $label as $Worker, with its two functions on $ProjectRef."
+
+if ($work) {
+  Set-Location $Repo
+  Remove-Item -Recurse -Force $work
+}

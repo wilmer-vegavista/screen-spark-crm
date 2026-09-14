@@ -16,6 +16,7 @@ import { format, addMonths, startOfMonth, endOfMonth } from "date-fns";
 import { sv } from "date-fns/locale";
 import { toast } from "sonner";
 import { ORDER_SELECT } from "@/lib/order-columns";
+import { OrderInvoiceState } from "@/components/fortnox/order-invoice-state";
 import { buildInvoiceSchedule, frequencyLabels, type BillingFrequency } from "@/lib/billing";
 
 export const Route = createFileRoute("/_authenticated/faktura")({
@@ -189,6 +190,7 @@ function FakturaPage() {
               {bucket === "fakturerad" && o.invoiced_at && (
                 <div className="text-xs text-muted-foreground mt-1">Fakturerad: {format(new Date(o.invoiced_at), "yyyy-MM-dd")}</div>
               )}
+              <OrderInvoiceState orderId={o.id} className="mt-1" />
             </div>
             <div className="text-right">
               <div className="text-sm font-semibold">{SEK(Number(o.total_excl_vat))} SEK</div>

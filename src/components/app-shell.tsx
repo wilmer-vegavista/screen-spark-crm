@@ -24,6 +24,7 @@ import {
   Contact,
   TrendingUp,
   FileSpreadsheet,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,15 @@ const nav: NavItem[] = [
     group: "admin",
     adminOnly: true,
   },
+  {
+    to: "/fortnox-koppling",
+    label: "Fortnox-koppling",
+    icon: Link2,
+    group: "admin",
+    adminOnly: true,
+  },
+  { to: "/kundreskontra", label: "Kundreskontra", icon: Receipt, group: "admin", adminOnly: true },
+  { to: "/kassaflode", label: "Kassaflöde", icon: Wallet, group: "admin", adminOnly: true },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
