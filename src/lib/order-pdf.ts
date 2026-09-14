@@ -156,6 +156,19 @@ async function loadLogo(): Promise<{ dataUrl: string | null; aspect: number | nu
 }
 
 function buildPeriodText(order: any, item: any, L: (typeof STRINGS)[PdfLang]): string {
+  // Exakta datum valda i ordern trumfar radens veckofält, som alltid är minst 1.
+  // exact_dates lagrar plattade [start, slut]-par (samma konvention som order-dialog).
+  const ed: string[] | undefined = Array.isArray(order?.exact_dates) ? order.exact_dates : undefined;
+  if (ed && ed.length) {
+    const sorted = [...ed].sort();
+    const parts: string[] = [];
+    for (let i = 0; i < sorted.length; i += 2) {
+      const start = sorted[i];
+      const end = sorted[i + 1];
+      parts.push(!end || end === start ? start : `${start} – ${end}`);
+    }
+    return parts.join(", ");
+  }
   const n = Number(item?.weeks || 0);
   const unit: string = item?.period_unit || "veckor";
   if (n > 0) {
@@ -168,10 +181,6 @@ function buildPeriodText(order: any, item: any, L: (typeof STRINGS)[PdfLang]): s
     if (sw.length === 1) return L.weekNo(sw[0]);
     if (sw.length === 2) return L.weekNos(`${sw[0]} & ${sw[1]}`);
     return L.weekNos(sw.join(", "));
-  }
-  const ed: string[] | undefined = Array.isArray(order?.exact_dates) ? order.exact_dates : undefined;
-  if (ed && ed.length) {
-    return ed.length === 1 ? ed[0] : `${ed[0]} – ${ed[ed.length - 1]}`;
   }
   return "—";
 }

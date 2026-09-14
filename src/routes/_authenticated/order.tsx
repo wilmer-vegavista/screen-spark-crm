@@ -112,7 +112,8 @@ function OrderPage() {
     if (productParam) setProductFilter(productParam);
   }, [productParam]);
 
-  const allOrders = data ?? [];
+  // Offerter visas enbart i pipelinen – orderlistan innehåller bara bokningar
+  const allOrders = (data ?? []).filter((o: any) => o.order_type !== "offert");
   let orders = sellerFilter === "all"
     ? allOrders
     : allOrders.filter((o: any) => o.owner_id === sellerFilter || o.created_by === sellerFilter);
@@ -172,7 +173,7 @@ function OrderPage() {
     <>
       <PageHeader
         title="Order"
-        description="Skapa offerter och bokningar"
+        description="Bokningar – offerter hittar du under Pipeline"
         actions={
           <div className="flex items-center gap-2">
             {selectMode ? (
@@ -226,7 +227,7 @@ function OrderPage() {
           <span className="text-xs text-muted-foreground ml-auto">{orders.length} order{orders.length === 1 ? "" : "r"}</span>
         </Card>
         {orders.length === 0 && (
-          <Card className="p-8 text-center text-sm text-muted-foreground">Inga ordrar ännu</Card>
+          <Card className="p-8 text-center text-sm text-muted-foreground">Inga bokningar ännu</Card>
         )}
         {orders.map((o: any) => (
           <Card

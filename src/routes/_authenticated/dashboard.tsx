@@ -135,7 +135,7 @@ function Dashboard() {
         supabase.from("company_settings").select("*").maybeSingle(),
         supabase
           .from("orders")
-          .select("id, deal_id, owner_id, company_name, total_excl_vat, invoice_start_date, billing_frequency, billing_duration_months, order_type, created_at")
+          .select("id, deal_id, owner_id, company_name, total_excl_vat, invoice_start_date, billing_frequency, billing_duration_months, order_type, created_at, commission_upfront")
           .eq("order_type", "bokning"),
         supabase.from("seller_monthly_budgets").select("*").eq("year", now.getFullYear()),
       ]);
@@ -301,7 +301,9 @@ function Dashboard() {
     const pct = pickPct(d, product, compType, defaultPct);
     const value = Number(d.value ?? 0);
     const order: any = orderByDeal.get(d.id);
-    if (order && order.billing_frequency && order.billing_frequency !== "engang") {
+    // Ordrar med "provision direkt" faktureras i sin helhet på en gång,
+    // så hela provisionen faller ut direkt i stället för periodiserat.
+    if (order && order.billing_frequency && order.billing_frequency !== "engang" && !order.commission_upfront) {
       return buildInvoiceSchedule(
         order.invoice_start_date || d.won_at,
         order.billing_frequency as BillingFrequency,
