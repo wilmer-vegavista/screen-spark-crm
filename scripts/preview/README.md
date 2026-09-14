@@ -20,7 +20,7 @@ Nothing here touches Vega Vista's own Supabase project, their Lovable/Vercel dep
 | `deploy.ps1 [-Ref <ref>]`     | builds with the dev project's public values and deploys the Worker plus `fortnox-sync` and `fortnox-ledger-feed` from the same tree — **the redeploy command**; `-Ref` builds a pushed tip from a clean export | anyone with Erik's CLI logins             |
 | `set-fortnox-secrets.ps1`     | the three Fortnox function secrets on the dev project (tenant 1571636)                                                                                                                                         | Erik                                      |
 | `set-passwords.ps1 -Email …`  | a generated password per preview login, printed once to that terminal                                                                                                                                          | Erik                                      |
-| `sync-schedule.ps1 [-Remove]` | on the dev project only: the hourly sync at 7 past the hour instead of on it (the free plan's API is slow for the first ~20 s of every hour), plus a catch-up at 22/37/52 past when the hour has no good run   | the build; `-Remove` is the way back      |
+| `sync-schedule.ps1 [-Remove]` | on the dev project only: a catch-up for the hourly sync at 3, 6, 9 and 30 past, when the hour has no good run yet (the free plan's API often times out the first call after a few quiet minutes)               | the build; `-Remove` is the way back      |
 
 ## What holds, and what holds it
 
