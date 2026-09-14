@@ -7,18 +7,19 @@ is **not** their CRM and not part of go-live:
   Worker `vega-vista-preview` on Erik's account (`https://vega-vista-preview.<subdomain>.workers.dev`).
 - **Data:** a copy of the CRM's own tables, read once from Vega Vista's project and loaded into the
   dev project (`fcxmtlbrwfbbjudjmloh`). Nothing is ever written back.
-- **Fortnox:** `fortnox-sync` and `fortnox-ledger-feed` deployed to the dev project; the hourly job
-  reads Vega Adscreens AB. Writes stay locked to the test company by `guard.ts` (`WRITE_TENANT`).
+- **Fortnox:** `fortnox-sync` and `fortnox-ledger-feed` deployed to the dev project from the same
+  commit as the site; the hourly job reads Vega Adscreens AB. Writes stay locked to the test
+  company by `guard.ts` (`WRITE_TENANT`).
 
 Nothing here touches Vega Vista's own Supabase project, their Lovable/Vercel deploys or `main`.
 
-| Script                       | What it does                                                                                                                                  | Run by                                    |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `copy-crm.mjs`               | `counts` / `plan` / `copy --login <email>[=<name>] …`: production row counts, a schema comparison, and the copy itself                        | the build; again only to refresh the data |
-| `supabase-token.ps1`         | puts the Supabase CLI's own token into the process for `copy-crm.mjs` (dot-source it)                                                         | with `copy-crm.mjs`                       |
-| `deploy.ps1 [-Ref <ref>]`    | builds with the dev project's public values and deploys the Worker — **the redeploy command**; `-Ref` builds a pushed tip from a clean export | anyone with Erik's CLI logins             |
-| `set-fortnox-secrets.ps1`    | the three Fortnox function secrets on the dev project (tenant 1571636)                                                                        | Erik                                      |
-| `set-passwords.ps1 -Email …` | a generated password per preview login, printed once to that terminal                                                                         | Erik                                      |
+| Script                       | What it does                                                                                                                                                                                                   | Run by                                    |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `copy-crm.mjs`               | `counts` / `plan` / `copy --login <email>[=<name>] …`: production row counts, a schema comparison, and the copy itself                                                                                         | the build; again only to refresh the data |
+| `supabase-token.ps1`         | puts the Supabase CLI's own token into the process for `copy-crm.mjs` (dot-source it)                                                                                                                          | with `copy-crm.mjs`                       |
+| `deploy.ps1 [-Ref <ref>]`    | builds with the dev project's public values and deploys the Worker plus `fortnox-sync` and `fortnox-ledger-feed` from the same tree — **the redeploy command**; `-Ref` builds a pushed tip from a clean export | anyone with Erik's CLI logins             |
+| `set-fortnox-secrets.ps1`    | the three Fortnox function secrets on the dev project (tenant 1571636)                                                                                                                                         | Erik                                      |
+| `set-passwords.ps1 -Email …` | a generated password per preview login, printed once to that terminal                                                                                                                                          | Erik                                      |
 
 ## What holds, and what holds it
 

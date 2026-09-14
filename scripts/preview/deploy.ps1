@@ -1,7 +1,8 @@
 <#
 .SYNOPSIS
   Builds the CRM against Erik's dev Supabase project and deploys it as the Cloudflare Worker
-  "vega-vista-preview" (WO-124). Windows PowerShell 5.1:
+  "vega-vista-preview", with fortnox-sync and fortnox-ledger-feed from the same tree on the
+  dev project (WO-124). Windows PowerShell 5.1:
 
     ./scripts/preview/deploy.ps1                                         this checkout as it is
     ./scripts/preview/deploy.ps1 -Ref origin/erik/fortnox-preview-fixes  a pushed tip (fetched,
@@ -17,6 +18,12 @@
   With -Ref the tree of that commit is exported (git archive) into a temporary folder, built
   there with a fresh `npm ci`, deployed, and the folder removed; this checkout is not touched.
   The Worker version is tagged with the commit it was built from.
+
+  The two functions are deployed from the same tree before the Worker, so the hourly sync
+  runs the code the pages were built against (a site-only redeploy once left the preview on
+  WO-123's pages and WO-114's sync). A tree carrying a migration the dev project does not
+  have is refused before anything is built: its functions could expect tables that are not
+  there. Migrations are never applied from here.
 
   The pages call the dev project's functions (VITE_FORTNOX_FUNCTIONS_URL is cleared). The
   Worker gets the dev project's URL and publishable key as plain vars for the server
@@ -64,6 +71,17 @@ if ($Ref) {
   $label = "$(git rev-parse --abbrev-ref HEAD) @ $($sha.Substring(0, 7))$dirty"
 }
 
+$applied = npx supabase db query --linked --project-ref $ProjectRef --agent no -o json `
+  "select version from supabase_migrations.schema_migrations" 2>$null | Out-String | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0 -or -not $applied) { throw "Could not read the dev project's applied migrations." }
+$applied = $applied | ForEach-Object { $_.version }
+$missing = Get-ChildItem supabase/migrations -Filter *.sql | ForEach-Object { $_.Name -replace '_.*$', '' } |
+  Where-Object { $applied -notcontains $_ }
+if ($missing) {
+  throw "Refusing to deploy: $label carries migrations the dev project does not have ($($missing -join ', ')). Apply them to $ProjectRef first."
+}
+Write-Host "Migrations of $label are all on the dev project ($($applied.Count) applied)."
+
 $env:VITE_SUPABASE_URL = "https://$ProjectRef.supabase.co"
 $env:VITE_SUPABASE_PROJECT_ID = $ProjectRef
 $env:VITE_SUPABASE_PUBLISHABLE_KEY = $anon
@@ -82,6 +100,13 @@ if (-not ($built | Select-String -SimpleMatch $ProjectRef -List)) {
 }
 Write-Host "Build of $label checked: 0 files name $Theirs; the dev project $ProjectRef is baked in."
 
+foreach ($fn in "fortnox-sync", "fortnox-ledger-feed") {
+  Invoke-Native "functions deploy $fn" {
+    npx supabase functions deploy $fn --project-ref $ProjectRef --use-api --no-verify-jwt
+  }
+}
+Write-Host "Functions fortnox-sync and fortnox-ledger-feed of $label deployed to $ProjectRef."
+
 Invoke-Native "wrangler deploy" {
   npx --yes wrangler@4 deploy --name $Worker `
     --var "SUPABASE_URL:$($env:SUPABASE_URL)" `
@@ -89,7 +114,7 @@ Invoke-Native "wrangler deploy" {
     --var "SUPABASE_PUBLISHABLE_KEY:$anon" `
     --tag $sha.Substring(0, 7) --message $label
 }
-Write-Host "Deployed $label as $Worker."
+Write-Host "Deployed $label as $Worker, with its two functions on $ProjectRef."
 
 if ($work) {
   Set-Location $Repo
