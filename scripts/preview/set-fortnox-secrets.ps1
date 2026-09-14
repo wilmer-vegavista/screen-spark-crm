@@ -11,6 +11,11 @@
   missing there. FORTNOX_TENANT_ID is 1571636, not a secret. Prints no value: `secrets list`
   at the end shows names and digests only.
 
+  npx hands the values to the Supabase CLI as arguments, and npm writes every argument into its
+  debug log (%LOCALAPPDATA%\npm-cache\_logs\<time>-debug-0.log) whatever the loglevel. So this
+  script sets npm_config_logs_max=0: npm writes no log file, and it also clears the log files
+  already in that folder.
+
   Writes still reach no company but the test company 1848969: guard.ts's WRITE_TENANT decides
   that, whatever these secrets say.
 #>
@@ -18,6 +23,7 @@ param(
   [string]$EnvFile = $(if ($env:FORTNOX_ENV_FILE) { $env:FORTNOX_ENV_FILE } else { "C:\Users\erika\.secrets\vegavista-fortnox.env" })
 )
 $env:npm_config_loglevel = "error"
+$env:npm_config_logs_max = "0"  # no npm debug log: it would hold every npx argument, the secret too
 $ProjectRef = "fcxmtlbrwfbbjudjmloh"  # Erik's vega-vista-dev, never Vega Vista's own project
 
 $vals = @{}

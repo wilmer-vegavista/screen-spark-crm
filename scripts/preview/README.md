@@ -41,7 +41,10 @@ Nothing here touches Vega Vista's own Supabase project, their Lovable/Vercel dep
   `fortnox_tokens`, `screen_owners`, storage objects.
 - **No credential in a file.** Keys and tokens are fetched from the logged-in CLIs at run time
   and live in process memory; the Fortnox secret goes from Erik's env file straight into the
-  dev project's secrets.
+  dev project's secrets. It travels as an `npx` argument, and npm writes every argument into its
+  debug log (`%LOCALAPPDATA%\npm-cache\_logs`) whatever the log level, so
+  `set-fortnox-secrets.ps1` turns that log off (`npm_config_logs_max=0`; npm then also clears the
+  logs already there). No other script here passes a secret to `npx`.
 
 ## In the preview, on purpose
 
